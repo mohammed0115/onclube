@@ -1,54 +1,69 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, Mic } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
 import { Button } from "@/components/ui/button";
+import { BrandPanel } from "@/components/marketing";
 import { Field } from "@/components/forms";
 import { useAppState } from "@/app/AppState";
+import { useAuth, roleHome } from "@/auth/AuthProvider";
+import { ApiError } from "@/api";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
-
-const ROLE_HOME: Record<Role, string> = {
-  student: "/student",
-  instructor: "/instructor",
-  admin: "/admin",
-};
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { role, setRole } = useAppState();
+  const { login } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const user = await login(email, password);
+      navigate(roleHome(user.role), { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 401
+          ? "Incorrect email or password."
+          : "Could not sign in. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#08081A] p-10 lg:flex">
-        <div className="pointer-events-none absolute -left-20 bottom-10 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
-        <Logo light />
-        <div className="relative z-10">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-300">
-            <Mic size={13} /> Welcome back
-          </div>
-          <h2 className="font-display text-3xl font-extrabold leading-tight text-white">
-            Your next conversation is one click away.
-          </h2>
-        </div>
-        <p className="relative z-10 text-xs text-gray-600">Prototype — sign-in is simulated.</p>
-      </div>
+      <BrandPanel
+        badge={<><Mic size={13} /> Welcome back</>}
+        title="Your next conversation is one click away."
+        footnote="Sign in to continue."
+      />
 
       <div className="flex items-center justify-center bg-background px-6 py-12">
-        <div className="w-full max-w-sm">
+        <form onSubmit={handleSubmit} className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
           <h1 className="font-display text-2xl font-extrabold text-foreground">Sign in</h1>
-          <p className="mb-7 mt-1 text-sm text-muted-foreground">Choose how you want to sign in for the demo.</p>
+          <p className="mb-7 mt-1 text-sm text-muted-foreground">Welcome back — let’s get you talking.</p>
 
           <div className="mb-6 grid grid-cols-3 gap-2">
             {(["student", "instructor", "admin"] as Role[]).map((r) => (
               <button
                 key={r}
+                type="button"
                 onClick={() => setRole(r)}
                 className={cn(
                   "rounded-xl border-2 px-2 py-2 text-xs font-semibold capitalize transition-all",
-                  role === r ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-border text-muted-foreground hover:border-indigo-200"
+                  role === r ? "border-primary bg-blue-50 text-blue-700" : "border-border text-muted-foreground hover:border-blue-200"
                 )}
               >
                 {r}
@@ -57,21 +72,47 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-4">
-            <Field label="Email" htmlFor="email" type="email" placeholder="you@email.com" />
-            <Field label="Password" htmlFor="password" type="password" placeholder="••••••••" />
+            <Field
+              label="Email"
+              htmlFor="email"
+              type="email"
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <Field
+              label="Password"
+              htmlFor="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
           </div>
 
-          <Button onClick={() => navigate(ROLE_HOME[role])} className="mt-7 w-full" size="lg">
-            Sign in as {role} <ArrowRight size={17} />
+          {error && (
+            <p role="alert" className="mt-4 text-sm font-medium text-red-600">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" disabled={submitting} className="mt-7 w-full" size="lg">
+            {submitting ? "Signing in…" : (
+              <>
+                Sign in <ArrowRight size={17} />
+              </>
+            )}
           </Button>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             New here?{" "}
-            <Link to="/register" className="font-semibold text-indigo-600 hover:underline">
+            <Link to="/register" className="font-semibold text-primary hover:underline">
               Create an account
             </Link>
           </p>
-        </div>
+        </form>
       </div>
     </div>
   );

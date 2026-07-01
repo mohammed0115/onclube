@@ -5,45 +5,111 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────────────────
+   OneClub Design Tokens — Phase 9.5 "Calm Sky Blue"
+   Light theme only. Primary = sky blue, accent = warm orange, AI = periwinkle.
+   This file is the SOURCE OF TRUTH for docs/design-system.md.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
   --font-size: 16px;
-  --background: #f2f3ff;
-  --foreground: #0f0e2a;
+
+  /* Surfaces */
+  --background: #ffffff;        /* pure white app background */
+  --surface: #eff6ff;           /* soft blue (blue-50) — tinted panels */
+  --surface-2: #f8fafc;         /* very light gray (slate-50) — secondary bg */
+  --foreground: #0f172a;        /* slate-900 — primary text */
   --card: #ffffff;
-  --card-foreground: #0f0e2a;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #0f0e2a;
-  --primary: #4f46e5;
+  --popover-foreground: #0f172a;
+
+  /* Primary — Sky Blue */
+  --primary: #3b82f6;           /* blue-500 */
+  --primary-hover: #2563eb;     /* blue-600 */
   --primary-foreground: #ffffff;
-  --secondary: #eef2ff;
-  --secondary-foreground: #4f46e5;
-  --muted: #e8eaff;
-  --muted-foreground: #6b6b8e;
-  --accent: #7c3aed;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
+
+  /* Secondary / Muted — soft blue + slate neutrals */
+  --secondary: #eff6ff;         /* blue-50 */
+  --secondary-foreground: #2563eb;
+  --muted: #f1f5f9;             /* slate-100 */
+  --muted-foreground: #64748b;  /* slate-500 */
+
+  /* Accent — Warm Orange (deliberate highlight only).
+     Note: amber needs dark text for AA, hence --accent-foreground is slate-900.
+     For orange-on-white CTAs use a deeper orange (#ea580c). */
+  --accent: #f59e0b;            /* amber-500 */
+  --accent-foreground: #0f172a;
+
+  /* Semantic status */
+  --success: #22c55e;           /* green-500 */
+  --warning: #f97316;           /* orange-500 */
+  --destructive: #ef4444;       /* red-500 */
   --destructive-foreground: #ffffff;
-  --border: rgba(79, 70, 229, 0.13);
+
+  /* Lines & focus */
+  --border: rgba(15, 23, 42, 0.08);     /* slate-tinted hairline */
   --input: transparent;
-  --input-background: #eeeeff;
-  --switch-background: #c4c4d9;
+  --input-background: #f8fafc;           /* slate-50 */
+  --switch-background: #cbd5e1;          /* slate-300 */
+  --ring: rgba(59, 130, 246, 0.45);      /* blue focus ring */
+
   --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: rgba(79, 70, 229, 0.35);
-  --chart-1: #4f46e5;
-  --chart-2: #7c3aed;
-  --chart-3: #06b6d4;
-  --chart-4: #10b981;
-  --chart-5: #f59e0b;
-  --radius: 0.875rem;
+
+  /* Charts — primary, AI, then cyan/green/amber accents */
+  --chart-1: #3b82f6;           /* sky blue */
+  --chart-2: #6366f1;           /* periwinkle (AI) */
+  --chart-3: #06b6d4;           /* cyan */
+  --chart-4: #22c55e;           /* green */
+  --chart-5: #f59e0b;           /* amber */
+
+  --radius: 1rem;               /* friendlier, larger radius (16px) */
+
+  /* Sidebar */
   --sidebar: #ffffff;
-  --sidebar-foreground: #0f0e2a;
-  --sidebar-primary: #4f46e5;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
-  --sidebar-accent-foreground: #4f46e5;
-  --sidebar-border: rgba(79, 70, 229, 0.13);
-  --sidebar-ring: rgba(79, 70, 229, 0.35);
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #2563eb;
+  --sidebar-border: rgba(15, 23, 42, 0.08);
+  --sidebar-ring: rgba(59, 130, 246, 0.45);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   RAMP REMAP — the key lever.
+   Redefining the built-in `indigo` and `purple` color scales recolors every
+   existing `indigo-*` / `purple-*` utility across the app at once.
+     indigo-*  → Tailwind blue ramp   (primary, sky blue)
+     purple-*  → periwinkle ramp      (the "AI" signal color)
+   Use a PLAIN @theme block (not @theme inline) so these generate real tokens.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* indigo → blue (primary) */
+  --color-indigo-50:  #eff6ff;
+  --color-indigo-100: #dbeafe;
+  --color-indigo-200: #bfdbfe;
+  --color-indigo-300: #93c5fd;
+  --color-indigo-400: #60a5fa;
+  --color-indigo-500: #3b82f6;
+  --color-indigo-600: #2563eb;
+  --color-indigo-700: #1d4ed8;
+  --color-indigo-800: #1e40af;
+  --color-indigo-900: #1e3a8a;
+  --color-indigo-950: #172554;
+
+  /* purple → periwinkle (AI accent — distinct but harmonious with blue) */
+  --color-purple-50:  #eef2ff;
+  --color-purple-100: #e0e7ff;
+  --color-purple-200: #c7d2fe;
+  --color-purple-300: #a5b4fc;
+  --color-purple-400: #818cf8;
+  --color-purple-500: #6366f1;
+  --color-purple-600: #4f46e5;
+  --color-purple-700: #4338ca;
+  --color-purple-800: #3730a3;
+  --color-purple-900: #312e81;
+  --color-purple-950: #1e1b4b;
 }
 
 @theme inline {
@@ -51,11 +117,14 @@
   --font-sans: 'Inter', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -63,6 +132,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -75,10 +146,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -100,5 +172,15 @@
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+  }
+}
+
+/* Soft background pattern — subtle dotted grid for hero/section depth */
+@utility bg-dot-pattern {
+  background-image: radial-gradient(rgba(59, 130, 246, 0.10) 1px, transparent 1px);
+  background-size: 22px 22px;
 }

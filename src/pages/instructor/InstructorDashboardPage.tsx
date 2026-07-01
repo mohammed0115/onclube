@@ -7,17 +7,41 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/cards";
 import { AIBadge } from "@/components/ai";
-import { instructors, topics, bookings, currentStudent } from "@/data/mockData";
+import { useAuth } from "@/auth/AuthProvider";
+import { useInstructorDashboard } from "@/hooks";
+import { Loading, ErrorState } from "@/components/states";
+
+function when(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 export function InstructorDashboardPage() {
-  const me = instructors[0];
-  const myTopics = topics.filter((t) => t.instructorId === me.id);
-  const upcoming = bookings.filter((b) => b.status === "upcoming");
+  const { user } = useAuth();
+  const query = useInstructorDashboard();
+
+  if (query.isLoading) {
+    return (
+      <DashboardLayout>
+        <Loading label="Loading your dashboard…" />
+      </DashboardLayout>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <DashboardLayout>
+        <ErrorState error={query.error} onRetry={() => query.refetch()} />
+      </DashboardLayout>
+    );
+  }
+
+  const d = query.data;
+  const firstName = (user?.fullName ?? "there").split(" ")[0];
 
   return (
     <DashboardLayout>
       <PageHeader
-        title={`Hello, ${me.name.split(" ")[0]} 👋`}
+        title={`Hello, ${firstName} 👋`}
         subtitle="Your sessions, topics, and AI-assisted prep."
         action={
           <Button asChild size="sm">
@@ -29,10 +53,10 @@ export function InstructorDashboardPage() {
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon="CalendarClock" value={`${upcoming.length}`} label="Upcoming sessions" tone="bg-indigo-100 text-indigo-600" />
-        <StatCard icon="Users" value="38" label="Active students" tone="bg-emerald-100 text-emerald-600" />
-        <StatCard icon="PenSquare" value={`${myTopics.length}`} label="Topics owned" tone="bg-purple-100 text-purple-600" />
-        <StatCard icon="Star" value={`${me.rating}`} label="Average rating" tone="bg-amber-100 text-amber-600" />
+        <StatCard icon="CalendarClock" value={`${d.upcomingSessions}`} label="Upcoming sessions" tone="bg-indigo-100 text-indigo-600" />
+        <StatCard icon="Users" value={`${d.activeStudents}`} label="Active students" tone="bg-emerald-100 text-emerald-600" />
+        <StatCard icon="PenSquare" value={`${d.topicsOwned}`} label="Topics owned" tone="bg-purple-100 text-purple-600" />
+        <StatCard icon="Star" value={`${d.averageRating}`} label="Average rating" tone="bg-amber-100 text-amber-600" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -45,8 +69,8 @@ export function InstructorDashboardPage() {
               </Link>
             </div>
             <div className="space-y-3">
-              {upcoming.length === 0 && <p className="text-sm text-muted-foreground">No sessions scheduled.</p>}
-              {upcoming.map((b) => (
+              {d.todaySessions.length === 0 && <p className="text-sm text-muted-foreground">No sessions scheduled.</p>}
+              {d.todaySessions.map((b) => (
                 <div key={b.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
@@ -54,9 +78,7 @@ export function InstructorDashboardPage() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-foreground">{b.topicTitle}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {b.date} · {b.time} · with {currentStudent.name}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{when(b.scheduledAt)} · {b.durationMinutes} min</div>
                     </div>
                   </div>
                   <Button asChild variant="ghost" size="sm">
@@ -75,16 +97,15 @@ export function InstructorDashboardPage() {
               </Button>
             </div>
             <div className="space-y-3">
-              {myTopics.map((t) => (
+              {d.topics.length === 0 && <p className="text-sm text-muted-foreground">No topics yet — create your first.</p>}
+              {d.topics.map((t) => (
                 <div key={t.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-semibold text-foreground">{t.title}</span>
                       {t.published ? <Badge tone="emerald">Published</Badge> : <Badge tone="amber">Draft</Badge>}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {t.questions.length} questions · {t.subtopics.length} subtopics · {t.level}
-                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">Level {t.level}</div>
                   </div>
                   <Users size={16} className="flex-shrink-0 text-muted-foreground" />
                 </div>
@@ -115,15 +136,7 @@ export function InstructorDashboardPage() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Sessions hosted</span>
-                <span className="font-bold text-foreground">14</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Hours taught</span>
-                <span className="font-bold text-foreground">10.5</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">New reviews</span>
-                <span className="font-bold text-foreground">9</span>
+                <span className="font-bold text-foreground">{d.weekly.sessions_hosted ?? 0}</span>
               </div>
             </div>
           </Card>

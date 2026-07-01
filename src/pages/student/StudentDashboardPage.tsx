@@ -1,28 +1,67 @@
 import { Link } from "react-router";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { Calendar, Lock, ArrowRight, Sparkles, Clock } from "lucide-react";
+import { Lock, ArrowRight, Sparkles, Clock } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatCard, BookingRow, InstructorChip } from "@/components/cards";
+import { StatCard, BookingRow } from "@/components/cards";
 import { PaymentStatusBadge } from "@/components/payment";
 import { AIBadge } from "@/components/ai";
-import { useAppState } from "@/app/AppState";
-import { currentStudent, bookings, instructors, progressTrend, sessionReport } from "@/data/mockData";
+import { useAuth } from "@/auth/AuthProvider";
+import { useStudentDashboard } from "@/hooks";
+import { Loading, ErrorState } from "@/components/states";
+import type { BookingListItem } from "@/api/types";
+import type { Booking, BookingStatus, PaymentStatus } from "@/types";
+
+/** Adapt an API booking list item to the row's view model (date/time split). */
+function toBookingRow(b: BookingListItem): Booking {
+  const dt = new Date(b.scheduledAt);
+  const date = isNaN(dt.getTime()) ? b.scheduledAt : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const time = isNaN(dt.getTime()) ? "" : dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return {
+    id: b.id,
+    topicId: "",
+    topicTitle: b.topicTitle,
+    instructorId: "",
+    instructorName: b.instructorName,
+    date,
+    time,
+    durationMinutes: b.durationMinutes,
+    status: b.status as BookingStatus,
+    reportId: b.reportId ?? undefined,
+  };
+}
 
 export function StudentDashboardPage() {
-  const { canBook, paymentStatus } = useAppState();
-  const upcoming = bookings.filter((b) => b.status === "upcoming");
-  const nextSession = upcoming[0];
-  const nextInstructor = nextSession && instructors.find((i) => i.id === nextSession.instructorId);
+  const { user } = useAuth();
+  const query = useStudentDashboard();
+
+  if (query.isLoading) {
+    return (
+      <DashboardLayout>
+        <Loading label="Loading your dashboard…" />
+      </DashboardLayout>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <DashboardLayout>
+        <ErrorState error={query.error} onRetry={() => query.refetch()} />
+      </DashboardLayout>
+    );
+  }
+
+  const d = query.data;
+  const canBook = d.paymentStatus === "approved";
+  const firstName = (user?.fullName ?? "there").split(" ")[0];
 
   return (
     <DashboardLayout>
       <PageHeader
-        title={`Welcome back, ${currentStudent.name.split(" ")[0]} 👋`}
+        title={`Welcome back, ${firstName} 👋`}
         subtitle="Here's your conversation practice at a glance."
-        action={<PaymentStatusBadge status={paymentStatus} />}
+        action={<PaymentStatusBadge status={(d.paymentStatus as PaymentStatus) ?? "none"} />}
       />
 
       {!canBook && (
@@ -47,10 +86,10 @@ export function StudentDashboardPage() {
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon="Calendar" value={`${currentStudent.sessionsRemaining}`} label="Sessions remaining" tone="bg-indigo-100 text-indigo-600" />
-        <StatCard icon="CheckCircle" value="12" label="Sessions completed" tone="bg-emerald-100 text-emerald-600" />
-        <StatCard icon="TrendingUp" value="82%" label="Latest session score" hint="+6 vs last" tone="bg-purple-100 text-purple-600" />
-        <StatCard icon="Award" value={currentStudent.level} label="Current level" tone="bg-amber-100 text-amber-600" />
+        <StatCard icon="Calendar" value={`${d.sessionsRemaining}`} label="Sessions remaining" tone="bg-indigo-100 text-indigo-600" />
+        <StatCard icon="CheckCircle" value={`${d.sessionsCompleted}`} label="Sessions completed" tone="bg-emerald-100 text-emerald-600" />
+        <StatCard icon="TrendingUp" value={d.latestScore != null ? `${d.latestScore}%` : "—"} label="Latest session score" tone="bg-purple-100 text-purple-600" />
+        <StatCard icon="Award" value={d.level ?? "—"} label="Current level" tone="bg-amber-100 text-amber-600" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -58,21 +97,21 @@ export function StudentDashboardPage() {
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display font-bold text-foreground">Progress over sessions</h3>
-              <span className="text-xs text-muted-foreground">Last 6 sessions</span>
+              <span className="text-xs text-muted-foreground">Last {d.progressTrend.length} sessions</span>
             </div>
             <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
-                <AreaChart data={progressTrend} margin={{ top: 6, right: 6, bottom: 0, left: -24 }}>
+                <AreaChart data={d.progressTrend} margin={{ top: 6, right: 6, bottom: 0, left: -24 }}>
                   <defs>
                     <linearGradient id="score" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#7C3AED" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#7C3AED" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
                   <YAxis domain={[40, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
-                  <Tooltip cursor={{ stroke: "#c7d2fe" }} contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="score" stroke="#7C3AED" strokeWidth={2.5} fill="url(#score)" />
+                  <Tooltip cursor={{ stroke: "#bfdbfe" }} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }} />
+                  <Area type="monotone" dataKey="score" stroke="#3B82F6" strokeWidth={2.5} fill="url(#score)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -81,41 +120,38 @@ export function StudentDashboardPage() {
           <div>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-display font-bold text-foreground">Recent sessions</h3>
-              <Link to={`/student/report/${sessionReport.id}`} className="text-xs font-semibold text-indigo-600 hover:underline">
-                View all
-              </Link>
             </div>
             <div className="space-y-3">
-              {bookings.map((b) => (
-                <BookingRow key={b.id} booking={b} reportTo={b.reportId ? `/student/report/${b.reportId}` : undefined} />
+              {d.recentSessions.map((b) => (
+                <BookingRow key={b.id} booking={toBookingRow(b)} reportTo={b.reportId ? `/student/report/${b.reportId}` : undefined} />
               ))}
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          {nextSession && nextInstructor ? (
+          {d.nextSession ? (
             <Card className="overflow-hidden p-0">
               <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-5 text-white">
                 <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-100">
-                  <Clock size={13} /> Next session · {nextSession.date}
+                  <Clock size={13} /> Next session
                 </div>
-                <div className="font-display text-lg font-bold">{nextSession.topicTitle}</div>
+                <div className="font-display text-lg font-bold">{d.nextSession.topicTitle}</div>
                 <div className="text-sm text-indigo-100">
-                  {nextSession.time} · {nextSession.durationMinutes} min
+                  {toBookingRow(d.nextSession).date} · {toBookingRow(d.nextSession).time} · {d.nextSession.durationMinutes} min
                 </div>
               </div>
               <div className="space-y-4 p-5">
-                <InstructorChip instructor={nextInstructor} />
+                <div className="text-sm font-semibold text-foreground">{d.nextSession.instructorName}</div>
                 <div className="flex items-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs text-purple-700">
                   <Sparkles size={13} /> Your discussion questions are ready to preview.
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button asChild variant="ghost" size="sm">
-                    <Link to={`/student/questions/${nextSession.topicId}`}>Questions</Link>
+                    <Link to={`/student/book`}>Book again</Link>
                   </Button>
                   <Button asChild size="sm">
-                    <Link to={`/student/session/${nextSession.id}`}>Join room</Link>
+                    <Link to={`/student/session/${d.nextSession.id}`}>Join room</Link>
                   </Button>
                 </div>
               </div>
@@ -145,8 +181,7 @@ export function StudentDashboardPage() {
               <AIBadge label="AI tip" />
             </div>
             <p className="text-sm leading-relaxed text-foreground">
-              Based on your last report, spend 10 minutes reviewing irregular past-tense verbs before your next
-              session.
+              Review your latest AI report and practise the recommended drills before your next session.
             </p>
           </Card>
         </div>

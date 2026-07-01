@@ -11,13 +11,15 @@ import {
   Wallet,
   Bell,
   Search,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
-import { useAppState } from "@/app/AppState";
-import { currentStudent, instructors } from "@/data/mockData";
+import { useAuth } from "@/auth/AuthProvider";
+import { useNotifications } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
+import type { UserProfile } from "@/api/types";
 
 interface NavItem {
   icon: LucideIcon;
@@ -43,17 +45,28 @@ const NAV: Record<Role, NavItem[]> = {
   ],
 };
 
-function activeProfile(role: Role) {
-  if (role === "student") return { name: currentStudent.name, initials: currentStudent.initials, sub: `${currentStudent.level} · ${currentStudent.planName}`, accent: "from-indigo-500 to-purple-600" };
-  if (role === "instructor") return { name: instructors[0].name, initials: instructors[0].initials, sub: instructors[0].headline, accent: instructors[0].accent };
-  return { name: "Admin Console", initials: "AD", sub: "Operations", accent: "from-slate-600 to-slate-800" };
+function initialsOf(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "EC";
+}
+
+function activeProfile(role: Role, user: UserProfile | null) {
+  const name = user?.fullName ?? "OneClub";
+  const initials = initialsOf(name);
+  if (role === "instructor")
+    return { name, initials, sub: user?.headline ?? "Instructor", accent: "from-amber-400 to-orange-500" };
+  if (role === "admin")
+    return { name, initials, sub: "Operations", accent: "from-slate-600 to-slate-800" };
+  return { name, initials, sub: user?.level ? `Level ${user.level}` : "Student", accent: "from-indigo-500 to-purple-600" };
 }
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
-  const { role } = useAppState();
+  const { user, role: authRole, logout } = useAuth();
   const { pathname } = useLocation();
+  const role: Role = (authRole as Role) ?? "student";
   const items = NAV[role];
-  const profile = activeProfile(role);
+  const profile = activeProfile(role, user);
+  const { data: notifications } = useNotifications();
+  const unread = (notifications ?? []).filter((n) => !n.read).length;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -71,7 +84,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 className={cn(
                   "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                   active
-                    ? "border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                    ? "border border-blue-100 bg-blue-50 text-blue-700"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
               >
@@ -96,6 +109,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               <div className="truncate text-xs text-muted-foreground">{profile.sub}</div>
             </div>
           </div>
+          <button
+            onClick={logout}
+            className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut size={17} /> Log out
+          </button>
         </div>
       </aside>
 
@@ -109,16 +128,24 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             />
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-muted/60 transition-colors hover:bg-muted">
+            <button className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-muted/60 transition-colors hover:bg-muted" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}>
               <Bell size={16} className="text-muted-foreground" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+              {unread > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-500" />}
             </button>
             <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-bold text-white", profile.accent)}>
               {profile.initials}
             </div>
+            <button
+              onClick={logout}
+              title="Log out"
+              aria-label="Log out"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-5 pb-24 md:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-surface-2 p-5 pb-24 md:p-6">{children}</main>
       </div>
     </div>
   );

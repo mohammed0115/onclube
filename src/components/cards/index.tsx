@@ -44,7 +44,7 @@ export function CircleScore({ value, label, color }: SkillScore) {
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: 88, height: 88 }}>
         <svg width="88" height="88" className="-rotate-90" viewBox="0 0 88 88">
-          <circle cx="44" cy="44" r={r} fill="none" stroke="#E8EAFF" strokeWidth="7" />
+          <circle cx="44" cy="44" r={r} fill="none" stroke="#DBEAFE" strokeWidth="7" />
           <circle
             cx="44"
             cy="44"

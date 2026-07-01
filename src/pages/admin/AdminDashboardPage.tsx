@@ -6,16 +6,41 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/cards";
 import { PaymentStatusBadge } from "@/components/payment";
-import { paymentProofs, instructors } from "@/data/mockData";
+import { useAdminDashboard } from "@/hooks";
+import { Loading, ErrorState } from "@/components/states";
+import type { PaymentStatus } from "@/types";
+
+/** The proof status enum ("pending_review") → the badge's PaymentStatus. */
+function badgeStatus(status: string): PaymentStatus {
+  if (status === "approved") return "approved";
+  if (status === "rejected") return "rejected";
+  return "pending";
+}
+
+function when(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 export function AdminDashboardPage() {
-  const pending = paymentProofs.filter((p) => p.status === "pending");
+  const query = useAdminDashboard();
 
-  const activity = [
-    { who: "Mariam Adel", what: "payment approved", when: "Yesterday", tone: "emerald" },
-    { who: "Yousef Bilal", what: "payment rejected — unclear receipt", when: "2 days ago", tone: "red" },
-    { who: "Sarah Mitchell", what: "published a new topic", when: "2 days ago", tone: "indigo" },
-  ];
+  if (query.isLoading) {
+    return (
+      <DashboardLayout>
+        <Loading label="Loading admin overview…" />
+      </DashboardLayout>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <DashboardLayout>
+        <ErrorState error={query.error} onRetry={() => query.refetch()} />
+      </DashboardLayout>
+    );
+  }
+
+  const d = query.data;
 
   return (
     <DashboardLayout>
@@ -32,10 +57,10 @@ export function AdminDashboardPage() {
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon="Clock" value={`${pending.length}`} label="Pending payments" hint="Needs review" tone="bg-amber-100 text-amber-600" />
-        <StatCard icon="Users" value="186" label="Active members" tone="bg-indigo-100 text-indigo-600" />
-        <StatCard icon="GraduationCap" value={`${instructors.length}`} label="Instructors" tone="bg-purple-100 text-purple-600" />
-        <StatCard icon="Wallet" value="18,420" label="SAR this month" tone="bg-emerald-100 text-emerald-600" />
+        <StatCard icon="Clock" value={`${d.pendingPayments}`} label="Pending payments" hint="Needs review" tone="bg-amber-100 text-amber-600" />
+        <StatCard icon="Users" value={`${d.activeMembers}`} label="Active members" tone="bg-indigo-100 text-indigo-600" />
+        <StatCard icon="GraduationCap" value={`${d.instructors}`} label="Instructors" tone="bg-purple-100 text-purple-600" />
+        <StatCard icon="Wallet" value={`${d.revenue}`} label={`${d.currency} this month`} tone="bg-emerald-100 text-emerald-600" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -50,7 +75,7 @@ export function AdminDashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {pending.map((p) => (
+            {d.pendingProofs.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
@@ -59,14 +84,14 @@ export function AdminDashboardPage() {
                   <div>
                     <div className="text-sm font-semibold text-foreground">{p.studentName}</div>
                     <div className="text-xs text-muted-foreground">
-                      {p.planName} · {p.amount} {p.currency} · {p.submittedAt}
+                      {p.planName} · {p.amount} {p.currency} · {when(p.submittedAt)}
                     </div>
                   </div>
                 </div>
-                <PaymentStatusBadge status={p.status} />
+                <PaymentStatusBadge status={badgeStatus(p.status)} />
               </div>
             ))}
-            {pending.length === 0 && <p className="text-sm text-muted-foreground">Queue is clear 🎉</p>}
+            {d.pendingProofs.length === 0 && <p className="text-sm text-muted-foreground">Queue is clear 🎉</p>}
           </div>
         </Card>
 
@@ -76,19 +101,15 @@ export function AdminDashboardPage() {
             <h3 className="font-display font-bold text-foreground">Recent activity</h3>
           </div>
           <div className="space-y-4">
-            {activity.map((a, i) => (
+            {d.recentActivity.length === 0 && <p className="text-sm text-muted-foreground">Nothing recent.</p>}
+            {d.recentActivity.map((a, i) => (
               <div key={i} className="flex items-start gap-3">
-                <span
-                  className={
-                    "mt-1.5 h-2 w-2 flex-shrink-0 rounded-full " +
-                    (a.tone === "emerald" ? "bg-emerald-500" : a.tone === "red" ? "bg-red-500" : "bg-indigo-500")
-                  }
-                />
+                <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500" />
                 <div>
                   <div className="text-sm text-foreground">
-                    <span className="font-semibold">{a.who}</span> — {a.what}
+                    <span className="font-semibold">{a.actor}</span> — {a.action}
                   </div>
-                  <div className="text-xs text-muted-foreground">{a.when}</div>
+                  <div className="text-xs text-muted-foreground">{when(a.when)}</div>
                 </div>
               </div>
             ))}

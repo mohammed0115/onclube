@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowRight, CheckCircle, Mic } from "lucide-react";
+import { ArrowRight, Mic } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
 import { Button } from "@/components/ui/button";
+import { BrandPanel } from "@/components/marketing";
 import { Field } from "@/components/forms";
+import { useAuth } from "@/auth/AuthProvider";
+import { ApiError } from "@/api";
 
 const PERKS = [
   "Free AI placement test to find your level",
@@ -12,33 +16,47 @@ const PERKS = [
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const { register } = useAuth();
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await register({ fullName, email, password });
+      navigate("/onboarding/goal", { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "email_already_registered") {
+        setError("An account with this email already exists.");
+      } else if (err instanceof ApiError && err.status === 400) {
+        setError("Please check your details and try again.");
+      } else {
+        setError("Could not create your account. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#08081A] p-10 lg:flex">
-        <div className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
-        <Logo light />
-        <div className="relative z-10">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-300">
-            <Mic size={13} /> Speak more, study less
-          </div>
-          <h2 className="font-display text-3xl font-extrabold leading-tight text-white">
-            Join English Club and start practising with real instructors.
-          </h2>
-          <div className="mt-8 space-y-3">
-            {PERKS.map((p) => (
-              <div key={p} className="flex items-center gap-3 text-sm text-gray-300">
-                <CheckCircle size={16} className="text-emerald-400" /> {p}
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="relative z-10 text-xs text-gray-600">Prototype — no real account is created.</p>
-      </div>
+      <BrandPanel
+        badge={<><Mic size={13} /> Speak more, study less</>}
+        title="Join OneClub and start practising with real instructors."
+        perks={PERKS}
+        footnote="Create your account to get started."
+      />
 
       {/* Form */}
       <div className="flex items-center justify-center bg-background px-6 py-12">
-        <div className="w-full max-w-sm">
+        <form onSubmit={handleSubmit} className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
@@ -46,22 +64,55 @@ export function RegisterPage() {
           <p className="mb-7 mt-1 text-sm text-muted-foreground">It takes less than a minute.</p>
 
           <div className="space-y-4">
-            <Field label="Full name" htmlFor="name" placeholder="Mohammed Kamal" />
-            <Field label="Email" htmlFor="email" type="email" placeholder="you@email.com" />
-            <Field label="Password" htmlFor="password" type="password" placeholder="••••••••" />
+            <Field
+              label="Full name"
+              htmlFor="name"
+              placeholder="Mohammed Kamal"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+            />
+            <Field
+              label="Email"
+              htmlFor="email"
+              type="email"
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <Field
+              label="Password"
+              htmlFor="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+            />
           </div>
 
-          <Button onClick={() => navigate("/onboarding/goal")} className="mt-7 w-full" size="lg">
-            Create account <ArrowRight size={17} />
+          {error && (
+            <p role="alert" className="mt-4 text-sm font-medium text-red-600">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" disabled={submitting} className="mt-7 w-full" size="lg">
+            {submitting ? "Creating…" : (
+              <>
+                Create account <ArrowRight size={17} />
+              </>
+            )}
           </Button>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
             Already a member?{" "}
-            <Link to="/login" className="font-semibold text-indigo-600 hover:underline">
+            <Link to="/login" className="font-semibold text-primary hover:underline">
               Sign in
             </Link>
           </p>
-        </div>
+        </form>
       </div>
     </div>
   );

@@ -1,0 +1,83 @@
+"""
+Gateway ports (interfaces) for external systems.
+
+  NotificationGateway — fan-out of user notifications.
+  VideoProvider       — live-room provisioning (Agora later; stub now).
+  AIProvider          — placement scoring, suggestions, session analysis
+                        (OpenAI later; stub now).
+  FileStorageGateway  — receipt / artifact storage.
+  EventBus            — domain event dispatch (no-op now).
+"""
+from abc import ABC, abstractmethod
+
+
+class NotificationGateway(ABC):
+    @abstractmethod
+    def notify(self, *, user_id, type, title, body=None, data=None):
+        ...
+
+
+class VideoToken:
+    """Lightweight value returned by VideoProvider.issue_join."""
+
+    def __init__(self, *, provider, channel, token, uid, expires_at, app_id=None):
+        self.provider = provider
+        self.channel = channel
+        self.token = token
+        self.uid = uid
+        self.expires_at = expires_at
+        self.app_id = app_id
+
+
+class VideoProvider(ABC):
+    @abstractmethod
+    def create_channel(self, *, session_id) -> str:
+        """Return a channel identifier for a session."""
+
+    @abstractmethod
+    def issue_join(self, *, channel, identity) -> "VideoToken":
+        """Mint a short-lived join credential. MUST be server-side only."""
+
+
+class AIProvider(ABC):
+    @abstractmethod
+    def score_placement(self, *, answers) -> dict:
+        ...
+
+    @abstractmethod
+    def suggest_subtopics(self, *, topic_title, topic_description) -> list:
+        ...
+
+    @abstractmethod
+    def generate_questions(self, *, topic_title, topic_description) -> list:
+        ...
+
+    @abstractmethod
+    def analyze_session(self, *, transcript) -> dict:
+        ...
+
+
+class FileStorageGateway(ABC):
+    @abstractmethod
+    def save(self, *, filename, content_type, data=None) -> dict:
+        """Persist bytes and return {storage_key, ...} metadata."""
+
+    @abstractmethod
+    def url_for(self, *, storage_key) -> str:
+        ...
+
+
+class EventBus(ABC):
+    @abstractmethod
+    def publish(self, event) -> None:
+        ...
+
+
+class PaymentSettingsGateway(ABC):
+    @abstractmethod
+    def list_providers(self) -> list:
+        """Active payment providers (plain dicts), ordered by display_order."""
+
+    @abstractmethod
+    def default_account(self) -> dict:
+        """The default active provider/account, or None if none is active."""

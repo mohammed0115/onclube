@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router";
+import { RequireRole } from "@/auth/guards";
 
 // Public
 import { LandingPage } from "@/pages/public/LandingPage";
@@ -40,32 +41,33 @@ export function AppRoutes() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
 
-      {/* 04–06 Onboarding */}
-      <Route path="/onboarding/goal" element={<GoalSelectionPage />} />
-      <Route path="/onboarding/placement-test" element={<PlacementTestPage />} />
-      <Route path="/onboarding/placement-result" element={<PlacementResultPage />} />
+      {/* 04–06 Onboarding (authenticated student) */}
+      <Route path="/onboarding/goal" element={<RequireRole roles={["student"]}><GoalSelectionPage /></RequireRole>} />
+      <Route path="/onboarding/placement-test" element={<RequireRole roles={["student"]}><PlacementTestPage /></RequireRole>} />
+      <Route path="/onboarding/placement-result" element={<RequireRole roles={["student"]}><PlacementResultPage /></RequireRole>} />
 
-      {/* 07–10 Billing */}
+      {/* 07–10 Billing (pricing is public; the rest require a student) */}
       <Route path="/billing/pricing" element={<PricingPage />} />
-      <Route path="/billing/bank-transfer" element={<BankTransferPage />} />
-      <Route path="/billing/payment-proof" element={<PaymentProofPage />} />
-      <Route path="/billing/under-review" element={<PaymentUnderReviewPage />} />
+      <Route path="/billing/bank-transfer" element={<RequireRole roles={["student"]}><BankTransferPage /></RequireRole>} />
+      <Route path="/billing/payment-proof" element={<RequireRole roles={["student"]}><PaymentProofPage /></RequireRole>} />
+      <Route path="/billing/under-review" element={<RequireRole roles={["student"]}><PaymentUnderReviewPage /></RequireRole>} />
 
       {/* 11–15 Student */}
-      <Route path="/student" element={<StudentDashboardPage />} />
-      <Route path="/student/book" element={<BookSessionPage />} />
-      <Route path="/student/questions/:id" element={<QuestionsPreviewPage />} />
-      <Route path="/student/session/:id" element={<LiveSessionPage />} />
-      <Route path="/student/report/:id" element={<AIReportPage />} />
+      <Route path="/student" element={<RequireRole roles={["student"]}><StudentDashboardPage /></RequireRole>} />
+      <Route path="/student/book" element={<RequireRole roles={["student"]}><BookSessionPage /></RequireRole>} />
+      <Route path="/student/questions/:id" element={<RequireRole roles={["student"]}><QuestionsPreviewPage /></RequireRole>} />
+      {/* Session room is shared by the booked student and the assigned instructor. */}
+      <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><LiveSessionPage /></RequireRole>} />
+      <Route path="/student/report/:id" element={<RequireRole roles={["student", "instructor", "admin"]}><AIReportPage /></RequireRole>} />
 
       {/* 16–18 Instructor */}
-      <Route path="/instructor" element={<InstructorDashboardPage />} />
-      <Route path="/instructor/availability" element={<AvailabilityPage />} />
-      <Route path="/instructor/topics" element={<TopicQuestionBuilderPage />} />
+      <Route path="/instructor" element={<RequireRole roles={["instructor"]}><InstructorDashboardPage /></RequireRole>} />
+      <Route path="/instructor/availability" element={<RequireRole roles={["instructor"]}><AvailabilityPage /></RequireRole>} />
+      <Route path="/instructor/topics" element={<RequireRole roles={["instructor"]}><TopicQuestionBuilderPage /></RequireRole>} />
 
       {/* 19–20 Admin */}
-      <Route path="/admin" element={<AdminDashboardPage />} />
-      <Route path="/admin/payments" element={<PaymentApprovalPage />} />
+      <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />
+      <Route path="/admin/payments" element={<RequireRole roles={["admin"]}><PaymentApprovalPage /></RequireRole>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

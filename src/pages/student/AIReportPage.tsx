@@ -7,12 +7,55 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SkillScoreBar } from "@/components/cards";
 import { AIBadge, AIInsightCard, RecommendationList } from "@/components/ai";
-import { sessionReport, instructors } from "@/data/mockData";
+import { useReport } from "@/hooks";
+import { Loading, ErrorState, EmptyState } from "@/components/states";
+
+function initialsOf(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+}
 
 export function AIReportPage() {
-  useParams(); // report id — single mock report
-  const r = sessionReport;
-  const instructor = instructors.find((i) => i.name === r.instructorName) ?? instructors[0];
+  const { id = "" } = useParams();
+  const query = useReport(id);
+
+  if (query.isLoading) {
+    return (
+      <DashboardLayout>
+        <Loading label="Loading your report…" />
+      </DashboardLayout>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <DashboardLayout>
+        <ErrorState error={query.error} onRetry={() => query.refetch()} />
+      </DashboardLayout>
+    );
+  }
+
+  const r = query.data;
+
+  // The report may still be generating (pending). Show a gentle waiting state.
+  if (r.status !== "ready") {
+    return (
+      <DashboardLayout>
+        <PageHeader title="Session report" subtitle={`${r.topicTitle} · with ${r.instructorName}`} back="/student" />
+        <EmptyState
+          title="Your report is being prepared"
+          description="The AI is analysing your session. This usually takes a moment — check back shortly."
+          icon={<Sparkles size={26} className="text-purple-500" />}
+          action={
+            <Button variant="ghost" size="sm" onClick={() => query.refetch()}>
+              Refresh
+            </Button>
+          }
+        />
+      </DashboardLayout>
+    );
+  }
+
+  const date = new Date(r.sessionDate);
+  const dateLabel = isNaN(date.getTime()) ? r.sessionDate : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
   return (
     <DashboardLayout>
@@ -28,7 +71,7 @@ export function AIReportPage() {
           <div>
             <div className="mb-2 flex items-center gap-3 text-xs text-indigo-100">
               <span className="flex items-center gap-1">
-                <Calendar size={13} /> {r.date}
+                <Calendar size={13} /> {dateLabel}
               </span>
               <span className="flex items-center gap-1">
                 <Clock size={13} /> {r.durationMinutes} min
@@ -40,7 +83,7 @@ export function AIReportPage() {
             </p>
           </div>
           <div className="flex flex-col items-center">
-            <div className="text-5xl font-extrabold">{r.overallScore}%</div>
+            <div className="text-5xl font-extrabold">{r.overallScore ?? "—"}%</div>
             <div className="text-xs uppercase tracking-wide text-indigo-100">Overall</div>
           </div>
         </div>
@@ -94,20 +137,22 @@ export function AIReportPage() {
           </AIInsightCard>
 
           {/* Human instructor note — deliberately separate from AI output. */}
-          <Card className="border-indigo-100 bg-indigo-50/40 p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${instructor.accent} text-xs font-bold text-white`}>
-                {instructor.initials}
-              </span>
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <MessageSquareQuote size={14} className="text-indigo-600" /> Note from {instructor.name}
+          {r.instructorNote && (
+            <Card className="border-indigo-100 bg-indigo-50/40 p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-xs font-bold text-white">
+                  {initialsOf(r.instructorName)}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <MessageSquareQuote size={14} className="text-indigo-600" /> Note from {r.instructorName}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Your instructor — not AI</div>
                 </div>
-                <div className="text-xs text-muted-foreground">Your instructor — not AI</div>
               </div>
-            </div>
-            <p className="text-sm leading-relaxed text-foreground">{r.instructorNote}</p>
-          </Card>
+              <p className="text-sm leading-relaxed text-foreground">{r.instructorNote}</p>
+            </Card>
+          )}
 
           <Button asChild className="w-full">
             <Link to="/student/book">

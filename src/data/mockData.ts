@@ -1,9 +1,6 @@
 import type {
   Goal,
-  PlacementQuestion,
-  PlacementResult,
   Plan,
-  BankAccount,
   PaymentProof,
   Topic,
   Instructor,
@@ -24,29 +21,8 @@ export const goals: Goal[] = [
   { id: "abroad", label: "Study Abroad", description: "Campus and academic life", icon: "Globe", accent: "from-rose-500 to-rose-600" },
 ];
 
-// ── Placement test ─────────────────────────────────────────────────────────
-
-export const placementQuestions: PlacementQuestion[] = [
-  { id: "q1", prompt: "What does \u201Capproximately\u201D mean?", options: ["About / around", "Exactly", "Never", "Always"], correct: 0, skill: "vocabulary" },
-  { id: "q2", prompt: "Choose the grammatically correct sentence:", options: ["I goes to work", "I go to work", "I going to work", "I goed to work"], correct: 1, skill: "grammar" },
-  { id: "q3", prompt: "What is the best reply to \u201CHow do you do?\u201D", options: ["I'm fine thanks", "I do well", "How do you do?", "Yes please"], correct: 2, skill: "usage" },
-  { id: "q4", prompt: "Fill in: She ___ to the office by bus every day.", options: ["go", "goes", "going", "gone"], correct: 1, skill: "grammar" },
-  { id: "q5", prompt: "Which sentence uses the past perfect correctly?", options: ["I had finished before he arrived", "I finished before he had arrived", "I have finished before he arrived", "I finished before he have arrived"], correct: 0, skill: "comprehension" },
-  { id: "q6", prompt: "Pick the word closest in meaning to \u201Creluctant\u201D:", options: ["Eager", "Unwilling", "Confident", "Curious"], correct: 1, skill: "vocabulary" },
-];
-
-export const placementResult: PlacementResult = {
-  level: "B1",
-  levelLabel: "Intermediate",
-  summary:
-    "You have a solid conversational foundation. With focused speaking practice on accuracy and range, you can reach B2 within a few months.",
-  skills: [
-    { label: "Speaking", value: 68, color: "#4F46E5" },
-    { label: "Grammar", value: 72, color: "#7C3AED" },
-    { label: "Vocabulary", value: 64, color: "#06B6D4" },
-    { label: "Comprehension", value: 70, color: "#10B981" },
-  ],
-};
+// Placement questions + results are NOT mocked — the placement flow is wired to
+// the live backend (GET /placement/test/, /placement/result/, …). See Phase 8F.
 
 // ── Plans ─────────────────────────────────────────────────────────────────
 
@@ -87,15 +63,9 @@ export const plans: Plan[] = [
   },
 ];
 
-// ── Bank transfer ───────────────────────────────────────────────────────────
-
-export const bankAccount: BankAccount = {
-  bankName: "Al Rajhi Bank",
-  accountName: "English Club Education",
-  accountNumber: "100 9876 5432 100",
-  iban: "SA03 8000 0000 6080 1016 7519",
-  branch: "Dammam — King Fahd Rd",
-};
+// Bank-transfer details are NOT mocked — the Bank Transfer page reads them from
+// configurable backend settings (GET /billing/payment-instructions/). No bank
+// name is hardcoded anywhere in the frontend.
 
 // ── Payment proofs (admin queue) ─────────────────────────────────────────────
 
@@ -111,7 +81,7 @@ export const paymentProofs: PaymentProof[] = [
 export const instructors: Instructor[] = [
   { id: "i1", name: "Sarah Mitchell", initials: "SM", flag: "\uD83C\uDDFA\uD83C\uDDF8", country: "United States", headline: "Conversation & interview coach", rating: 4.9, sessionsHosted: 312, accent: "from-amber-400 to-orange-500" },
   { id: "i2", name: "James Okoro", initials: "JO", flag: "\uD83C\uDDEC\uD83C\uDDE7", country: "United Kingdom", headline: "Business English specialist", rating: 4.8, sessionsHosted: 248, accent: "from-cyan-400 to-blue-500" },
-  { id: "i3", name: "Emma Clarke", initials: "EC", flag: "\uD83C\uDDE8\uD83C\uDDE6", country: "Canada", headline: "IELTS speaking examiner", rating: 5.0, sessionsHosted: 401, accent: "from-purple-400 to-fuchsia-500" },
+  { id: "i3", name: "Emma Clarke", initials: "EC", flag: "\uD83C\uDDE8\uD83C\uDDE6", country: "Canada", headline: "IELTS speaking examiner", rating: 5.0, sessionsHosted: 401, accent: "from-purple-400 to-purple-600" },
 ];
 
 // ── Current demo student ─────────────────────────────────────────────────────
@@ -291,10 +261,10 @@ export const sessionReport: SessionReport = {
   durationMinutes: 45,
   overallScore: 82,
   skills: [
-    { label: "Pronunciation", value: 78, color: "#4F46E5" },
-    { label: "Grammar", value: 85, color: "#7C3AED" },
+    { label: "Pronunciation", value: 78, color: "#3B82F6" },
+    { label: "Grammar", value: 85, color: "#6366F1" },
     { label: "Vocabulary", value: 83, color: "#06B6D4" },
-    { label: "Fluency", value: 80, color: "#10B981" },
+    { label: "Fluency", value: 80, color: "#22C55E" },
   ],
   mistakes: [
     { label: "Past tense form", example: "\u201CI goed\u201D \u2192 \u201CI went\u201D" },

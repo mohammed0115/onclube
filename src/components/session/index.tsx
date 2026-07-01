@@ -19,13 +19,13 @@ export function VideoTile({
   muted?: boolean;
 }) {
   return (
-    <div className="relative flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#111135] to-[#1d0a45]">
+    <div className="relative flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 ring-1 ring-white/5">
       <div className="text-center">
-        <div className={cn("mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br text-3xl font-bold text-white", accent)}>
+        <div className={cn("mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br text-3xl font-bold text-white shadow-lg", accent)}>
           {initials}
         </div>
         <div className="font-semibold text-white">{name}</div>
-        <div className="text-sm text-indigo-300">{sub}</div>
+        <div className="text-sm text-slate-300">{sub}</div>
       </div>
       {speaking && (
         <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5">
@@ -57,22 +57,23 @@ export function SessionControls({
   onEnd: () => void;
 }) {
   const base = "flex h-12 w-12 items-center justify-center rounded-full transition-all";
+  const neutral = "bg-slate-100 text-slate-700 hover:bg-slate-200";
   return (
     <div className="flex items-center gap-3">
-      <button onClick={onToggleMic} className={cn(base, micOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500")}>
-        {micOn ? <Mic size={18} className="text-white" /> : <MicOff size={18} className="text-white" />}
+      <button onClick={onToggleMic} className={cn(base, micOn ? neutral : "bg-red-500 text-white")}>
+        {micOn ? <Mic size={18} /> : <MicOff size={18} />}
       </button>
-      <button onClick={onToggleCam} className={cn(base, camOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500")}>
-        {camOn ? <Camera size={18} className="text-white" /> : <CameraOff size={18} className="text-white" />}
+      <button onClick={onToggleCam} className={cn(base, camOn ? neutral : "bg-red-500 text-white")}>
+        {camOn ? <Camera size={18} /> : <CameraOff size={18} />}
       </button>
-      <button className={cn(base, "bg-white/15 hover:bg-white/25")}>
-        <ScreenShare size={18} className="text-white" />
+      <button className={cn(base, neutral)}>
+        <ScreenShare size={18} />
       </button>
-      <button className={cn(base, "bg-white/15 hover:bg-white/25")}>
-        <MessageSquare size={18} className="text-white" />
+      <button className={cn(base, neutral)}>
+        <MessageSquare size={18} />
       </button>
-      <button onClick={onEnd} className={cn(base, "bg-red-500 hover:bg-red-600")}>
-        <PhoneOff size={18} className="text-white" />
+      <button onClick={onEnd} className={cn(base, "bg-red-500 text-white hover:bg-red-600")}>
+        <PhoneOff size={18} />
       </button>
     </div>
   );

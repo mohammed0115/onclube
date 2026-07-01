@@ -1,4 +1,4 @@
-# English Club
+# OneClub
 
 A structured English **conversation practice** platform (frontend MVP). Students already
 know basic English — they register, pick a goal, take an AI placement test, pay by **local

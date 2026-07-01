@@ -4,16 +4,19 @@ import { Logo } from "@/components/navigation/Logo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BankDetailsCard } from "@/components/payment";
-import { bankAccount, plans } from "@/data/mockData";
+import { QueryBoundary } from "@/components/states";
+import { useBankAccount } from "@/hooks";
+import { plans } from "@/data/mockData";
 
 const STEPS = [
-  "Open your banking app and start a transfer to the account below.",
+  "Open your banking app and start a transfer to the account above.",
   "Use your full name as the transfer reference so we can match it.",
   "Keep the receipt or screenshot — you'll upload it on the next step.",
 ];
 
 export function BankTransferPage() {
   const navigate = useNavigate();
+  const instructions = useBankAccount();
   const plan = plans.find((p) => p.recommended) ?? plans[0];
 
   return (
@@ -35,21 +38,30 @@ export function BankTransferPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
-            <BankDetailsCard account={bankAccount} />
+            <QueryBoundary query={instructions} loadingLabel="Loading payment details…">
+              {(cfg) => (
+                <>
+                  <BankDetailsCard account={cfg} />
 
-            <Card className="p-6">
-              <h3 className="mb-4 font-display font-bold text-foreground">How to pay</h3>
-              <ol className="space-y-3">
-                {STEPS.map((s, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-foreground">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-                      {i + 1}
-                    </span>
-                    {s}
-                  </li>
-                ))}
-              </ol>
-            </Card>
+                  <Card className="p-6">
+                    <h3 className="mb-4 font-display font-bold text-foreground">How to pay</h3>
+                    {cfg.instructions && (
+                      <p className="mb-4 text-sm text-muted-foreground">{cfg.instructions}</p>
+                    )}
+                    <ol className="space-y-3">
+                      {STEPS.map((s, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-foreground">
+                          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                            {i + 1}
+                          </span>
+                          {s}
+                        </li>
+                      ))}
+                    </ol>
+                  </Card>
+                </>
+              )}
+            </QueryBoundary>
           </div>
 
           <div className="space-y-6">

@@ -1,15 +1,19 @@
 import { Copy, Building2, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { BankAccount, PaymentStatus } from "@/types";
+import type { PaymentStatus } from "@/types";
+import type { PaymentProvider } from "@/api/types";
 
-export function BankDetailsCard({ account }: { account: BankAccount }) {
+export function BankDetailsCard({ account }: { account: PaymentProvider }) {
+  // IBAN is optional — only show it when configured. All values come from the API.
   const rows: [string, string][] = [
+    ["Provider", account.providerName],
+    ["Transfer method", account.transferMethod],
     ["Bank", account.bankName],
     ["Account name", account.accountName],
     ["Account number", account.accountNumber],
-    ["IBAN", account.iban],
-    ["Branch", account.branch],
+    ...(account.iban ? ([["IBAN", account.iban]] as [string, string][]) : []),
+    ["Currency", account.currency],
   ];
   return (
     <Card className="p-6">

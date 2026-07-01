@@ -8,4 +8,14 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  // Dev proxy so the SPA can call the Django REST API on the same origin
+  // (avoids CORS). The frontend always talks to "/api/...".
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
 })

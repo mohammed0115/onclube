@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// English Club — domain types
+// OneClub — domain types
 //
-// English Club is a structured English *conversation practice* platform.
+// OneClub is a structured English *conversation practice* platform.
 // Students already know basic English. They register, pick a goal, take an AI
 // placement test, pay by local bank transfer, wait for admin approval, then book
 // live conversation sessions with a human instructor. The instructor owns the
@@ -65,13 +65,8 @@ export interface Plan {
   recommended?: boolean;
 }
 
-export interface BankAccount {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  iban: string;
-  branch: string;
-}
+// Bank-transfer details live in configurable backend settings, surfaced as
+// `PaymentInstructions` in `@/api/types` — not a hardcoded frontend model.
 
 export type PaymentStatus = "none" | "pending" | "approved" | "rejected";
 

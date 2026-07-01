@@ -5,21 +5,66 @@ import { Logo } from "@/components/navigation/Logo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/forms";
-import { useAppState } from "@/app/AppState";
-import { plans } from "@/data/mockData";
+import { usePlans, useSubmitPaymentProof } from "@/hooks";
+import { Loading, ErrorState } from "@/components/states";
+import { ApiError } from "@/api";
+import { SELECTED_PLAN_KEY } from "@/pages/billing/PricingPage";
 import { cn } from "@/lib/utils";
 
 export function PaymentProofPage() {
   const navigate = useNavigate();
-  const { setPaymentStatus } = useAppState();
-  const [fileName, setFileName] = useState("");
-  const plan = plans.find((p) => p.recommended) ?? plans[0];
+  const { data: plans, isLoading, isError, error, refetch } = usePlans();
+  const submitProof = useSubmitPaymentProof();
 
-  const submit = () => {
-    // Business rule: proof goes to the admin queue as "pending" — never auto-approved.
-    setPaymentStatus("pending");
-    navigate("/billing/under-review");
-  };
+  const [file, setFile] = useState<File | null>(null);
+  const [reference, setReference] = useState("");
+  const [transferDate, setTransferDate] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Loading label="Loading your plan…" />
+      </div>
+    );
+  }
+  if (isError || !plans) {
+    return (
+      <div className="min-h-screen bg-background p-8">
+        <ErrorState error={error} onRetry={() => refetch()} />
+      </div>
+    );
+  }
+
+  const selectedId = sessionStorage.getItem(SELECTED_PLAN_KEY);
+  const plan = plans.find((p) => p.id === selectedId) ?? plans.find((p) => p.recommended) ?? plans[0];
+
+  async function submit() {
+    setFormError(null);
+    if (!plan) return;
+    if (!reference.trim()) return setFormError("Please enter the transfer reference.");
+    if (!transferDate) return setFormError("Please enter the transfer date.");
+    if (!file) return setFormError("Please attach the receipt.");
+    try {
+      // The proof enters the admin queue as pending_review — never auto-approved.
+      await submitProof.mutateAsync({
+        planId: plan.id,
+        transactionNumber: reference.trim(),
+        transferDatetime: new Date(transferDate).toISOString(),
+        amount: plan.price,
+        receipt: file,
+      });
+      navigate("/billing/under-review");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "duplicate_transaction_number") {
+        setFormError("This transfer reference has already been submitted.");
+      } else if (err instanceof ApiError && err.status === 422) {
+        setFormError("Please check the details and try again.");
+      } else {
+        setFormError("Could not submit your proof. Please try again.");
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,12 +86,24 @@ export function PaymentProofPage() {
         <Card className="p-7">
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Plan" htmlFor="plan" defaultValue={`${plan.name} — ${plan.price} ${plan.currency}`} readOnly />
-              <Field label="Transfer reference" htmlFor="ref" placeholder="e.g. TRX-48201" />
+              <Field label="Plan" htmlFor="plan" value={`${plan.name} — ${plan.price} ${plan.currency}`} readOnly />
+              <Field
+                label="Transfer reference"
+                htmlFor="ref"
+                placeholder="e.g. TRX-48201"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Transfer date" htmlFor="date" type="date" />
-              <Field label="Amount transferred" htmlFor="amount" defaultValue={`${plan.price} ${plan.currency}`} />
+              <Field
+                label="Transfer date"
+                htmlFor="date"
+                type="date"
+                value={transferDate}
+                onChange={(e) => setTransferDate(e.target.value)}
+              />
+              <Field label="Amount transferred" htmlFor="amount" value={`${plan.price} ${plan.currency}`} readOnly />
             </div>
 
             <div>
@@ -56,18 +113,19 @@ export function PaymentProofPage() {
               <label
                 className={cn(
                   "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center transition-colors",
-                  fileName ? "border-emerald-300 bg-emerald-50" : "border-border bg-muted/30 hover:border-indigo-300"
+                  file ? "border-emerald-300 bg-emerald-50" : "border-border bg-muted/30 hover:border-indigo-300"
                 )}
               >
                 <input
                   type="file"
+                  accept="image/*,application/pdf"
                   className="hidden"
-                  onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "receipt.jpg")}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
-                {fileName ? (
+                {file ? (
                   <>
                     <FileCheck2 size={28} className="text-emerald-600" />
-                    <span className="text-sm font-semibold text-emerald-700">{fileName}</span>
+                    <span className="text-sm font-semibold text-emerald-700">{file.name}</span>
                     <span className="text-xs text-emerald-600">Tap to replace</span>
                   </>
                 ) : (
@@ -81,8 +139,18 @@ export function PaymentProofPage() {
             </div>
           </div>
 
-          <Button onClick={submit} className="mt-7 w-full" size="lg">
-            Submit for review <ArrowRight size={18} />
+          {formError && (
+            <p role="alert" className="mt-4 text-sm font-medium text-red-600">
+              {formError}
+            </p>
+          )}
+
+          <Button onClick={submit} disabled={submitProof.isPending} className="mt-7 w-full" size="lg">
+            {submitProof.isPending ? "Submitting…" : (
+              <>
+                Submit for review <ArrowRight size={18} />
+              </>
+            )}
           </Button>
         </Card>
       </div>
