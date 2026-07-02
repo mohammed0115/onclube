@@ -34,8 +34,9 @@ export interface GoalOption {
 }
 
 // ── placement (Phase 8F) ──────────────────────────────────────────────────────
-// Mirrors the DRF serializers. Deliberately carries NO answer key
-// (`correctAnswer`/`correctIndex`/`options`) and NO pronunciation field.
+// Mirrors the DRF serializers. `options` are the visible multiple-choice answers;
+// the answer key (`correctAnswer`/`correctIndex`) and any pronunciation field are
+// NEVER sent to the client.
 export type PlacementQuestionType = "written" | "spoken";
 export type PlacementStatusValue =
   | "not_started"
@@ -51,11 +52,58 @@ export interface PlacementQuestionItem {
   skill: string;
   cefrBand: CEFR;
   order: number;
+  /** Visible multiple-choice answers (written questions); empty for open prompts. */
+  options: string[];
 }
 
 export interface PlacementTest {
   written: PlacementQuestionItem[];
   spoken: PlacementQuestionItem[];
+}
+
+// ── speaking interview (Sprint 2) ─────────────────────────────────────────────
+// Presentational interviewer script only — no model prompt, key, or score.
+export interface InterviewStep {
+  questionId: string;
+  order: number;
+  prompt: string; // the fixed spoken question, verbatim
+  preamble: string; // interviewer lead-in
+  clarification: string; // meaning-preserving rephrase
+}
+
+export interface SpeakingInterview {
+  greeting: string;
+  instructions: string;
+  encouragement: string;
+  closing: string;
+  steps: InterviewStep[];
+}
+
+// Interview SESSION (Sprint 2.5) — lifecycle + transcript only, NO assessment.
+export type AnswerSource = "voice" | "manual";
+export type InterviewSessionStatus = "created" | "running" | "completed" | "finalized";
+
+export interface InterviewAnswer {
+  questionId: string;
+  order: number;
+  transcriptText: string;
+  source: AnswerSource;
+}
+
+export interface InterviewSession {
+  interviewId: string;
+  attemptId: string;
+  status: InterviewSessionStatus;
+  currentQuestionIndex: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  answers: InterviewAnswer[];
+}
+
+export interface InterviewAnswerInput {
+  questionId: string;
+  transcriptText: string;
+  source: AnswerSource;
 }
 
 export interface PlacementAttempt {

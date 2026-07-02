@@ -1,22 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Mic, PenLine, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Mic, PenLine, Sparkles } from "lucide-react";
 import { OnboardingLayout } from "@/components/layout/OnboardingLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { AIBadge } from "@/components/ai";
 import { Loading, ErrorState } from "@/components/states";
+import { SpeakingInterview } from "@/components/placement/SpeakingInterview";
 import {
   usePlacementTest,
+  useSpeakingInterview,
+  useInterviewSession,
+  useSaveInterviewAnswer,
+  useFinalizeInterview,
   usePlacementStatus,
   useStartPlacementAttempt,
   useSaveWrittenAnswers,
-  useSaveSpokenTranscripts,
   useSubmitPlacement,
 } from "@/hooks";
 import { ApiError } from "@/api";
-import type { PlacementQuestionItem } from "@/api/types";
 import { cn } from "@/lib/utils";
 
 type Section = "written" | "spoken";
@@ -42,16 +44,20 @@ function messageForError(err: unknown): string {
 export function PlacementTestPage() {
   const navigate = useNavigate();
   const testQuery = usePlacementTest();
+  const interviewQuery = useSpeakingInterview();
   const statusQuery = usePlacementStatus();
   const start = useStartPlacementAttempt();
   const saveWritten = useSaveWrittenAnswers();
-  const saveSpoken = useSaveSpokenTranscripts();
   const submit = useSubmitPlacement();
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("written");
+  // The interview session (resume state) is only needed once we reach the spoken step.
+  const sessionQuery = useInterviewSession(section === "spoken" && !!attemptId);
+  const saveInterviewAnswer = useSaveInterviewAnswer();
+  const finalizeInterview = useFinalizeInterview();
   const [written, setWritten] = useState<Record<string, string>>({});
-  const [spoken, setSpoken] = useState<Record<string, string>>({});
+  const [writtenIndex, setWrittenIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
@@ -123,9 +129,11 @@ export function PlacementTestPage() {
 
   const onSaveWritten = async () => {
     setError(null);
-    const answers = test.written.map((q) => ({ questionId: q.id, answerText: (written[q.id] ?? "").trim() }));
-    if (answers.some((a) => !a.answerText)) {
+    const answers = test.written.map((q) => ({ questionId: q.id, answerText: written[q.id] ?? "" }));
+    const firstUnanswered = answers.findIndex((a) => !a.answerText);
+    if (firstUnanswered >= 0) {
       setError("Please answer every written question.");
+      setWrittenIndex(firstUnanswered); // take the student straight to it
       return;
     }
     try {
@@ -136,18 +144,10 @@ export function PlacementTestPage() {
     }
   };
 
-  const onSubmit = async () => {
+  // The interview's finish screen offers the existing next step (result).
+  const onSeeResult = async () => {
     setError(null);
-    const transcripts = test.spoken.map((q) => ({
-      questionId: q.id,
-      transcriptText: (spoken[q.id] ?? "").trim(),
-    }));
-    if (transcripts.some((t) => !t.transcriptText)) {
-      setError("Please add a transcript for every spoken question.");
-      return;
-    }
     try {
-      await saveSpoken.mutateAsync({ attemptId, transcripts });
       await submit.mutateAsync();
       navigate("/onboarding/placement-result");
     } catch (e) {
@@ -155,7 +155,31 @@ export function PlacementTestPage() {
     }
   };
 
-  const busy = saveWritten.isPending || saveSpoken.isPending || submit.isPending;
+  const busy = saveWritten.isPending || submit.isPending;
+
+  // Written MCQ: one question at a time with prev/next.
+  const totalWritten = test.written.length;
+  const safeIndex = Math.min(writtenIndex, Math.max(0, totalWritten - 1));
+  const currentWritten = test.written[safeIndex];
+  const writtenAnsweredCount = test.written.filter((q) => written[q.id]).length;
+  const isLastWritten = safeIndex >= totalWritten - 1;
+
+  const selectWritten = (qid: string, option: string) => {
+    setError(null);
+    setWritten((w) => ({ ...w, [qid]: option }));
+  };
+  const goPrevWritten = () => {
+    setError(null);
+    setWrittenIndex((i) => Math.max(0, i - 1));
+  };
+  const goNextWritten = () => {
+    if (!written[currentWritten.id]) {
+      setError("Please choose an answer to continue.");
+      return;
+    }
+    setError(null);
+    setWrittenIndex((i) => Math.min(totalWritten - 1, i + 1));
+  };
 
   return (
     <Shell>
@@ -175,59 +199,132 @@ export function PlacementTestPage() {
 
       {section === "written" ? (
         <>
-          <p className="mb-5 text-sm text-muted-foreground">
-            Answer each question in a sentence or two. You can revise these before moving on.
-          </p>
-          {test.written.map((q, i) => (
-            <QuestionCard key={q.id} index={i} question={q}>
-              <Textarea
-                aria-label={q.prompt}
-                rows={3}
-                placeholder="Type your answer…"
-                value={written[q.id] ?? ""}
-                onChange={(e) => setWritten((w) => ({ ...w, [q.id]: e.target.value }))}
+          {/* Progress indicator */}
+          <div className="mb-5">
+            <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>
+                Question {safeIndex + 1} of {totalWritten}
+              </span>
+              <span>
+                {writtenAnsweredCount}/{totalWritten} answered
+              </span>
+            </div>
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={writtenAnsweredCount}
+              aria-valuemin={0}
+              aria-valuemax={totalWritten}
+            >
+              <div
+                className="h-full rounded-full bg-indigo-600 transition-all duration-300 ease-out"
+                style={{ width: `${((safeIndex + 1) / totalWritten) * 100}%` }}
               />
-            </QuestionCard>
-          ))}
+            </div>
+          </div>
+
+          <p className="mb-4 text-sm text-muted-foreground">
+            Choose the best word to complete each sentence. You can go back and change your answers.
+          </p>
+
+          <Card className="mb-4 rounded-3xl p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <h3 className="font-display text-lg font-bold text-foreground">{currentWritten.prompt}</h3>
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                {currentWritten.skill}
+              </span>
+            </div>
+            <fieldset
+              role="radiogroup"
+              aria-label={currentWritten.prompt}
+              className="space-y-2.5"
+              key={currentWritten.id}
+            >
+              {currentWritten.options.map((opt) => {
+                const selected = written[currentWritten.id] === opt;
+                return (
+                  <label
+                    key={opt}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition-colors",
+                      "focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-1",
+                      selected
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-900"
+                        : "border-border bg-background hover:border-indigo-300 hover:bg-muted/50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name={`written-${currentWritten.id}`}
+                      value={opt}
+                      checked={selected}
+                      onChange={() => selectWritten(currentWritten.id, opt)}
+                      className="sr-only"
+                    />
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                        selected ? "border-indigo-600 bg-indigo-600 text-white" : "border-muted-foreground/40"
+                      )}
+                    >
+                      {selected && <Check size={12} strokeWidth={3} />}
+                    </span>
+                    <span className="font-medium">{opt}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          </Card>
+
           {error && <ErrorBanner>{error}</ErrorBanner>}
+
           <div className="flex gap-3">
-            <Button onClick={onSaveWritten} disabled={busy} className="flex-1" size="lg">
-              {saveWritten.isPending ? "Saving…" : "Continue to spoken"} <ChevronRight size={18} />
+            <Button
+              variant="ghost"
+              onClick={goPrevWritten}
+              disabled={safeIndex === 0 || busy}
+              className="flex-1"
+              size="lg"
+            >
+              <ChevronLeft size={18} /> Previous
             </Button>
+            {isLastWritten ? (
+              <Button onClick={onSaveWritten} disabled={busy} className="flex-1" size="lg">
+                {saveWritten.isPending ? "Saving…" : "Continue to spoken"} <ChevronRight size={18} />
+              </Button>
+            ) : (
+              <Button onClick={goNextWritten} disabled={busy} className="flex-1" size="lg">
+                Next <ChevronRight size={18} />
+              </Button>
+            )}
           </div>
         </>
+      ) : interviewQuery.isLoading || sessionQuery.isLoading || !sessionQuery.data ? (
+        <Loading label="Preparing your interview…" />
+      ) : interviewQuery.isError ? (
+        <ErrorState error={interviewQuery.error} onRetry={() => interviewQuery.refetch()} />
+      ) : sessionQuery.isError ? (
+        <ErrorState error={sessionQuery.error} onRetry={() => sessionQuery.refetch()} />
       ) : (
         <>
-          <p className="mb-2 text-sm text-muted-foreground">
-            These are fixed spoken prompts. For now, type what you would say — your{" "}
-            <span className="font-medium text-foreground">voice answer transcript</span>.
-          </p>
-          <p className="mb-5 text-xs text-muted-foreground">
-            Microphone &amp; speech-to-text arrive in a later phase; scoring is on the transcript text only.
-          </p>
-          {test.spoken.map((q, i) => (
-            <QuestionCard key={q.id} index={i} question={q}>
-              <label className="mb-1.5 block text-xs font-semibold text-indigo-600">
-                Voice answer transcript
-              </label>
-              <Textarea
-                aria-label={`Voice answer transcript: ${q.prompt}`}
-                rows={3}
-                placeholder="Type your spoken answer as text…"
-                value={spoken[q.id] ?? ""}
-                onChange={(e) => setSpoken((s) => ({ ...s, [q.id]: e.target.value }))}
-              />
-            </QuestionCard>
-          ))}
           {error && <ErrorBanner>{error}</ErrorBanner>}
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => setSection("written")} disabled={busy} className="flex-1" size="lg">
-              <ChevronLeft size={18} /> Back
-            </Button>
-            <Button onClick={onSubmit} disabled={busy} className="flex-1" size="lg">
-              {busy ? "Submitting…" : "Submit & see result"} <ChevronRight size={18} />
-            </Button>
-          </div>
+          <SpeakingInterview
+            interview={interviewQuery.data!}
+            session={sessionQuery.data}
+            onAnswer={(input) =>
+              saveInterviewAnswer.mutateAsync(input).catch((e) => {
+                throw new Error(messageForError(e));
+              })
+            }
+            onFinalize={() =>
+              finalizeInterview.mutateAsync().catch((e) => {
+                throw new Error(messageForError(e));
+              })
+            }
+            onFinished={onSeeResult}
+            finishedCtaLabel="See my result"
+          />
         </>
       )}
     </Shell>
@@ -262,30 +359,6 @@ function SectionPill({
     >
       {icon} {label}
     </div>
-  );
-}
-
-function QuestionCard({
-  index,
-  question,
-  children,
-}: {
-  index: number;
-  question: PlacementQuestionItem;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="mb-4 rounded-3xl p-6">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h3 className="font-display text-base font-bold text-foreground">
-          {index + 1}. {question.prompt}
-        </h3>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {question.skill}
-        </span>
-      </div>
-      {children}
-    </Card>
   );
 }
 

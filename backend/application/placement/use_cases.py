@@ -13,13 +13,13 @@ from __future__ import annotations
 from application.permissions import ensure_admin, get_student_profile
 from domain.exceptions import PlacementAttemptNotFound, PlacementResultNotFound
 from domain.placement import attempt_rules
-from domain.placement.assessor import assess
 from domain.placement.dtos import (
     PlacementAttemptStatusDTO,
     PlacementResetAuditResult,
     PlacementTestDTO,
 )
 from infrastructure.container import (
+    default_assessment_engine,
     default_placement_answer_repository,
     default_placement_attempt_repository,
     default_placement_profile_repository,
@@ -73,9 +73,16 @@ class SaveWrittenAnswersUseCase:
         if attempt is None:
             raise PlacementAttemptNotFound()
 
-        allowed = self.questions.known_ids("written")
+        written_questions = self.questions.list_active("written")
+        allowed = {q.id for q in written_questions}
         attempt_rules.ensure_known_questions(
             [str(a["question_id"]) for a in answers], allowed_ids=allowed
+        )
+        # Multiple-choice answers must be one of the question's fixed options.
+        options_by_question = {q.id: list(q.options or []) for q in written_questions}
+        attempt_rules.ensure_valid_written_choices(
+            [(str(a["question_id"]), a.get("answer_text", "")) for a in answers],
+            options_by_question,
         )
         # Written may be retaken — saving simply overwrites (update_or_create).
         attempt_rules.written_retake_allowed()
@@ -125,12 +132,16 @@ class SaveSpokenTranscriptsUseCase:
 
 # ── 5. submit (assess) ────────────────────────────────────────────────────────
 class SubmitPlacementAttemptUseCase:
-    def __init__(self, *, attempts=None, answers=None, questions=None, results=None, profiles=None):
+    def __init__(self, *, attempts=None, answers=None, questions=None, results=None,
+                 profiles=None, engine=None):
         self.attempts = attempts or default_placement_attempt_repository()
         self.answers = answers or default_placement_answer_repository()
         self.questions = questions or default_placement_question_repository()
         self.results = results or default_placement_result_repository()
         self.profiles = profiles or default_placement_profile_repository()
+        # The assessment engine is injected via the composition root; the use case
+        # depends only on the engine abstraction, never on a concrete AI provider.
+        self.engine = engine or default_assessment_engine()
 
     def execute(self, *, actor):
         student = get_student_profile(actor)
@@ -150,8 +161,10 @@ class SubmitPlacementAttemptUseCase:
         spoken = self.answers.list_spoken(attempt.id)
         goal_code = student.goal.code if student.goal_id else None
 
-        # Deterministic domain assessor (no AI provider yet → fallback path).
-        result = assess(written, spoken, goal=goal_code)
+        # Deterministic assessment via the engine (heuristic provider by default;
+        # swappable for OpenAI at the composition root). The engine returns a DTO
+        # only — persistence below is the use case's responsibility, not the engine's.
+        result = self.engine.assess(written=written, spoken=spoken, goal=goal_code)
 
         stored = self.results.save(
             attempt_id=attempt.id, result=result,

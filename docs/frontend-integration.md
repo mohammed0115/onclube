@@ -105,6 +105,18 @@ Dev wiring: `vite.config.ts` proxies `/api` → `http://localhost:8000` (overrid
 The placement interview is **fully wired** to the live backend — **no mock placement data
 remains** (`placementQuestions` / `placementResult` were removed from `mockData.ts`).
 
+> **Sprint 5 — Placement Result Experience.** Journey 2 is complete end-to-end
+> (Registration → Goal → Written Test → Speaking Interview → Assessment → **Placement
+> Result** → Continue to Subscription) with no mock data. `PlacementResultPage` is
+> presentation + orchestration only: it renders the validated `GET /placement/result/`
+> DTO verbatim (no CEFR estimation, no score calculation in the frontend) via reusable
+> presentation components in `src/components/placement/result/` (ResultHeader, CEFRCard,
+> SummaryCard, SkillScoreCard, StrengthCard, WeaknessCard, RecommendationCard,
+> DifficultyCard, ResultFooter, ResultSkeleton). It has skeleton/loading, error+retry, and
+> empty (missing-assessment) states, accessible progress bars, and **never renders provider
+> name, prompts, raw AI data, or internal mechanics**. "Continue to plans" routes to
+> `/billing/pricing`.
+
 - **API** `src/api/placement.ts`: `test · start · status · saveWritten · saveSpoken · submit ·
   result · resetSpoken`. Types in `api/types.ts` carry **no answer key** (`correctAnswer` /
   `correctIndex` / `options`) and **no pronunciation field**.

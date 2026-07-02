@@ -10,21 +10,28 @@ from django.db import transaction
 
 from apps.placement.models import PlacementQuestion
 
+# FIXED, OneClub-owned written placement questions (multiple choice).
+# These are NEVER AI-generated and NEVER editable by students. `options` are the
+# visible choices; `correct_answer`/`correct_index` are the server-only answer key
+# and MUST NEVER be serialized to a student.
+# (order, prompt, skill, cefr_band, options, correct_answer)
 WRITTEN_QUESTIONS = [
-    # (order, prompt, skill, cefr_band)
-    (1, "Introduce yourself in a few sentences (your name, where you are from, what you do).", "vocabulary", "A1"),
-    (2, "Write about your daily routine. What do you usually do in a typical day?", "grammar", "A2"),
-    (3, "Describe something you did last weekend. Use the past tense.", "grammar", "B1"),
-    (4, "What are your goals for learning English, and why are they important to you?", "vocabulary", "B1"),
-    (5, "Do you think technology makes communication easier or harder? Explain your opinion.", "comprehension", "B2"),
+    (1, "She ___ to school every day.", "grammar", "A1", ["go", "goes", "went", "gone"], "goes"),
+    (2, "I ___ 20 years old.", "grammar", "A1", ["is", "am", "are", "were"], "am"),
+    (3, "We ___ from Sudan.", "grammar", "A1", ["come", "came", "be", "were"], "come"),
+    (4, "How old ___ you?", "grammar", "A1", ["is", "have", "has", "are"], "are"),
+    (5, "They ___ football yesterday.", "grammar", "A2", ["play", "playing", "player", "played"], "played"),
 ]
 
+# FIXED, OneClub-owned spoken interview questions. NEVER AI-generated, NEVER
+# reordered, NEVER skipped. The AI interviewer only reads these known prompts.
+# (order, prompt, skill, cefr_band)
 SPOKEN_QUESTIONS = [
-    (1, "Tell me a little about yourself and your background.", "conversation", "A1"),
-    (2, "What do you usually do in your free time? Tell me about a hobby you enjoy.", "fluency", "A2"),
-    (3, "Describe a memorable trip or experience you have had.", "fluency", "B1"),
-    (4, "What are you most proud of, and why?", "conversation", "B1"),
-    (5, "Talk about a challenge you faced and how you dealt with it.", "fluency", "B2"),
+    (1, "What is your name?", "conversation", "A1"),
+    (2, "How old are you?", "conversation", "A1"),
+    (3, "Where are you from?", "conversation", "A1"),
+    (4, "What do you do for a living?", "fluency", "A2"),
+    (5, "Why do you want to learn English?", "fluency", "A2"),
 ]
 
 
@@ -34,20 +41,39 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         created, updated = 0, 0
-        for qtype, rows in (("written", WRITTEN_QUESTIONS), ("spoken", SPOKEN_QUESTIONS)):
-            for order, prompt, skill, band in rows:
-                _, was_created = PlacementQuestion.objects.update_or_create(
-                    question_type=qtype,
-                    order=order,
-                    defaults={
-                        "prompt": prompt,
-                        "skill": skill,
-                        "cefr_band": band,
-                        "is_active": True,
-                    },
-                )
-                created += int(was_created)
-                updated += int(not was_created)
+
+        # Written: multiple choice with a server-only answer key.
+        for order, prompt, skill, band, opts, correct in WRITTEN_QUESTIONS:
+            _, was_created = PlacementQuestion.objects.update_or_create(
+                question_type="written",
+                order=order,
+                defaults={
+                    "prompt": prompt,
+                    "skill": skill,
+                    "cefr_band": band,
+                    "is_active": True,
+                    "options": opts,
+                    "correct_answer": correct,
+                    "correct_index": opts.index(correct),
+                },
+            )
+            created += int(was_created)
+            updated += int(not was_created)
+
+        # Spoken: open prompts (no answer key).
+        for order, prompt, skill, band in SPOKEN_QUESTIONS:
+            _, was_created = PlacementQuestion.objects.update_or_create(
+                question_type="spoken",
+                order=order,
+                defaults={
+                    "prompt": prompt,
+                    "skill": skill,
+                    "cefr_band": band,
+                    "is_active": True,
+                },
+            )
+            created += int(was_created)
+            updated += int(not was_created)
 
         total = PlacementQuestion.objects.count()
         self.stdout.write(self.style.SUCCESS(

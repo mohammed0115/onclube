@@ -13,7 +13,9 @@ from apps.placement.models import PlacementQuestion
 
 pytestmark = pytest.mark.django_db
 
-GOOD_WRITTEN = "I work as an engineer and I really enjoy solving difficult problems every day."
+# Written questions built by `_questions` are MCQ with options ["x", "y"]; a valid
+# written answer must pick one of those options.
+VALID_CHOICE = "x"
 GOOD_SPOKEN = "I am learning English because I want to talk with my colleagues and travel abroad."
 
 
@@ -32,7 +34,7 @@ def _questions(n_written=1, n_spoken=1):
     return w, s
 
 
-def _run_full(client, w, s, written=GOOD_WRITTEN, spoken=GOOD_SPOKEN):
+def _run_full(client, w, s, written=VALID_CHOICE, spoken=GOOD_SPOKEN):
     start = client.post("/api/v1/placement/start/")
     attempt_id = start.data["id"]
     client.post("/api/v1/placement/written-answers/", {
@@ -53,10 +55,13 @@ def test_test_endpoint_hides_correct_answer_and_index():
     assert resp.status_code == 200
     assert len(resp.data["written"]) == 2 and len(resp.data["spoken"]) == 2
     flat = str(resp.data).lower()
-    for banned in ("correct", "options", "scoring_rubric", "pronunciation"):
+    # The answer key never leaves the backend.
+    for banned in ("correct", "scoring_rubric", "pronunciation"):
         assert banned not in flat
     item = resp.data["written"][0]
-    assert set(item.keys()) == {"id", "type", "prompt", "skill", "cefrBand", "order"}
+    # `options` (the visible choices) ARE exposed for MCQ rendering.
+    assert set(item.keys()) == {"id", "type", "prompt", "skill", "cefrBand", "order", "options"}
+    assert item["options"] == ["x", "y"]
 
 
 # ── 2 start creates / reuses ──────────────────────────────────────────────────
@@ -75,7 +80,7 @@ def test_written_answers_save_through_api():
     attempt_id = client.post("/api/v1/placement/start/").data["id"]
     resp = client.post("/api/v1/placement/written-answers/", {
         "attemptId": attempt_id,
-        "answers": [{"questionId": str(w[0].id), "answerText": "hello"}],
+        "answers": [{"questionId": str(w[0].id), "answerText": "x"}],
     }, format="json")
     assert resp.status_code == 200
     status = client.get("/api/v1/placement/status/")
@@ -103,7 +108,7 @@ def test_submit_incomplete_returns_placement_incomplete():
     attempt_id = client.post("/api/v1/placement/start/").data["id"]
     client.post("/api/v1/placement/written-answers/", {
         "attemptId": attempt_id,
-        "answers": [{"questionId": str(w[0].id), "answerText": GOOD_WRITTEN}],
+        "answers": [{"questionId": str(w[0].id), "answerText": VALID_CHOICE}],
     }, format="json")  # no spoken
     resp = client.post("/api/v1/placement/submit/")
     assert resp.status_code == 409
@@ -229,6 +234,46 @@ def test_invalid_question_maps_to_422():
     }, format="json")
     assert resp.status_code == 422
     assert resp.data["code"] == "invalid_placement_question"
+
+
+def test_written_answer_must_be_a_valid_option():
+    # A written MCQ answer that is not one of the question's options is rejected.
+    w, _ = _questions(1, 0)  # options = ["x", "y"]
+    client = client_for(make_student().user)
+    attempt_id = client.post("/api/v1/placement/start/").data["id"]
+    resp = client.post("/api/v1/placement/written-answers/", {
+        "attemptId": attempt_id,
+        "answers": [{"questionId": str(w[0].id), "answerText": "not-an-option"}],
+    }, format="json")
+    assert resp.status_code == 422
+    assert resp.data["code"] == "invalid_placement_answer"
+
+
+def test_written_mcq_answer_can_be_changed_and_saved_once():
+    # Re-answering (retake) overwrites rather than duplicating.
+    w, _ = _questions(1, 0)  # options = ["x", "y"]
+    client = client_for(make_student().user)
+    attempt_id = client.post("/api/v1/placement/start/").data["id"]
+
+    def save(choice):
+        return client.post("/api/v1/placement/written-answers/", {
+            "attemptId": attempt_id,
+            "answers": [{"questionId": str(w[0].id), "answerText": choice}],
+        }, format="json")
+
+    assert save("x").status_code == 200
+    assert save("y").status_code == 200  # change the answer
+    status = client.get("/api/v1/placement/status/")
+    assert status.data["writtenComplete"] is True
+
+
+def test_written_answers_require_authentication():
+    w, _ = _questions(1, 0)
+    resp = APIClient().post("/api/v1/placement/written-answers/", {
+        "attemptId": "11111111-1111-1111-1111-111111111111",
+        "answers": [{"questionId": str(w[0].id), "answerText": "x"}],
+    }, format="json")
+    assert resp.status_code == 401
 
 
 def test_endpoints_require_authentication():

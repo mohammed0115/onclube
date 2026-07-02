@@ -42,6 +42,18 @@ class AttemptStatus(models.TextChoices):
     RESET = "reset", "Reset"
 
 
+class InterviewStatus(models.TextChoices):
+    CREATED = "created", "Created"
+    RUNNING = "running", "Running"
+    COMPLETED = "completed", "Completed"
+    FINALIZED = "finalized", "Transcript finalized"
+
+
+class AnswerSource(models.TextChoices):
+    VOICE = "voice", "Voice"      # captured by speech recognition — locked
+    MANUAL = "manual", "Manual"   # typed fallback when recognition failed
+
+
 class InstructorDifficulty(models.TextChoices):
     SUPPORTIVE = "supportive", "Supportive"
     BALANCED = "balanced", "Balanced"
@@ -147,6 +159,9 @@ class PlacementSpokenAnswer(UUIDModel):
     )
     question = models.ForeignKey(PlacementQuestion, on_delete=models.PROTECT, related_name="+")
     transcript_text = models.TextField(blank=True)  # STT output; domain sees text only
+    # How the transcript was produced. VOICE is locked (recognition succeeded);
+    # MANUAL is the official transcript typed after recognition failed.
+    source = models.CharField(max_length=6, choices=AnswerSource.choices, default=AnswerSource.MANUAL)
     stt_provider = models.CharField(max_length=40, blank=True, default="")
     stt_confidence = models.FloatField(null=True, blank=True)
     spoken_attempt_number = models.PositiveSmallIntegerField(default=1)
@@ -164,6 +179,37 @@ class PlacementSpokenAnswer(UUIDModel):
 
     def __str__(self):
         return f"SpokenAnswer<{self.attempt_id}/{self.question_id}>"
+
+
+class InterviewSession(UUIDModel, TimeStampedModel):
+    """
+    Dedicated speaking-interview session (Sprint 2.5).
+
+    Owns the interview LIFECYCLE and progress ONLY. It holds NO assessment fields
+    (no CEFR, score, or recommendation) — the interview is fully isolated from the
+    assessment engine. The finalized transcript is the ordered set of the attempt's
+    PlacementSpokenAnswer rows.
+
+    Lifecycle: created → running → completed → finalized.
+    """
+
+    attempt = models.OneToOneField(
+        PlacementAttempt, on_delete=models.CASCADE, related_name="interview_session"
+    )
+    status = models.CharField(
+        max_length=12, choices=InterviewStatus.choices,
+        default=InterviewStatus.CREATED, db_index=True,
+    )
+    # Index of the next unanswered question (0-based); resume point.
+    current_question_index = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "placement_interview_session"
+
+    def __str__(self):
+        return f"InterviewSession<{self.id}> {self.attempt_id} {self.status}"
 
 
 class PlacementAssessmentResult(UUIDModel):

@@ -13,7 +13,11 @@ import {
   topicsApi,
 } from "@/api";
 import type { SubmitPaymentProofInput } from "@/api/billing";
-import type { PlacementSpokenTranscriptInput, PlacementWrittenAnswerInput } from "@/api/types";
+import type {
+  InterviewAnswerInput,
+  PlacementSpokenTranscriptInput,
+  PlacementWrittenAnswerInput,
+} from "@/api/types";
 
 // ── auth / profile ────────────────────────────────────────────────────────────
 export const useMe = () => useQuery({ queryKey: qk.me, queryFn: authApi.me });
@@ -32,6 +36,31 @@ export const useGoals = () => useQuery({ queryKey: qk.goals, queryFn: topicsApi.
 // ── placement (Phase 8F) ──────────────────────────────────────────────────────
 export const usePlacementTest = () =>
   useQuery({ queryKey: qk.placementTest, queryFn: placementApi.test });
+
+export const useSpeakingInterview = () =>
+  useQuery({ queryKey: qk.placementInterview, queryFn: placementApi.interview });
+
+export const useInterviewSession = (enabled = true) =>
+  useQuery({ queryKey: qk.placementInterviewSession, queryFn: placementApi.interviewSession, enabled });
+
+export function useSaveInterviewAnswer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: InterviewAnswerInput) => placementApi.saveInterviewAnswer(input),
+    onSuccess: (session) => qc.setQueryData(qk.placementInterviewSession, session),
+  });
+}
+
+export function useFinalizeInterview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => placementApi.finalizeInterview(),
+    onSuccess: (session) => {
+      qc.setQueryData(qk.placementInterviewSession, session);
+      qc.invalidateQueries({ queryKey: qk.placementStatus });
+    },
+  });
+}
 
 export const usePlacementStatus = () =>
   useQuery({ queryKey: qk.placementStatus, queryFn: placementApi.status });

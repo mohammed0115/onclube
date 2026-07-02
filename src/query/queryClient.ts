@@ -30,6 +30,8 @@ export const qk = {
   bankAccount: ["billing", "bank-account"] as const,
   paymentProviders: ["billing", "providers"] as const,
   placementTest: ["placement", "test"] as const,
+  placementInterview: ["placement", "interview"] as const,
+  placementInterviewSession: ["placement", "interview", "session"] as const,
   placementStatus: ["placement", "status"] as const,
   placementResult: ["placement", "result"] as const,
   subscription: ["billing", "subscription"] as const,

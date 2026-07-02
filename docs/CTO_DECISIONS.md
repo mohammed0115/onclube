@@ -5,6 +5,25 @@
 - Payment is a Verification Workflow.
 - AI assists instructors only.
 
+## Architecture Decision Records
+
+- [ADR-019 — Placement Interview Architecture](ADR-019-placement-interview-architecture.md):
+  the speaking interview is an isolated business scenario (Interview → Transcript →
+  Assessment), with a dedicated `InterviewSession` lifecycle, an abstract
+  `SpeechProvider`, transcript locking + `VOICE`/`MANUAL` answer source, and
+  resume-from-last-question. No assessment fields in the interview layer.
+- [ADR-020 — Placement Assessment Provider Architecture](ADR-020-placement-assessment-provider.md):
+  assessment runs behind an `AssessmentProvider` seam. OpenAI is replaceable and
+  primary when configured; the deterministic heuristic is always the fallback (AI
+  failure never breaks placement). Structured JSON validation is mandatory and
+  business rules (spoken CEFR cap) override AI output. OpenAI/HTTP lives only in
+  infrastructure; domain/application never import it.
+- [ADR-021 — Prompt Architecture](ADR-021-prompt-architecture.md): prompts are
+  internal, versioned, server-side assets in `infrastructure/prompts/`. Providers
+  do not own prompt text — they receive built messages from a `PromptBuilder`.
+  Prompts are never exposed to clients/API/DTOs and carry no PII (the placement
+  builder accepts only an `AssessmentInput`).
+
 ---
 
 ## CTO-001 — Placement questions are fixed, owned content (2026-06)

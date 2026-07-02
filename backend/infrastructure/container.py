@@ -101,6 +101,38 @@ def default_placement_reset_audit_repository():
     return DjangoPlacementResetAuditRepository()
 
 
+def default_placement_interview_session_repository():
+    from infrastructure.repositories.placement import DjangoPlacementInterviewSessionRepository
+    return DjangoPlacementInterviewSessionRepository()
+
+
+def default_assessment_engine():
+    # Composition root chooses the scoring provider. OpenAI is primary WHEN a key
+    # is configured; otherwise the deterministic heuristic is used. Either way the
+    # heuristic remains the in-provider fallback, so assessment never breaks.
+    from django.conf import settings
+
+    from domain.placement.assessment import (
+        HeuristicAssessmentProvider,
+        PlacementAssessmentEngine,
+    )
+
+    heuristic = HeuristicAssessmentProvider()
+    api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+    if api_key:
+        from infrastructure.gateways.openai_assessment import OpenAIAssessmentProvider
+
+        provider = OpenAIAssessmentProvider(
+            fallback=heuristic,
+            api_key=api_key,
+            model=getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+            timeout=getattr(settings, "OPENAI_TIMEOUT_SECONDS", 20),
+        )
+    else:
+        provider = heuristic
+    return PlacementAssessmentEngine(provider=provider)
+
+
 def default_placement_profile_repository():
     from infrastructure.repositories.placement import DjangoPlacementProfileRepository
     return DjangoPlacementProfileRepository()
@@ -119,6 +151,12 @@ def default_video_provider():
 def default_ai_provider():
     # STUB — replace with OpenAIProvider in a later phase.
     return StubAIProvider()
+
+
+def default_interviewer_provider():
+    # STUB — replace with a real conversational adapter behind the same port later.
+    from infrastructure.gateways.interviewer import StubInterviewerProvider
+    return StubInterviewerProvider()
 
 
 def default_file_storage():

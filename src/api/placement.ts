@@ -1,5 +1,7 @@
 import { api } from "./client";
 import type {
+  InterviewAnswerInput,
+  InterviewSession,
   PlacementAssessment,
   PlacementAttempt,
   PlacementAttemptStatus,
@@ -7,6 +9,7 @@ import type {
   PlacementSpokenTranscriptInput,
   PlacementTest,
   PlacementWrittenAnswerInput,
+  SpeakingInterview,
 } from "./types";
 
 /**
@@ -17,6 +20,26 @@ export const placementApi = {
   /** Active fixed known questions, split written / spoken (no answer key). */
   test(): Promise<PlacementTest> {
     return api.get<PlacementTest>("/placement/test/");
+  },
+
+  /** The AI interviewer script over the fixed spoken questions (no prompts/keys). */
+  interview(): Promise<SpeakingInterview> {
+    return api.get<SpeakingInterview>("/placement/interview/");
+  },
+
+  /** Resume point: the interview session with every captured answer so far. */
+  interviewSession(): Promise<InterviewSession> {
+    return api.get<InterviewSession>("/placement/interview/session/");
+  },
+
+  /** Save one interview answer (with its VOICE/MANUAL source). */
+  saveInterviewAnswer(input: InterviewAnswerInput): Promise<InterviewSession> {
+    return api.post<InterviewSession>("/placement/interview/answer/", input);
+  },
+
+  /** Finalize the interview once every question is answered. */
+  finalizeInterview(): Promise<InterviewSession> {
+    return api.post<InterviewSession>("/placement/interview/finalize/");
   },
 
   /** Create or reuse the student's one active attempt. */

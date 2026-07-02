@@ -33,6 +33,13 @@ ALLOWED_HOSTS = resolve_allowed_hosts(env.list("ALLOWED_HOSTS", default=[]), deb
 # Max size (bytes) for uploaded payment receipts; overridable per environment.
 RECEIPT_MAX_UPLOAD_BYTES = env.int("RECEIPT_MAX_UPLOAD_BYTES", default=5 * 1024 * 1024)
 
+# ── Assessment provider (OpenAI optional; heuristic is the default fallback) ────
+# When OPENAI_API_KEY is unset the placement assessment uses the deterministic
+# heuristic. No key → no OpenAI calls (tests and local dev are unaffected).
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
+OPENAI_TIMEOUT_SECONDS = env.int("OPENAI_TIMEOUT_SECONDS", default=20)
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",

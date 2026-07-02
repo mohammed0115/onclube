@@ -10,6 +10,8 @@ from django.utils import timezone
 
 from apps.placement.models import (
     AttemptStatus,
+    InterviewSession,
+    InterviewStatus,
     PlacementAssessmentResult,
     PlacementAttempt,
     PlacementQuestion,
@@ -20,6 +22,7 @@ from apps.placement.models import (
 from application.ports.repositories import (
     PlacementAnswerRepository,
     PlacementAttemptRepository,
+    PlacementInterviewSessionRepository,
     PlacementProfileRepository,
     PlacementQuestionRepository,
     PlacementResetAuditRepository,
@@ -28,6 +31,8 @@ from application.ports.repositories import (
 
 from .placement_mappers import (
     attempt_to_dto,
+    interview_answer_to_dto,
+    interview_session_to_dto,
     question_to_dto,
     result_to_dto,
     spoken_answer_to_dto,
@@ -117,18 +122,38 @@ class DjangoPlacementAnswerRepository(PlacementAnswerRepository):
         )
 
     def save_spoken(self, *, attempt_id, question_id, transcript_text,
-                    stt_provider="", stt_confidence=None, spoken_attempt_number=1, score=None):
+                    source="manual", stt_provider="", stt_confidence=None,
+                    spoken_attempt_number=1, score=None):
         PlacementSpokenAnswer.objects.update_or_create(
             attempt_id=attempt_id,
             question_id=question_id,
             defaults={
                 "transcript_text": transcript_text,
+                "source": source,
                 "stt_provider": stt_provider,
                 "stt_confidence": stt_confidence,
                 "spoken_attempt_number": spoken_attempt_number,
                 "score": score,
             },
         )
+
+    def get_spoken(self, *, attempt_id, question_id):
+        row = (
+            PlacementSpokenAnswer.objects.filter(attempt_id=attempt_id, question_id=question_id)
+            .values("transcript_text", "source")
+            .first()
+        )
+        if row is None:
+            return None
+        return {"text": row["transcript_text"], "source": row["source"]}
+
+    def list_interview_answers(self, attempt_id):
+        return [
+            interview_answer_to_dto(a)
+            for a in PlacementSpokenAnswer.objects.select_related("question")
+            .filter(attempt_id=attempt_id)
+            .order_by("question__order")
+        ]
 
     def written_count(self, attempt_id):
         return PlacementWrittenAnswer.objects.filter(attempt_id=attempt_id).count()
@@ -223,3 +248,40 @@ class DjangoPlacementProfileRepository(PlacementProfileRepository):
         from apps.accounts.models import StudentProfile
 
         StudentProfile.objects.filter(pk=student.pk).update(level=level)
+
+
+class DjangoPlacementInterviewSessionRepository(PlacementInterviewSessionRepository):
+    def get_by_attempt(self, attempt_id):
+        session = InterviewSession.objects.filter(attempt_id=attempt_id).first()
+        return interview_session_to_dto(session) if session else None
+
+    def create(self, attempt_id):
+        session = InterviewSession.objects.create(
+            attempt_id=attempt_id, status=InterviewStatus.CREATED
+        )
+        return interview_session_to_dto(session)
+
+    def _get(self, interview_id):
+        return interview_session_to_dto(InterviewSession.objects.get(pk=interview_id))
+
+    def mark_running(self, interview_id):
+        session = InterviewSession.objects.get(pk=interview_id)
+        session.status = InterviewStatus.RUNNING
+        if session.started_at is None:
+            session.started_at = timezone.now()
+        session.save(update_fields=["status", "started_at", "updated_at"])
+        return interview_session_to_dto(session)
+
+    def set_index(self, interview_id, index):
+        InterviewSession.objects.filter(pk=interview_id).update(current_question_index=index)
+        return self._get(interview_id)
+
+    def mark_completed(self, interview_id):
+        InterviewSession.objects.filter(pk=interview_id).update(status=InterviewStatus.COMPLETED)
+        return self._get(interview_id)
+
+    def mark_finalized(self, interview_id):
+        InterviewSession.objects.filter(pk=interview_id).update(
+            status=InterviewStatus.FINALIZED, finished_at=timezone.now()
+        )
+        return self._get(interview_id)

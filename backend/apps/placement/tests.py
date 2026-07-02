@@ -27,6 +27,7 @@ pytestmark = pytest.mark.django_db
 ALL_MODELS = [
     m.PlacementQuestion, m.PlacementAttempt, m.PlacementWrittenAnswer,
     m.PlacementSpokenAnswer, m.PlacementAssessmentResult, m.PlacementResetAudit,
+    m.InterviewSession,
 ]
 
 
@@ -93,8 +94,11 @@ def test_correct_answer_index_stored_but_not_in_public_dto():
 
     dto = question_to_dto(q)
     keys = set(dataclasses.asdict(dto).keys())
+    # The answer key stays server-side: no correct_* / scoring_rubric on the DTO.
     assert not any("correct" in k for k in keys)
-    assert "options" not in keys and "scoring_rubric" not in keys
+    assert "scoring_rubric" not in keys
+    # The visible MCQ choices ARE exposed (needed to render the question).
+    assert list(dto.options) == ["A", "B"]
 
 
 # ── repositories round-trip ───────────────────────────────────────────────────

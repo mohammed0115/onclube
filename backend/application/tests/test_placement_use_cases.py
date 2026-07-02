@@ -60,8 +60,12 @@ def test_listing_questions_hides_answer_keys():
     assert test.written and test.spoken
     for item in test.written + test.spoken:
         keys = set(dataclasses.asdict(item).keys())
+        # No answer key leaves the backend: no correct_* / scoring_rubric.
         assert not any("correct" in k for k in keys)
-        assert "options" not in keys and "scoring_rubric" not in keys
+        assert "scoring_rubric" not in keys
+    # The written MCQ exposes its choices; the answer key value never appears.
+    written = test.written[0]
+    assert list(written.options) == ["A", "B"]
 
 
 # ── 2 start creates or reuses ─────────────────────────────────────────────────

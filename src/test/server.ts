@@ -191,11 +191,44 @@ export const handlers = [
   http.get(`${B}/placement/test/`, () =>
     HttpResponse.json({
       written: [
-        { id: "wq1", type: "written", prompt: "Describe your typical morning routine.", skill: "grammar", cefrBand: "B1", order: 1 },
+        { id: "wq1", type: "written", prompt: "Describe your typical morning routine.", skill: "grammar", cefrBand: "B1", order: 1, options: ["I wake up early", "I sleep late", "I skip breakfast", "I go running"] },
       ],
       spoken: [
-        { id: "sq1", type: "spoken", prompt: "Why are you learning English?", skill: "fluency", cefrBand: "B1", order: 1 },
+        { id: "sq1", type: "spoken", prompt: "Why are you learning English?", skill: "fluency", cefrBand: "B1", order: 1, options: [] },
       ],
+    })
+  ),
+
+  http.get(`${B}/placement/interview/`, () =>
+    HttpResponse.json({
+      greeting: "Hello, and welcome!",
+      instructions: "I'll ask you five simple questions, one at a time.",
+      encouragement: "Great, thank you for sharing that.",
+      closing: "That's the end of the interview — thank you!",
+      steps: [
+        { questionId: "sq1", order: 1, prompt: "What is your name?", preamble: "Let's start with the first question.", clarification: "Could you tell me your name, please?" },
+        { questionId: "sq2", order: 2, prompt: "How old are you?", preamble: "Thank you. Here's the next question.", clarification: "May I ask how old you are?" },
+      ],
+    })
+  ),
+
+  // A fresh interview session (default handler; tests override for resume/save).
+  http.get(`${B}/placement/interview/session/`, () =>
+    HttpResponse.json({
+      interviewId: "int1", attemptId: "att1", status: "created",
+      currentQuestionIndex: 0, startedAt: null, finishedAt: null, answers: [],
+    })
+  ),
+  http.post(`${B}/placement/interview/answer/`, () =>
+    HttpResponse.json({
+      interviewId: "int1", attemptId: "att1", status: "running",
+      currentQuestionIndex: 1, startedAt: "2026-06-25T10:00:00Z", finishedAt: null, answers: [],
+    })
+  ),
+  http.post(`${B}/placement/interview/finalize/`, () =>
+    HttpResponse.json({
+      interviewId: "int1", attemptId: "att1", status: "finalized",
+      currentQuestionIndex: 2, startedAt: "2026-06-25T10:00:00Z", finishedAt: "2026-06-25T10:05:00Z", answers: [],
     })
   ),
 

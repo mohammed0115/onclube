@@ -508,9 +508,9 @@ class SetAvailabilityInputSerializer(serializers.Serializer):
 
 
 # ── placement (Phase 8E) ───────────────────────────────────────────────────────
-# Output serializers read frozen DTOs only — `correct_answer`, `correct_index`,
-# `options`, and any pronunciation field simply do not exist on the source DTO,
-# so they cannot leak.
+# Output serializers read frozen DTOs only. `options` are the visible MCQ choices;
+# the answer key (`correct_answer`, `correct_index`, `scoring_rubric`) and any
+# pronunciation field simply do not exist on the source DTO, so they cannot leak.
 class PlacementQuestionItemSerializer(serializers.Serializer):
     id = serializers.CharField()
     type = serializers.CharField(source="question_type")
@@ -518,11 +518,55 @@ class PlacementQuestionItemSerializer(serializers.Serializer):
     skill = serializers.CharField()
     cefrBand = serializers.CharField(source="cefr_band")
     order = serializers.IntegerField()
+    options = serializers.ListField(child=serializers.CharField(), default=list)
 
 
 class PlacementTestSerializer(serializers.Serializer):
     written = PlacementQuestionItemSerializer(many=True)
     spoken = PlacementQuestionItemSerializer(many=True)
+
+
+# ── speaking interview (Sprint 2) ──────────────────────────────────────────────
+# Presentational script lines only. The DTO carries no model prompt / provider key
+# / answer key / score, so none can leak here.
+class InterviewStepSerializer(serializers.Serializer):
+    questionId = serializers.CharField(source="question_id")
+    order = serializers.IntegerField()
+    prompt = serializers.CharField()
+    preamble = serializers.CharField()
+    clarification = serializers.CharField()
+
+
+class SpeakingInterviewSerializer(serializers.Serializer):
+    greeting = serializers.CharField()
+    instructions = serializers.CharField()
+    encouragement = serializers.CharField()
+    closing = serializers.CharField()
+    steps = InterviewStepSerializer(many=True)
+
+
+# Interview SESSION (Sprint 2.5) — lifecycle + transcript only, NO assessment fields.
+class InterviewAnswerSerializer(serializers.Serializer):
+    questionId = serializers.CharField(source="question_id")
+    order = serializers.IntegerField()
+    transcriptText = serializers.CharField(source="transcript_text")
+    source = serializers.CharField()  # "voice" (locked) | "manual"
+
+
+class InterviewSessionSerializer(serializers.Serializer):
+    interviewId = serializers.CharField(source="interview_id")
+    attemptId = serializers.CharField(source="attempt_id")
+    status = serializers.CharField()  # created | running | completed | finalized
+    currentQuestionIndex = serializers.IntegerField(source="current_question_index")
+    startedAt = serializers.DateTimeField(source="started_at", allow_null=True)
+    finishedAt = serializers.DateTimeField(source="finished_at", allow_null=True)
+    answers = InterviewAnswerSerializer(many=True)
+
+
+class InterviewAnswerInputSerializer(serializers.Serializer):
+    questionId = serializers.UUIDField()
+    transcriptText = serializers.CharField(allow_blank=True, trim_whitespace=False)
+    source = serializers.ChoiceField(choices=["voice", "manual"], default="manual")
 
 
 class PlacementAttemptSerializer(serializers.Serializer):

@@ -108,6 +108,31 @@ class InvalidPlacementQuestion(DomainError):
     default_message = "An answer references a question that is not in the placement set."
 
 
+class InvalidPlacementAnswer(DomainError):
+    default_code = "invalid_placement_answer"
+    default_message = "An answer is not one of the allowed choices for its question."
+
+
+class TranscriptLocked(DomainError):
+    default_code = "transcript_locked"
+    default_message = "This answer was captured by voice and can no longer be edited."
+
+
+class InterviewIncomplete(DomainError):
+    default_code = "interview_incomplete"
+    default_message = "Every interview question must be answered before finalizing."
+
+
+class InvalidAssessmentInput(DomainError):
+    default_code = "invalid_assessment_input"
+    default_message = "The assessment input is not valid."
+
+
+class InvalidAssessmentOutput(DomainError):
+    default_code = "invalid_assessment_output"
+    default_message = "The assessment output failed schema validation."
+
+
 class PlacementAttemptNotFound(DomainError):
     default_code = "placement_attempt_not_found"
     default_message = "No active placement attempt was found."

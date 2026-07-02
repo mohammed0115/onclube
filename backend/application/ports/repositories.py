@@ -259,7 +259,8 @@ class PlacementAnswerRepository(ABC):
 
     @abstractmethod
     def save_spoken(self, *, attempt_id, question_id, transcript_text,
-                    stt_provider="", stt_confidence=None, spoken_attempt_number=1, score=None):
+                    source="manual", stt_provider="", stt_confidence=None,
+                    spoken_attempt_number=1, score=None):
         ...
 
     @abstractmethod
@@ -277,6 +278,40 @@ class PlacementAnswerRepository(ABC):
     @abstractmethod
     def list_spoken(self, attempt_id):
         """List of domain PlacementSpokenAnswer DTOs."""
+
+    @abstractmethod
+    def get_spoken(self, *, attempt_id, question_id):
+        """The stored answer as {"text", "source"}, or None if not answered."""
+
+    @abstractmethod
+    def list_interview_answers(self, attempt_id):
+        """List of domain InterviewAnswerDTOs (question_id, order, transcript, source)."""
+
+
+class PlacementInterviewSessionRepository(ABC):
+    @abstractmethod
+    def get_by_attempt(self, attempt_id):
+        """The attempt's InterviewSessionDTO (answers=()), or None."""
+
+    @abstractmethod
+    def create(self, attempt_id):
+        """Create a session in the CREATED state; return its InterviewSessionDTO."""
+
+    @abstractmethod
+    def mark_running(self, interview_id):
+        """Move to RUNNING and stamp started_at if not already set."""
+
+    @abstractmethod
+    def set_index(self, interview_id, index):
+        """Persist the resume point (current_question_index)."""
+
+    @abstractmethod
+    def mark_completed(self, interview_id):
+        """Move to COMPLETED (all questions answered, not yet finalized)."""
+
+    @abstractmethod
+    def mark_finalized(self, interview_id):
+        """Move to FINALIZED and stamp finished_at."""
 
 
 class PlacementResultRepository(ABC):

@@ -17,6 +17,10 @@ urlpatterns = [
 
     # ── Placement (Phase 8E — AI-led written + spoken) ──
     path("placement/test/", v.PlacementTestView.as_view()),
+    path("placement/interview/", v.PlacementInterviewView.as_view()),
+    path("placement/interview/session/", v.InterviewSessionView.as_view()),
+    path("placement/interview/answer/", v.InterviewAnswerView.as_view()),
+    path("placement/interview/finalize/", v.InterviewFinalizeView.as_view()),
     path("placement/start/", v.PlacementStartView.as_view()),
     path("placement/written-answers/", v.PlacementWrittenAnswersView.as_view()),
     path("placement/spoken-transcripts/", v.PlacementSpokenTranscriptsView.as_view()),

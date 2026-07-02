@@ -71,8 +71,13 @@ class PlacementAssessmentResult:
 
 @dataclass(frozen=True)
 class PlacementQuestionDTO:
-    """PUBLIC question shape — deliberately NO correct_answer / correct_index /
-    options / scoring_rubric (those stay server-side only)."""
+    """PUBLIC question shape.
+
+    `options` are the visible multiple-choice answers a student picks from
+    (empty for open/spoken prompts). The answer key — `correct_answer`,
+    `correct_index`, `scoring_rubric` — stays SERVER-SIDE ONLY and is never
+    placed on this DTO.
+    """
 
     id: str
     question_type: str  # "written" | "spoken"
@@ -80,6 +85,58 @@ class PlacementQuestionDTO:
     skill: str
     cefr_band: str
     order: int
+    options: tuple = ()
+
+
+@dataclass(frozen=True)
+class InterviewStepDTO:
+    """One step of the speaking interview: a FIXED known question plus the
+    interviewer's presentational lines. Carries no answer key and no model
+    prompt — only what the student may see/hear."""
+
+    question_id: str
+    order: int
+    prompt: str          # the fixed spoken question (unchanged, never generated)
+    preamble: str        # interviewer lead-in
+    clarification: str   # meaning-preserving rephrase the student may request
+
+
+@dataclass(frozen=True)
+class SpeakingInterviewDTO:
+    """The full interviewer script for the speaking interview. Presentational
+    text only — never exposes prompts, provider keys, or internal instructions;
+    contains no scoring/assessment."""
+
+    greeting: str
+    instructions: str
+    encouragement: str
+    closing: str
+    steps: tuple = ()
+
+
+@dataclass(frozen=True)
+class InterviewAnswerDTO:
+    """One captured answer: its transcript text and how it was produced. Carries
+    NO score — the interview never evaluates."""
+
+    question_id: str
+    order: int
+    transcript_text: str
+    source: str  # "voice" (locked) | "manual" (typed fallback)
+
+
+@dataclass(frozen=True)
+class InterviewSessionDTO:
+    """State of a speaking-interview session. Lifecycle + progress + transcript
+    ONLY — deliberately NO assessment fields (no CEFR / score / recommendation)."""
+
+    interview_id: str
+    attempt_id: str
+    status: str  # created | running | completed | finalized
+    current_question_index: int
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    answers: tuple = ()
 
 
 @dataclass(frozen=True)

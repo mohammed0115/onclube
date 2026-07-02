@@ -15,6 +15,7 @@ from persistence) and return booleans or raise domain exceptions.
 from __future__ import annotations
 
 from domain.exceptions import (
+    InvalidPlacementAnswer,
     InvalidPlacementQuestion,
     PlacementIncomplete,
     PlacementResetRequired,
@@ -87,4 +88,23 @@ def ensure_known_questions(answered_ids, allowed_ids) -> None:
         if qid not in allowed:
             raise InvalidPlacementQuestion(
                 f"Question '{qid}' is not part of the placement set."
+            )
+
+
+def ensure_valid_written_choices(answers, options_by_question) -> None:
+    """Each answer to a multiple-choice written question must be one of that
+    question's fixed options.
+
+    `answers` is an iterable of (question_id, answer_text). `options_by_question`
+    maps question_id -> list of allowed option strings. Questions with no options
+    (open-ended prompts) are not choice-validated. Blank answers to an MCQ are
+    rejected — a valid multiple-choice submission must pick a listed option.
+    """
+    for question_id, answer_text in answers:
+        options = list(options_by_question.get(question_id) or [])
+        if not options:
+            continue  # open-ended question — no fixed choice to validate
+        if answer_text not in options:
+            raise InvalidPlacementAnswer(
+                f"Answer for question '{question_id}' must be one of its options."
             )

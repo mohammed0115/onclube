@@ -162,6 +162,45 @@ class PlacementTestView(APIView):
         return Response(s.PlacementTestSerializer(dto).data)
 
 
+class PlacementInterviewView(APIView):
+    def get(self, request):
+        from application.placement.interview import GetSpeakingInterviewUseCase
+
+        dto = GetSpeakingInterviewUseCase().execute(actor=request.user)
+        return Response(s.SpeakingInterviewSerializer(dto).data)
+
+
+class InterviewSessionView(APIView):
+    def get(self, request):
+        # Resume: get-or-create the session with every captured answer so far.
+        from application.placement.interview import GetOrCreateInterviewSessionUseCase
+
+        dto = GetOrCreateInterviewSessionUseCase().execute(actor=request.user)
+        return Response(s.InterviewSessionSerializer(dto).data)
+
+
+class InterviewAnswerView(APIView):
+    def post(self, request):
+        from application.placement.interview import SaveInterviewAnswerUseCase
+
+        data = _validated(s.InterviewAnswerInputSerializer, request)
+        dto = SaveInterviewAnswerUseCase().execute(
+            actor=request.user,
+            question_id=str(data["questionId"]),
+            transcript_text=data["transcriptText"],
+            source=data["source"],
+        )
+        return Response(s.InterviewSessionSerializer(dto).data)
+
+
+class InterviewFinalizeView(APIView):
+    def post(self, request):
+        from application.placement.interview import FinalizeInterviewUseCase
+
+        dto = FinalizeInterviewUseCase().execute(actor=request.user)
+        return Response(s.InterviewSessionSerializer(dto).data)
+
+
 class PlacementStartView(APIView):
     def post(self, request):
         dto = StartPlacementAttemptUseCase().execute(actor=request.user)

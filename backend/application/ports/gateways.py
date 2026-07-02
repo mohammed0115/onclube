@@ -39,6 +39,42 @@ class VideoProvider(ABC):
         """Mint a short-lived join credential. MUST be server-side only."""
 
 
+class InterviewerProvider(ABC):
+    """Supplies the AI interviewer's *spoken script lines* for the placement
+    speaking interview.
+
+    The AI is an INTERVIEWER ONLY: it greets, explains, reads the fixed known
+    questions, may politely rephrase (same meaning) or encourage, and closes. It
+    NEVER generates questions, reorders/skips them, teaches, corrects, hints, or
+    scores. Model instructions / prompts / provider keys live inside the adapter
+    and MUST NOT cross this boundary — only presentational lines are returned.
+    """
+
+    @abstractmethod
+    def greeting(self) -> str:
+        """A short welcome line."""
+
+    @abstractmethod
+    def instructions(self) -> str:
+        """A short explanation of how the interview works."""
+
+    @abstractmethod
+    def preamble(self, *, order: int, total: int) -> str:
+        """A brief lead-in for question `order` of `total` (no new questions)."""
+
+    @abstractmethod
+    def clarification(self, *, prompt: str) -> str:
+        """A polite rephrase of the SAME question (meaning unchanged)."""
+
+    @abstractmethod
+    def encouragement(self) -> str:
+        """A neutral encouraging line — never feedback or correction."""
+
+    @abstractmethod
+    def closing(self) -> str:
+        """A polite closing line for the finished interview."""
+
+
 class AIProvider(ABC):
     @abstractmethod
     def score_placement(self, *, answers) -> dict:

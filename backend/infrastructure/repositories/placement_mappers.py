@@ -7,6 +7,8 @@ The public question mapper deliberately omits the server-only answer key.
 from __future__ import annotations
 
 from domain.placement.dtos import (
+    InterviewAnswerDTO,
+    InterviewSessionDTO,
     PlacementAttemptDTO,
     PlacementQuestionDTO,
     PlacementRecommendationResult,
@@ -24,8 +26,29 @@ def spoken_answer_to_dto(a) -> PlacementSpokenAnswer:
     return PlacementSpokenAnswer(question_id=str(a.question_id), transcript=a.transcript_text)
 
 
+def interview_answer_to_dto(a) -> InterviewAnswerDTO:
+    return InterviewAnswerDTO(
+        question_id=str(a.question_id),
+        order=a.question.order,
+        transcript_text=a.transcript_text,
+        source=a.source,
+    )
+
+
+def interview_session_to_dto(s) -> InterviewSessionDTO:
+    return InterviewSessionDTO(
+        interview_id=str(s.id),
+        attempt_id=str(s.attempt_id),
+        status=s.status,
+        current_question_index=s.current_question_index,
+        started_at=s.started_at,
+        finished_at=s.finished_at,
+    )
+
+
 def question_to_dto(q) -> PlacementQuestionDTO:
-    # NOTE: correct_answer / correct_index / options / scoring_rubric are NOT mapped.
+    # `options` (the visible MCQ choices) ARE exposed. The answer key —
+    # correct_answer / correct_index / scoring_rubric — is deliberately NOT mapped.
     return PlacementQuestionDTO(
         id=str(q.id),
         question_type=q.question_type,
@@ -33,6 +56,7 @@ def question_to_dto(q) -> PlacementQuestionDTO:
         skill=q.skill,
         cefr_band=q.cefr_band,
         order=q.order,
+        options=tuple(q.options or ()),
     )
 
 

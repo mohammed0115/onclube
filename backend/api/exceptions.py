@@ -42,6 +42,10 @@ CODE_STATUS = {
     "spoken_attempt_used": http_status.HTTP_409_CONFLICT,
     "placement_reset_required": http_status.HTTP_409_CONFLICT,
     "invalid_placement_question": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+    "invalid_placement_answer": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+    "transcript_locked": http_status.HTTP_409_CONFLICT,
+    "interview_incomplete": http_status.HTTP_409_CONFLICT,
+    "invalid_assessment_input": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
     "domain_error": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
 }
 
