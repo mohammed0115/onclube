@@ -8,6 +8,8 @@ provider secrets — the field simply does not exist on the source object.
 """
 from rest_framework import serializers
 
+from api.upload import validate_receipt_file
+
 
 # ── shared ────────────────────────────────────────────────────────────────────
 class ErrorSerializer(serializers.Serializer):
@@ -446,6 +448,10 @@ class SubmitPaymentProofInputSerializer(serializers.Serializer):
     senderName = serializers.CharField(max_length=150, required=False, allow_blank=True, default=None)
     receiverName = serializers.CharField(max_length=150, required=False, allow_blank=True, default=None)
     rawOcrData = serializers.JSONField(required=False, default=None)
+
+    def validate_receipt(self, value):
+        # Type / size / magic-byte / filename validation for the receipt upload.
+        return validate_receipt_file(value)
 
 
 class PaymentProofDetailSerializer(serializers.Serializer):

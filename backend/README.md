@@ -45,6 +45,25 @@ python manage.py runserver
 - Admin: http://127.0.0.1:8000/admin/
 - JWT: `POST /api/v1/auth/token/` and `/api/v1/auth/token/refresh/`
 
+### Environment variables
+
+Settings are **fail-closed**: `DEBUG` defaults to `False`, and in production the
+app refuses to start unless the security-critical variables are set. See
+[`config/security.py`](config/security.py).
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `SECRET_KEY` | **prod** | — | Must be a strong, non-default value when `DEBUG=False`; startup raises otherwise. Generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`. |
+| `DEBUG` | no | `False` | Set `True` only for local dev. |
+| `ALLOWED_HOSTS` | **prod** | — | Comma-separated explicit hostnames; `*` and empty are rejected when `DEBUG=False`. Falls back to `localhost` when `DEBUG=True`. |
+| `DATABASE_URL` | no | SQLite file | PostgreSQL DSN in production. |
+| `RECEIPT_MAX_UPLOAD_BYTES` | no | `5242880` (5 MiB) | Max payment-receipt upload size. |
+| `PAYMENT_*` | no | Bank of Khartoum / Bankak | Configurable bank-transfer provider details. |
+
+When `DEBUG=False` the app also enables HTTPS redirect, `Secure` session/CSRF
+cookies, HSTS, and `X-Content-Type-Options: nosniff`, and trusts the reverse
+proxy's `X-Forwarded-Proto` header. Terminate TLS at the proxy.
+
 ### Running against PostgreSQL
 
 ```bash
@@ -59,7 +78,7 @@ Then `pip install psycopg2-binary` (in requirements) and `python manage.py migra
 ```bash
 cd backend
 source .venv/bin/activate
-pytest                      # 83 passed — runs on SQLite by default
+pytest                      # 208 passed — runs on SQLite by default
 ```
 
 Tests: `apps/*/tests.py` (models/services), `application/tests/` (use cases —

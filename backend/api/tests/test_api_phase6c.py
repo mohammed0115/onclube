@@ -55,7 +55,9 @@ def test_register_duplicate_email_maps_to_409():
 def test_submit_payment_proof_endpoint():
     student = make_student()
     plan = make_plan()
-    receipt = SimpleUploadedFile("receipt.jpg", b"bytes", content_type="image/jpeg")
+    receipt = SimpleUploadedFile(
+        "receipt.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF\x00 receipt", content_type="image/jpeg"
+    )
     resp = client_for(student.user).post(
         "/api/v1/billing/payment-proof/",
         {
@@ -85,7 +87,9 @@ def test_submit_payment_proof_duplicate_transaction_number_409():
                 "transactionNumber": "TRX-DUP-API",
                 "transferDatetime": timezone.now().isoformat(),
                 "amount": "220.00",
-                "receipt": SimpleUploadedFile("r.jpg", b"b", content_type="image/jpeg"),
+                "receipt": SimpleUploadedFile(
+                    "r.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF\x00 r", content_type="image/jpeg"
+                ),
             },
             format="multipart",
         )

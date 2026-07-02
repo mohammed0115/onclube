@@ -10,16 +10,28 @@ from pathlib import Path
 
 import environ
 
+from config.security import (
+    resolve_allowed_hosts,
+    resolve_secret_key,
+    secure_flags,
+)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
-    DEBUG=(bool, True),
+    DEBUG=(bool, False),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
-SECRET_KEY = env("SECRET_KEY", default="dev-insecure-key-change-me")
-DEBUG = env("DEBUG", default=True)
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+# Fail-closed: DEBUG defaults to False, and in production (DEBUG=False) an
+# insecure/default SECRET_KEY or a missing/`*` ALLOWED_HOSTS raises at startup
+# instead of silently running insecure. See config/security.py.
+DEBUG = env.bool("DEBUG", default=False)
+SECRET_KEY = resolve_secret_key(env("SECRET_KEY", default=None), debug=DEBUG)
+ALLOWED_HOSTS = resolve_allowed_hosts(env.list("ALLOWED_HOSTS", default=[]), debug=DEBUG)
+
+# Max size (bytes) for uploaded payment receipts; overridable per environment.
+RECEIPT_MAX_UPLOAD_BYTES = env.int("RECEIPT_MAX_UPLOAD_BYTES", default=5 * 1024 * 1024)
 
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -156,3 +168,8 @@ PAYMENT_PROVIDERS = [
         "display_order": env.int("PAYMENT_DISPLAY_ORDER", default=1),
     },
 ]
+
+# ── Production security hardening ──────────────────────────────────────────────
+# Applied only when DEBUG is False so local dev / the test client keep working
+# over plain HTTP. Enables HTTPS redirect, secure cookies, HSTS, and nosniff.
+globals().update(secure_flags(debug=DEBUG))

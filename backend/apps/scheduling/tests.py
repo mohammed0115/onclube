@@ -23,6 +23,7 @@ from apps.common.factories import (
     make_student,
     make_topic,
 )
+from apps.scheduling.models import Booking
 from apps.scheduling.services import (
     cancel_booking,
     create_booking,
@@ -92,6 +93,77 @@ def test_double_booking_is_prevented():
     with pytest.raises(BusinessRuleError) as exc:
         create_booking(student_b, topic, slot)
     assert exc.value.code == "slot_unavailable"
+
+
+def test_cancelled_slot_can_be_rebooked():
+    """
+    Regression (P0): cancelling a booking must release the slot AND leave it
+    bookable again. Previously `Booking.slot` was OneToOne, so re-booking the
+    same slot raised IntegrityError even though the slot showed OPEN.
+    """
+    student, instructor, topic, slot, sub = _booked_world(sessions=4, days_ahead=5)
+
+    first = create_booking(student, topic, slot)
+    assert first.status == BookingStatus.UPCOMING
+    slot.refresh_from_db()
+    assert slot.status == SlotStatus.BOOKED
+
+    # Cancel well outside the 24h window -> credit returned, slot released.
+    cancel_booking(first, now=timezone.now())
+    slot.refresh_from_db()
+    assert slot.status == SlotStatus.OPEN
+
+    # Re-book the SAME slot -> must succeed (this is the bug being fixed).
+    second = create_booking(student, topic, slot)
+    assert second.status == BookingStatus.UPCOMING
+    assert second.id != first.id
+    assert second.slot_id == slot.id  # slot is attached to the new booking
+    slot.refresh_from_db()
+    assert slot.status == SlotStatus.BOOKED
+
+    # Cancelled history is preserved: the old row still exists and still points
+    # at the slot; the slot now has two bookings (one cancelled, one active).
+    first.refresh_from_db()
+    assert first.status == BookingStatus.CANCELLED
+    assert first.slot_id == slot.id
+    assert Booking.objects.filter(slot=slot).count() == 2
+    assert (
+        Booking.objects.filter(slot=slot, status=BookingStatus.UPCOMING).count() == 1
+    )
+
+    # Active double-booking is still prevented: a new active booking on the
+    # now-BOOKED slot is refused by the slot-status guard.
+    student_b = make_student()
+    make_active_subscription(student_b, make_plan(), sessions=4)
+    with pytest.raises(BusinessRuleError) as exc:
+        create_booking(student_b, topic, slot)
+    assert exc.value.code == "slot_unavailable"
+
+
+def test_db_constraint_blocks_two_active_bookings_per_slot():
+    """
+    The partial unique constraint `uniq_active_booking_per_slot` is the DB-level
+    backstop for §2.1: two UPCOMING bookings on one slot are rejected even if the
+    service-layer slot-status guard were bypassed.
+    """
+    from django.db import IntegrityError
+
+    student, instructor, topic, slot, sub = _booked_world(sessions=4, days_ahead=5)
+    first = create_booking(student, topic, slot)
+
+    with pytest.raises(IntegrityError):
+        Booking.objects.create(
+            student=first.student,
+            topic=topic,
+            topic_title=topic.title,
+            instructor=first.instructor,
+            instructor_name=first.instructor_name,
+            slot=slot,
+            subscription=first.subscription,
+            scheduled_at=slot.start_at,
+            duration_minutes=slot.duration_minutes,
+            status=BookingStatus.UPCOMING,
+        )
 
 
 def test_cancel_before_24h_returns_credit():

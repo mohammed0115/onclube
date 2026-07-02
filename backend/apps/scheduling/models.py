@@ -151,9 +151,12 @@ class AvailabilitySlot(BaseModel):
 
 class Booking(BaseModel, SoftDeleteModel):
     """
-    A confirmed seat against a slot. `slot` is OneToOne, giving the hard
-    double-booking guard (§2.1). The reverse accessors `slot.booking` and
-    `booking.report` (from AIReport) replace the design's back-FKs.
+    A confirmed seat against a slot. `slot` is a ForeignKey so a slot can hold
+    a full booking history (an active booking plus any earlier cancelled ones),
+    while the partial unique constraint `uniq_active_booking_per_slot` keeps the
+    hard double-booking guard (§2.1): at most one UPCOMING booking per slot. A
+    cancelled booking keeps its slot reference (history is preserved) and no
+    longer blocks re-booking the released slot.
     """
 
     student = models.ForeignKey(
@@ -165,8 +168,8 @@ class Booking(BaseModel, SoftDeleteModel):
         "accounts.InstructorProfile", on_delete=models.PROTECT, related_name="bookings"
     )
     instructor_name = models.CharField(max_length=150)  # snapshot
-    slot = models.OneToOneField(
-        AvailabilitySlot, on_delete=models.PROTECT, related_name="booking"
+    slot = models.ForeignKey(
+        AvailabilitySlot, on_delete=models.PROTECT, related_name="bookings_for_slot"
     )
     subscription = models.ForeignKey(
         "billing.Subscription", on_delete=models.PROTECT, related_name="bookings"
@@ -181,6 +184,16 @@ class Booking(BaseModel, SoftDeleteModel):
 
     class Meta:
         db_table = "bookings"
+        constraints = [
+            # §2.1 double-booking guard: at most one *active* (upcoming) booking
+            # per slot. Cancelled/completed bookings keep their slot reference for
+            # history but do not block re-booking the released slot.
+            models.UniqueConstraint(
+                fields=["slot"],
+                condition=models.Q(status=BookingStatus.UPCOMING),
+                name="uniq_active_booking_per_slot",
+            ),
+        ]
         indexes = [
             models.Index(fields=["student", "-scheduled_at"]),
             models.Index(fields=["instructor", "scheduled_at"]),

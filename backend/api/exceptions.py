@@ -8,10 +8,15 @@ error bodies share the shape: {"code": <str>, "detail": <str>}.
 This is the ONLY place domain → HTTP translation happens, so views never catch
 domain exceptions themselves.
 """
+import logging
+
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError
 from rest_framework import status as http_status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
+
+logger = logging.getLogger("api")
 
 from apps.common.exceptions import BusinessRuleError
 
@@ -64,14 +69,34 @@ def api_exception_handler(exc, context):
             status=http_status.HTTP_404_NOT_FOUND,
         )
 
-    # 3) Fall back to DRF's handler (auth, validation, etc.) but normalize the body.
-    response = drf_exception_handler(exc, context)
-    if response is None:
-        return None
+    # 3) Database constraint violations (unique/partial-unique/check races that
+    #    escape a use case) → 409 Conflict. The raw DB message is NOT echoed to
+    #    the client; it is logged server-side instead so nothing leaks.
+    if isinstance(exc, IntegrityError):
+        logger.warning("IntegrityError surfaced to API layer: %s", exc, exc_info=True)
+        return Response(
+            {
+                "code": "conflict",
+                "detail": "The request conflicts with the current state of the resource.",
+            },
+            status=http_status.HTTP_409_CONFLICT,
+        )
 
-    code = _STATUS_CODE.get(response.status_code, "error")
-    detail = response.data
-    if isinstance(detail, dict) and set(detail.keys()) == {"detail"}:
-        detail = detail["detail"]
-    response.data = {"code": code, "detail": detail}
-    return response
+    # 4) Fall back to DRF's handler (auth, validation, etc.) but normalize the body.
+    response = drf_exception_handler(exc, context)
+    if response is not None:
+        code = _STATUS_CODE.get(response.status_code, "error")
+        detail = response.data
+        if isinstance(detail, dict) and set(detail.keys()) == {"detail"}:
+            detail = detail["detail"]
+        response.data = {"code": code, "detail": detail}
+        return response
+
+    # 5) Anything DRF did not handle is an unexpected server error. Never leak the
+    #    exception message or a stack trace to the client — log it and return the
+    #    standard envelope so the API contract holds for every response.
+    logger.exception("Unhandled exception in API request", exc_info=exc)
+    return Response(
+        {"code": "server_error", "detail": "An unexpected error occurred."},
+        status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
