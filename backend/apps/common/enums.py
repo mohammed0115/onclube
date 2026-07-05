@@ -32,6 +32,7 @@ class PaymentStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     APPROVED = "approved", "Approved"
     REJECTED = "rejected", "Rejected"
+    NEEDS_INFO = "needs_info", "Needs more information"
 
 
 class PlacementSkill(models.TextChoices):
@@ -54,6 +55,7 @@ class PaymentProofStatus(models.TextChoices):
     PENDING = "pending_review", "Pending review"
     APPROVED = "approved", "Approved"
     REJECTED = "rejected", "Rejected"
+    NEEDS_INFO = "needs_info", "Needs more information"
 
 
 class SlotStatus(models.TextChoices):
@@ -69,10 +71,11 @@ class BookingStatus(models.TextChoices):
 
 
 class SessionStatus(models.TextChoices):
-    SCHEDULED = "scheduled", "Scheduled"
+    SCHEDULED = "scheduled", "Scheduled"  # the waiting-room state
     LIVE = "live", "Live"
     COMPLETED = "completed", "Completed"
     CANCELLED = "cancelled", "Cancelled"
+    EXPIRED = "expired", "Expired"
 
 
 class TranscriptSource(models.TextChoices):
@@ -89,6 +92,7 @@ class AIReportStatus(models.TextChoices):
 class NotificationType(models.TextChoices):
     PAYMENT_APPROVED = "payment_approved", "Payment approved"
     PAYMENT_REJECTED = "payment_rejected", "Payment rejected"
+    PAYMENT_INFO_REQUESTED = "payment_info_requested", "Payment info requested"
     BOOKING_CONFIRMED = "booking_confirmed", "Booking confirmed"
     SESSION_REMINDER = "session_reminder", "Session reminder"
     REPORT_READY = "report_ready", "Report ready"
@@ -97,6 +101,7 @@ class NotificationType(models.TextChoices):
 class AdminActionType(models.TextChoices):
     PAYMENT_APPROVE = "payment_approve", "Payment approve"
     PAYMENT_REJECT = "payment_reject", "Payment reject"
+    PAYMENT_REQUEST_INFO = "payment_request_info", "Payment request info"
     PAYMENT_REOPEN = "payment_reopen", "Payment reopen"
     SUBSCRIPTION_EXTEND = "subscription_extend", "Subscription extend"
     SUBSCRIPTION_TOPUP = "subscription_topup", "Subscription top-up"

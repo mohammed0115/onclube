@@ -100,6 +100,22 @@ Dev wiring: `vite.config.ts` proxies `/api` → `http://localhost:8000` (overrid
   error/retry, Admin dashboard, role-guard redirect). Chart-heavy pages are covered at the data
   layer instead (recharts + jsdom is a known testing-env friction).
 
+## Booking journey (Journey 4 — Sprint 7)
+
+Journey 4 is wired end-to-end with **no mock data**: BookSession (topics) →
+**weekly calendar** (`/student/book/:topicId`, `GET /student/calendar/?topicId=&weekStart=`)
+showing Mon–Sun slots where only **available** slots are selectable → **review/summary**
+(`/student/book/:topicId/confirm/:slotId`) → **confirm** (`POST /student/bookings/` —
+validates subscription + credit + slot, reserves **exactly one** credit atomically) →
+**success** (`/student/book/success/:bookingId`) confirming the booking and that the
+topic's discussion questions are now unlocked → "View your questions"
+(`/student/questions/:topicId`, now full). All booking business rules
+(BR-017…BR-022) are enforced in the backend (`apps/scheduling/services.py` + the
+`uniq_active_booking_per_slot` DB constraint); the frontend renders DTOs only.
+Admin bookings: `GET /admin/bookings/` + `PATCH /admin/bookings/{id}/` (cancel). No
+Agora/video/session/report work in this sprint. Tests: `src/test/journey4.test.tsx`,
+`backend/api/tests/test_booking_journey4_api.py`.
+
 ## Placement flow (Phase 8F)
 
 The placement interview is **fully wired** to the live backend — **no mock placement data

@@ -25,6 +25,7 @@ CODE_STATUS = {
     "permission_denied": http_status.HTTP_403_FORBIDDEN,
     "invalid_state": http_status.HTTP_409_CONFLICT,
     "no_active_subscription": http_status.HTTP_403_FORBIDDEN,
+    "subscription_already_active": http_status.HTTP_409_CONFLICT,
     "subscription_expired": http_status.HTTP_409_CONFLICT,
     "no_sessions_remaining": http_status.HTTP_409_CONFLICT,
     "slot_unavailable": http_status.HTTP_409_CONFLICT,
@@ -32,6 +33,21 @@ CODE_STATUS = {
     "cancellation_window_closed": http_status.HTTP_409_CONFLICT,
     "questions_not_available": http_status.HTTP_403_FORBIDDEN,
     "session_not_joinable": http_status.HTTP_409_CONFLICT,
+    "session_expired": http_status.HTTP_409_CONFLICT,
+    # In-session chat (Sprint 8.3) — validation only; no chat endpoint exists.
+    "empty_message": http_status.HTTP_400_BAD_REQUEST,
+    "message_too_long": http_status.HTTP_400_BAD_REQUEST,
+    # Whiteboard (Sprint 8.4) — validation only; no whiteboard endpoint exists.
+    "operation_rejected": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+    # File sharing (Sprint 8.5) — validation only; no file endpoint exists.
+    "unsupported_file_type": http_status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "file_too_large": http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    # Participant signals (Sprint 8.6) — validation only; no signal endpoint exists.
+    "unsupported_reaction": http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+    # Session recording (Sprint 8.7) — state machine only; no recording endpoint exists.
+    "invalid_recording_state": http_status.HTTP_409_CONFLICT,
+    # Attendance & presence (Sprint 8.8) — state machine only; no attendance endpoint exists.
+    "attendance_locked": http_status.HTTP_409_CONFLICT,
     "ai_report_already_generated": http_status.HTTP_409_CONFLICT,
     "email_already_registered": http_status.HTTP_409_CONFLICT,
     "duplicate_transaction_number": http_status.HTTP_409_CONFLICT,

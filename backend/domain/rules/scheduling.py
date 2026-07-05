@@ -35,3 +35,28 @@ def cancellation_refunds_credit(
     strictly earlier than `window` before the session start (Business Rule 8).
     """
     return now < (scheduled_at - window)
+
+
+# ── weekly calendar (Sprint 7) ────────────────────────────────────────────────
+WEEKDAY_NAMES = (
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+)
+
+
+def week_start_for(reference):
+    """The Monday date of the week that contains `reference` (a date/datetime)."""
+    d = reference.date() if isinstance(reference, datetime) else reference
+    return d - timedelta(days=d.weekday())  # Monday = weekday 0
+
+
+def calendar_slot_status(*, slot_status, start_at, now, open_value="open",
+                         booked_value="booked", blocked_value="blocked") -> str:
+    """Present a slot's status for the weekly calendar. A booked slot whose start
+    time has passed is shown as `completed`. Only `available` is selectable."""
+    if slot_status == open_value:
+        return "available"
+    if slot_status == blocked_value:
+        return "blocked"
+    if slot_status == booked_value:
+        return "completed" if start_at < now else "booked"
+    return slot_status

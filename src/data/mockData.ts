@@ -32,7 +32,7 @@ export const plans: Plan[] = [
     name: "Starter",
     emoji: "\uD83C\uDF31",
     price: 120,
-    currency: "SAR",
+    currency: "SDG",
     cadence: "/ month",
     description: "Try the format with a few sessions.",
     sessionsPerMonth: 4,
@@ -43,7 +43,7 @@ export const plans: Plan[] = [
     name: "Regular",
     emoji: "\u2B50",
     price: 220,
-    currency: "SAR",
+    currency: "SDG",
     cadence: "/ month",
     description: "The sweet spot for steady progress.",
     sessionsPerMonth: 8,
@@ -55,7 +55,7 @@ export const plans: Plan[] = [
     name: "Intensive",
     emoji: "\uD83D\uDE80",
     price: 380,
-    currency: "SAR",
+    currency: "SDG",
     cadence: "/ month",
     description: "For learners who want to move fast.",
     sessionsPerMonth: 16,
@@ -70,10 +70,10 @@ export const plans: Plan[] = [
 // ── Payment proofs (admin queue) ─────────────────────────────────────────────
 
 export const paymentProofs: PaymentProof[] = [
-  { id: "pp1", studentId: "s2", studentName: "Layla Hassan", planId: "regular", planName: "Regular", amount: 220, currency: "SAR", reference: "TRX-48201", transferDate: "Jun 23, 2026", receiptName: "receipt-layla.jpg", status: "pending", submittedAt: "2 hours ago" },
-  { id: "pp2", studentId: "s3", studentName: "Omar Faruk", planId: "starter", planName: "Starter", amount: 120, currency: "SAR", reference: "TRX-48198", transferDate: "Jun 23, 2026", receiptName: "transfer.pdf", status: "pending", submittedAt: "5 hours ago" },
-  { id: "pp3", studentId: "s4", studentName: "Mariam Adel", planId: "intensive", planName: "Intensive", amount: 380, currency: "SAR", reference: "TRX-48177", transferDate: "Jun 22, 2026", receiptName: "screenshot.png", status: "approved", submittedAt: "Yesterday" },
-  { id: "pp4", studentId: "s5", studentName: "Yousef Bilal", planId: "regular", planName: "Regular", amount: 220, currency: "SAR", reference: "TRX-48150", transferDate: "Jun 21, 2026", receiptName: "receipt-yousef.jpg", status: "rejected", submittedAt: "2 days ago" },
+  { id: "pp1", studentId: "s2", studentName: "Layla Hassan", planId: "regular", planName: "Regular", amount: 220, currency: "SDG", reference: "TRX-48201", transferDate: "Jun 23, 2026", receiptName: "receipt-layla.jpg", status: "pending", submittedAt: "2 hours ago" },
+  { id: "pp2", studentId: "s3", studentName: "Omar Faruk", planId: "starter", planName: "Starter", amount: 120, currency: "SDG", reference: "TRX-48198", transferDate: "Jun 23, 2026", receiptName: "transfer.pdf", status: "pending", submittedAt: "5 hours ago" },
+  { id: "pp3", studentId: "s4", studentName: "Mariam Adel", planId: "intensive", planName: "Intensive", amount: 380, currency: "SDG", reference: "TRX-48177", transferDate: "Jun 22, 2026", receiptName: "screenshot.png", status: "approved", submittedAt: "Yesterday" },
+  { id: "pp4", studentId: "s5", studentName: "Yousef Bilal", planId: "regular", planName: "Regular", amount: 220, currency: "SDG", reference: "TRX-48150", transferDate: "Jun 21, 2026", receiptName: "receipt-yousef.jpg", status: "rejected", submittedAt: "2 days ago" },
 ];
 
 // ── Instructors ──────────────────────────────────────────────────────────────

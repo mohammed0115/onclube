@@ -78,7 +78,7 @@ describe("Admin dashboard", () => {
     asAdmin();
     renderPage(<AdminDashboardPage />);
     await waitFor(() => expect(screen.getByText(/Payments awaiting approval/i)).toBeInTheDocument());
-    expect(screen.getByText(/220 SAR/)).toBeInTheDocument();
+    expect(screen.getByText(/220 SDG/)).toBeInTheDocument();
   });
 });
 

@@ -30,13 +30,28 @@ class VideoToken:
 
 
 class VideoProvider(ABC):
+    """Provisions the live-room channel (Agora later; stub now). Channel
+    provisioning is separate from token minting (see MeetingTokenProvider)."""
+
     @abstractmethod
     def create_channel(self, *, session_id) -> str:
         """Return a channel identifier for a session."""
 
     @abstractmethod
     def issue_join(self, *, channel, identity) -> "VideoToken":
-        """Mint a short-lived join credential. MUST be server-side only."""
+        """Mint a short-lived join credential. MUST be server-side only.
+        (Legacy: JoinSession now uses MeetingTokenProvider to mint tokens.)"""
+
+
+class MeetingTokenProvider(ABC):
+    """Mints short-lived meeting join tokens — the ONLY place tokens are created.
+    Kept distinct from VideoProvider so channel provisioning and credential
+    minting can evolve independently. Tokens are server-side only and never
+    stored. Stub now; a real adapter mints genuine RTC tokens later."""
+
+    @abstractmethod
+    def issue(self, *, channel, identity) -> "VideoToken":
+        ...
 
 
 class InterviewerProvider(ABC):

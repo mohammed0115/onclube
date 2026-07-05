@@ -44,7 +44,7 @@ def ensure_student_owns(actor, student_profile):
 
 
 def ensure_session_participant(actor, session):
-    """The booked student or the assigned instructor (or an admin)."""
+    """The booked student or the assigned instructor (or an admin). Read-scope."""
     if actor is not None and getattr(actor, "role", None) == UserRole.ADMIN:
         return actor
     booking = session.booking
@@ -53,6 +53,37 @@ def ensure_session_participant(actor, session):
     ):
         return actor
     raise PermissionDenied("Only a session participant may perform this action.")
+
+
+def session_joiner_role(actor, session):
+    """"student" / "instructor" for the ASSIGNED participant, else None.
+
+    Deliberately NO admin bypass — an administrator is not a session participant
+    and may not join/leave/start/end a live session.
+    """
+    booking = session.booking
+    if actor is not None and booking.student.user_id == actor.id:
+        return "student"
+    if actor is not None and booking.instructor.user_id == actor.id:
+        return "instructor"
+    return None
+
+
+def ensure_session_joiner(actor, session):
+    """Only the assigned student or instructor may act on the live session."""
+    role = session_joiner_role(actor, session)
+    if role is None:
+        raise PermissionDenied("Only the assigned student or instructor may join this session.")
+    return role
+
+
+def ensure_session_recorder(actor, session):
+    """Only the assigned INSTRUCTOR may control recording. Students and admins are
+    rejected (admin is not a participant; a student may not record)."""
+    role = session_joiner_role(actor, session)
+    if role != "instructor":
+        raise PermissionDenied("Only the assigned instructor may control recording.")
+    return role
 
 
 def _is_admin(actor):

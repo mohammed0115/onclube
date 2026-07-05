@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BankDetailsCard } from "@/components/payment";
 import { QueryBoundary } from "@/components/states";
-import { useBankAccount } from "@/hooks";
-import { plans } from "@/data/mockData";
+import { useBankAccount, usePlans } from "@/hooks";
+import { SELECTED_PLAN_KEY } from "@/pages/billing/PricingPage";
 
 const STEPS = [
   "Open your banking app and start a transfer to the account above.",
@@ -17,7 +17,11 @@ const STEPS = [
 export function BankTransferPage() {
   const navigate = useNavigate();
   const instructions = useBankAccount();
-  const plan = plans.find((p) => p.recommended) ?? plans[0];
+  // The real plan the student selected on the pricing page (no mock data).
+  const plansQuery = usePlans();
+  const selectedId = sessionStorage.getItem(SELECTED_PLAN_KEY);
+  const allPlans = plansQuery.data ?? [];
+  const plan = allPlans.find((p) => p.id === selectedId) ?? allPlans.find((p) => p.recommended) ?? allPlans[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,21 +71,27 @@ export function BankTransferPage() {
           <div className="space-y-6">
             <Card className="p-6">
               <h3 className="mb-5 font-display font-bold text-foreground">Order summary</h3>
-              <div className="flex items-start gap-4 border-b border-border pb-5">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xl">
-                  {plan.emoji}
-                </div>
-                <div>
-                  <div className="font-bold text-foreground">{plan.name} plan</div>
-                  <div className="text-sm text-muted-foreground">{plan.sessionsPerMonth} live sessions / month</div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-5">
-                <span className="font-bold text-foreground">Amount to transfer</span>
-                <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-2xl font-extrabold text-transparent">
-                  {plan.price} {plan.currency}
-                </span>
-              </div>
+              {plan ? (
+                <>
+                  <div className="flex items-start gap-4 border-b border-border pb-5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xl">
+                      {plan.emoji}
+                    </div>
+                    <div>
+                      <div className="font-bold text-foreground">{plan.name} plan</div>
+                      <div className="text-sm text-muted-foreground">{plan.sessionsPerMonth} live sessions / month</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-5">
+                    <span className="font-bold text-foreground">Amount to transfer</span>
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-2xl font-extrabold text-transparent">
+                      {plan.price} {plan.currency}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="h-16 animate-pulse rounded-xl bg-muted" aria-hidden />
+              )}
             </Card>
 
             <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800">

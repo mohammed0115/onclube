@@ -70,7 +70,7 @@ def make_plan(sessions_per_month=8, billing_period_days=30, price="220.00"):
         code=f"plan-{_uniq()}",
         name="Regular",
         price=price,
-        currency="SAR",
+        currency="SDG",
         sessions_per_month=sessions_per_month,
         billing_period_days=billing_period_days,
     )

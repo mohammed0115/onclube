@@ -126,6 +126,14 @@ class BookingRepository(ABC):
     def list_for_instructor(self, instructor):
         ...
 
+    @abstractmethod
+    def list_slots_in_range(self, instructor_id, start, end):
+        """An instructor's slots with start_at in [start, end), ordered by start time."""
+
+    @abstractmethod
+    def list_all(self):
+        """All bookings (admin), newest first."""
+
 
 class TopicRepository(ABC):
     @abstractmethod

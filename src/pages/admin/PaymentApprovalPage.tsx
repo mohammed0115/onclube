@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import { Check, X, Info } from "lucide-react";
+import { Check, X, MessageSquare, FileText, ExternalLink } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { PaymentStatusBadge } from "@/components/payment";
-import { useAdminProofs, useApprovePayment, useRejectPayment } from "@/hooks";
+import {
+  useAdminProofs,
+  useAdminProofDetail,
+  useApprovePayment,
+  useRejectPayment,
+  useRequestPaymentInfo,
+} from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { PaymentStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -18,26 +25,33 @@ function badgeStatus(status: string): PaymentStatus {
 
 function when(iso: string): string {
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function PaymentApprovalPage() {
   const query = useAdminProofs();
   const approve = useApprovePayment();
   const reject = useRejectPayment();
+  const requestInfo = useRequestPaymentInfo();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [note, setNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const detail = useAdminProofDetail(selectedId);
   const proofs = query.data ?? [];
 
-  // Keep a valid selection as the queue changes (approved/rejected items leave it).
   useEffect(() => {
-    if (proofs.length === 0) {
-      setSelectedId(null);
-    } else if (!selectedId || !proofs.some((p) => p.id === selectedId)) {
-      setSelectedId(proofs[0].id);
-    }
+    if (proofs.length === 0) setSelectedId(null);
+    else if (!selectedId || !proofs.some((p) => p.id === selectedId)) setSelectedId(proofs[0].id);
   }, [proofs, selectedId]);
+
+  // Clear the note + errors when switching proofs.
+  useEffect(() => {
+    setNote("");
+    setActionError(null);
+  }, [selectedId]);
 
   if (query.isLoading) {
     return (
@@ -55,17 +69,20 @@ export function PaymentApprovalPage() {
   }
 
   const selected = proofs.find((p) => p.id === selectedId) ?? null;
-  const busy = approve.isPending || reject.isPending;
+  const busy = approve.isPending || reject.isPending || requestInfo.isPending;
 
-  async function decide(id: string, action: "approve" | "reject") {
+  async function run(id: string, action: "approve" | "reject" | "request_info") {
     setActionError(null);
     try {
       if (action === "approve") await approve.mutateAsync(id);
-      else await reject.mutateAsync({ proofId: id });
+      else if (action === "reject") await reject.mutateAsync({ proofId: id, note: note.trim() || undefined });
+      else await requestInfo.mutateAsync({ proofId: id, note: note.trim() });
     } catch {
       setActionError("Could not complete that action. Please try again.");
     }
   }
+
+  const d = detail.data;
 
   return (
     <DashboardLayout>
@@ -128,39 +145,72 @@ export function PaymentApprovalPage() {
                 <PaymentStatusBadge status={badgeStatus(selected.status)} />
               </div>
 
-              <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-                {[
-                  ["Amount", `${selected.amount} ${selected.currency}`],
-                  ["Plan", selected.planName],
-                  ["Status", "Pending review"],
-                  ["Submitted", when(selected.submittedAt)],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-xl border border-border p-3">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{k}</div>
-                    <div className="mt-0.5 font-semibold text-foreground">{v}</div>
-                  </div>
-                ))}
-              </div>
+              {detail.isLoading && <Loading label="Loading proof details…" />}
+              {detail.isError && <ErrorState error={detail.error} onRetry={() => detail.refetch()} />}
 
-              <div className="mb-6 flex items-start gap-2 rounded-xl bg-indigo-50/60 p-3 text-xs text-indigo-700">
-                <Info size={14} className="mt-0.5 flex-shrink-0" />
-                <span>
-                  Receipt image, transaction reference and transfer date require the admin proof-detail endpoint,
-                  which isn’t available yet. Confirm the transfer in your bank records before approving.
-                </span>
-              </div>
+              {d && (
+                <>
+                  <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
+                    {[
+                      ["Amount", `${d.amount} ${d.currency}`],
+                      ["Transaction ref", d.transactionNumber],
+                      ["Transfer date", when(d.transferDatetime)],
+                      ["Sender", d.senderName ?? "—"],
+                    ].map(([k, v]) => (
+                      <div key={k} className="rounded-xl border border-border p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">{k}</div>
+                        <div className="mt-0.5 break-words font-semibold text-foreground">{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mb-5">
+                    {d.receiptUrl ? (
+                      <a
+                        href={d.receiptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50/60"
+                      >
+                        <FileText size={16} /> View receipt ({d.receiptName}) <ExternalLink size={13} />
+                      </a>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No receipt attached.</p>
+                    )}
+                  </div>
+
+                  <label htmlFor="review-note" className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Note to the student (required to request more information)
+                  </label>
+                  <Textarea
+                    id="review-note"
+                    rows={2}
+                    placeholder="e.g. The receipt is blurry — please re-upload a clearer photo."
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </>
+              )}
 
               {actionError && (
-                <p role="alert" className="mb-3 text-sm font-medium text-red-600">
+                <p role="alert" className="mt-3 text-sm font-medium text-red-600">
                   {actionError}
                 </p>
               )}
 
-              <div className="flex gap-3">
-                <Button variant="danger" className="flex-1" disabled={busy} onClick={() => decide(selected.id, "reject")}>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Button
+                  variant="ghost"
+                  className="flex-1"
+                  disabled={busy || !note.trim()}
+                  onClick={() => run(selected.id, "request_info")}
+                >
+                  <MessageSquare size={16} /> {requestInfo.isPending ? "Sending…" : "Request info"}
+                </Button>
+                <Button variant="danger" className="flex-1" disabled={busy} onClick={() => run(selected.id, "reject")}>
                   <X size={16} /> Reject
                 </Button>
-                <Button className="flex-1" disabled={busy} onClick={() => decide(selected.id, "approve")}>
+                <Button className="flex-1" disabled={busy} onClick={() => run(selected.id, "approve")}>
                   <Check size={16} /> {approve.isPending ? "Approving…" : "Approve & activate"}
                 </Button>
               </div>

@@ -146,7 +146,7 @@ def test_payment_rejection_route_does_not_activate_subscription():
 
 # ── join session returns the Agora DTO shape ──────────────────────────────────
 def test_join_session_returns_agora_dto():
-    booking = make_booking()
+    booking = make_booking(days_ahead=0)  # inside the join window
     session = make_session(booking)
     actor = booking.student.user
 

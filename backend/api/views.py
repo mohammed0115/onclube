@@ -47,9 +47,12 @@ from application.billing.queries import (
 from application.billing.use_cases import (
     ApprovePaymentProofUseCase,
     ExtendSubscriptionUseCase,
+    GetAdminPaymentProofUseCase,
+    GetMyLatestPaymentProofUseCase,
     RecordRefundNoteUseCase,
     RejectPaymentProofUseCase,
     ReopenPaymentProofUseCase,
+    RequestPaymentInformationUseCase,
     SubmitPaymentProofUseCase,
     TopUpSubscriptionUseCase,
 )
@@ -74,6 +77,8 @@ from application.scheduling.queries import (
     GetQuestionsForBookingUseCase,
     GetStudentDashboardUseCase,
     GetTopicPreviewOrFullUseCase,
+    GetWeeklyCalendarUseCase,
+    ListAdminBookingsUseCase,
     ListInstructorAvailabilityUseCase,
     ListInstructorTopicsUseCase,
     ListStudentAvailableTopicsUseCase,
@@ -90,7 +95,9 @@ from application.sessions.queries import GetSessionDetailUseCase
 from application.sessions.use_cases import (
     AttachTranscriptUseCase,
     CompleteSessionUseCase,
+    GetSessionUseCase,
     JoinSessionUseCase,
+    LeaveSessionUseCase,
     StartSessionUseCase,
 )
 
@@ -312,6 +319,20 @@ class StudentBillingHistoryView(APIView):
         return Response(s.BillingHistoryItemSerializer(dtos, many=True).data)
 
 
+class StudentLatestPaymentProofView(APIView):
+    """The student's own most recent payment proof (status + review note), so the
+    under-review screen can show pending / approved / rejected / needs-info."""
+
+    def get(self, request):
+        dto = GetMyLatestPaymentProofUseCase().execute(actor=request.user)
+        if dto is None:
+            return Response(
+                {"code": "not_found", "detail": "No payment proof submitted yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(s.PaymentProofDetailSerializer(dto).data)
+
+
 # ── Student Scheduling ────────────────────────────────────────────────────────
 class StudentDashboardView(APIView):
     def get(self, request):
@@ -366,6 +387,31 @@ class StudentBookingDetailView(APIView):
     def delete(self, request, booking_id):
         dto = CancelBookingUseCase().execute(actor=request.user, booking_id=booking_id)
         return Response(s.CancellationSerializer(dto).data)
+
+
+class StudentCalendarView(APIView):
+    """Weekly (Mon–Sun) calendar of a topic's instructor slots."""
+
+    def get(self, request):
+        from datetime import date
+
+        topic_id = request.query_params.get("topicId")
+        if not topic_id:
+            return Response(
+                {"code": "validation_error", "detail": "topicId is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        week_start = None
+        raw = request.query_params.get("weekStart")
+        if raw:
+            try:
+                week_start = date.fromisoformat(raw)
+            except ValueError:
+                week_start = None  # ignore a malformed week; default to current week
+        dto = GetWeeklyCalendarUseCase().execute(
+            actor=request.user, topic_id=topic_id, week_start=week_start
+        )
+        return Response(s.WeeklyCalendarSerializer(dto).data)
 
 
 # ── Instructor ────────────────────────────────────────────────────────────────
@@ -433,6 +479,21 @@ class AdminReopenPaymentView(APIView):
         return Response(s.PaymentDecisionSerializer(dto).data)
 
 
+class AdminPaymentProofDetailView(APIView):
+    def get(self, request, proof_id):
+        dto = GetAdminPaymentProofUseCase().execute(actor=request.user, proof_id=proof_id)
+        return Response(s.PaymentProofDetailSerializer(dto).data)
+
+
+class AdminRequestPaymentInfoView(APIView):
+    def post(self, request, proof_id):
+        data = _validated(s.ReviewNoteInputSerializer, request)
+        dto = RequestPaymentInformationUseCase().execute(
+            actor=request.user, proof_id=proof_id, note=data.get("note")
+        )
+        return Response(s.PaymentDecisionSerializer(dto).data)
+
+
 class AdminExtendSubscriptionView(APIView):
     def patch(self, request, subscription_id):
         data = _validated(s.ExtendSubscriptionInputSerializer, request)
@@ -479,6 +540,22 @@ class AdminCancelBookingView(APIView):
         return Response(s.CancellationSerializer(dto).data)
 
 
+class AdminBookingsListView(APIView):
+    def get(self, request):
+        dtos = ListAdminBookingsUseCase().execute(actor=request.user)
+        return Response(s.AdminBookingItemSerializer(dtos, many=True).data)
+
+
+class AdminBookingUpdateView(APIView):
+    def patch(self, request, booking_id):
+        # The supported admin update is a cancellation (with an optional credit override).
+        data = _validated(s.AdminBookingUpdateInputSerializer, request)
+        dto = CancelBookingUseCase().execute(
+            actor=request.user, booking_id=booking_id, force_credit=data.get("forceCredit")
+        )
+        return Response(s.CancellationSerializer(dto).data)
+
+
 # ── Sessions ──────────────────────────────────────────────────────────────────
 class SessionDetailView(APIView):
     def get(self, request, session_id):
@@ -486,10 +563,22 @@ class SessionDetailView(APIView):
         return Response(s.SessionDetailSerializer(dto).data)
 
 
+class SessionWaitingRoomView(APIView):
+    def get(self, request, session_id):
+        dto = GetSessionUseCase().execute(actor=request.user, session_id=session_id)
+        return Response(s.WaitingRoomSerializer(dto).data)
+
+
 class SessionJoinView(APIView):
     def post(self, request, session_id):
         dto = JoinSessionUseCase().execute(actor=request.user, session_id=session_id)
         return Response(s.VideoJoinSerializer(dto).data)
+
+
+class SessionLeaveView(APIView):
+    def post(self, request, session_id):
+        dto = LeaveSessionUseCase().execute(actor=request.user, session_id=session_id)
+        return Response(s.SessionResultSerializer(dto).data)
 
 
 class SessionStartView(APIView):

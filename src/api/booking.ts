@@ -6,11 +6,19 @@ import type {
   BookingResult,
   Cancellation,
   StudentDashboard,
+  WeeklyCalendar,
 } from "./types";
 
 export const bookingApi = {
   studentDashboard(): Promise<StudentDashboard> {
     return api.get<StudentDashboard>("/student/dashboard/");
+  },
+
+  /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */
+  calendar(topicId: string, weekStart?: string): Promise<WeeklyCalendar> {
+    const q = new URLSearchParams({ topicId });
+    if (weekStart) q.set("weekStart", weekStart);
+    return api.get<WeeklyCalendar>(`/student/calendar/?${q.toString()}`);
   },
 
   myBookings(): Promise<BookingListItem[]> {

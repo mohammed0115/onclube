@@ -52,7 +52,7 @@ class Plan(BaseModel):
     name = models.CharField(max_length=60)
     emoji = models.CharField(max_length=8, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default="SAR")
+    currency = models.CharField(max_length=3, default="SDG")
     cadence = models.CharField(max_length=20, default="/ month")
     billing_period_days = models.PositiveIntegerField(default=30)
     description = models.CharField(max_length=200, null=True, blank=True)
@@ -172,7 +172,7 @@ class PaymentProof(BaseModel):
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="payment_proofs")
     plan_name = models.CharField(max_length=60)  # snapshot
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default="SAR")
+    currency = models.CharField(max_length=3, default="SDG")
     # Bank transaction number — unique to prevent receipt reuse.
     transaction_number = models.CharField(max_length=60, unique=True)
     transfer_datetime = models.DateTimeField()

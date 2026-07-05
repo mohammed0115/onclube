@@ -93,6 +93,57 @@ class ReopenPaymentProofUseCase:
         )
 
 
+class RequestPaymentInformationUseCase:
+    """Admin asks the student for more information about a pending proof."""
+
+    def __init__(self, *, payments=None):
+        self.payments = payments or default_payment_repository()
+
+    def execute(self, *, actor, proof_id, note) -> PaymentDecisionResult:
+        ensure_admin(actor)
+        if not (note or "").strip():
+            from domain.exceptions import DomainError
+
+            raise DomainError("A note is required to request more information.")
+        proof = self.payments.get(proof_id)
+        proof = billing_services.request_payment_info(proof, actor, note=note)
+        return PaymentDecisionResult(
+            proof_id=str(proof.id),
+            status=proof.status,
+            reviewed_by_id=str(proof.reviewed_by_id) if proof.reviewed_by_id else None,
+        )
+
+
+class GetAdminPaymentProofUseCase:
+    """Admin-only: full proof detail for review (receipt URL, txn, sender, note)."""
+
+    def __init__(self, *, payments=None, file_storage=None):
+        self.payments = payments or default_payment_repository()
+        self.file_storage = file_storage or default_file_storage()
+
+    def execute(self, *, actor, proof_id) -> PaymentProofDetailResult:
+        ensure_admin(actor)
+        proof = self.payments.get(proof_id)  # DoesNotExist → 404
+        receipt_url = self.file_storage.url_for(storage_key=proof.receipt_file.storage_key)
+        return mappers.payment_proof_detail(proof, receipt_url=receipt_url, include_student=True)
+
+
+class GetMyLatestPaymentProofUseCase:
+    """The current student's most recent payment proof (ownership inherent)."""
+
+    def __init__(self, *, payments=None, file_storage=None):
+        self.payments = payments or default_payment_repository()
+        self.file_storage = file_storage or default_file_storage()
+
+    def execute(self, *, actor) -> PaymentProofDetailResult | None:
+        student = get_student_profile(actor)
+        proof = self.payments.get_latest_for_student(student)
+        if proof is None:
+            return None
+        receipt_url = self.file_storage.url_for(storage_key=proof.receipt_file.storage_key)
+        return mappers.payment_proof_detail(proof, receipt_url=receipt_url)
+
+
 class ExtendSubscriptionUseCase:
     def __init__(self, *, subscriptions=None):
         self.subscriptions = subscriptions or default_subscription_repository()

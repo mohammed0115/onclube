@@ -226,6 +226,20 @@ def booking_detail(b) -> dtos.BookingDetailResult:
     )
 
 
+def admin_booking_item(b) -> dtos.AdminBookingItemResult:
+    return dtos.AdminBookingItemResult(
+        id=str(b.id),
+        student_id=str(b.student_id),
+        student_name=b.student.user.full_name,
+        topic_title=b.topic_title,
+        instructor_name=b.instructor_name,
+        scheduled_at=b.scheduled_at,
+        duration_minutes=b.duration_minutes,
+        status=b.status,
+        credit_refunded=b.credit_refunded,
+    )
+
+
 # ── sessions ──────────────────────────────────────────────────────────────────
 def session_detail(session, questions) -> dtos.SessionDetailResult:
     booking = session.booking

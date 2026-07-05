@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, ApiError } from "./client";
 import type {
   BillingHistoryItem,
   PaymentProvider,
@@ -44,6 +44,16 @@ export const billingApi = {
 
   billingHistory(): Promise<BillingHistoryItem[]> {
     return api.get<BillingHistoryItem[]>("/student/billing/history/");
+  },
+
+  /** The student's own latest payment proof (status + review note), or null if none. */
+  async latestPaymentProof(): Promise<PaymentProofDetail | null> {
+    try {
+      return await api.get<PaymentProofDetail>("/billing/payment-proof/latest/");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null;
+      throw e;
+    }
   },
 
   submitPaymentProof(input: SubmitPaymentProofInput): Promise<PaymentProofDetail> {

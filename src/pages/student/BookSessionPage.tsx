@@ -100,7 +100,7 @@ export function BookSessionPage() {
                 {topics
                   .filter((t) => t.category === cat)
                   .map((t) => (
-                    <TopicCard key={t.id} topic={toTopicCard(t)} to={`/student/questions/${t.id}`} />
+                    <TopicCard key={t.id} topic={toTopicCard(t)} to={`/student/book/${t.id}`} />
                   ))}
               </div>
             </div>

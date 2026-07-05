@@ -93,7 +93,7 @@ def test_admin_refund_note_endpoint():
     student, plan = make_student(), make_plan()
     sub = make_active_subscription(student, plan)
     url = f"/api/v1/admin/subscriptions/{sub.id}/refund-note/"
-    body = {"amount": "50.00", "currency": "SAR", "reason": "partial refund"}
+    body = {"amount": "50.00", "currency": "SDG", "reason": "partial refund"}
 
     ok = client_for(make_admin()).post(url, body, format="json")
     assert ok.status_code == 201
@@ -101,7 +101,7 @@ def test_admin_refund_note_endpoint():
     _assert_forbidden_for_non_admins("post", url, body)
 
     invalid = client_for(make_admin()).post(
-        url, {"currency": "SAR"}, format="json"  # missing amount + reason
+        url, {"currency": "SDG"}, format="json"  # missing amount + reason
     )
     assert invalid.status_code == 400
     assert invalid.data["code"] == "validation_error"

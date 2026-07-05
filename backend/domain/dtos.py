@@ -8,7 +8,7 @@ the application layer.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 
 
@@ -124,6 +124,24 @@ class SessionResult:
     started_at: Optional[datetime]
     ended_at: Optional[datetime]
     report_pending: bool = False
+
+
+@dataclass(frozen=True)
+class WaitingRoomResult:
+    """Waiting-room view for a participant. Presentational + join-eligibility only —
+    no transcript, questions, or video."""
+
+    session_id: str
+    booking_id: str
+    topic_title: str
+    instructor_name: str
+    scheduled_at: datetime
+    duration_minutes: int
+    phase: str  # waiting | live | completed | cancelled | expired
+    can_join: bool
+    join_opens_at: datetime
+    join_closes_at: datetime
+    viewer_role: Optional[str] = None  # student | instructor | admin
 
 
 @dataclass(frozen=True)
@@ -317,6 +335,45 @@ class AvailabilitySlotResult:
     start_at: datetime
     duration_minutes: int
     status: str
+
+
+# ── weekly calendar (Sprint 7) ────────────────────────────────────────────────
+@dataclass(frozen=True)
+class CalendarSlotResult:
+    id: str
+    start_at: datetime
+    duration_minutes: int
+    status: str  # available | booked | blocked | completed (only available is selectable)
+
+
+@dataclass(frozen=True)
+class CalendarDayResult:
+    date: date
+    weekday: str  # monday..sunday
+    slots: tuple = ()
+
+
+@dataclass(frozen=True)
+class WeeklyCalendarResult:
+    topic_id: str
+    instructor_id: str
+    instructor_name: str
+    week_start: date
+    week_end: date
+    days: tuple = ()  # 7 CalendarDayResult (Mon..Sun)
+
+
+@dataclass(frozen=True)
+class AdminBookingItemResult:
+    id: str
+    student_id: str
+    student_name: str
+    topic_title: str
+    instructor_name: str
+    scheduled_at: datetime
+    duration_minutes: int
+    status: str
+    credit_refunded: bool
 
 
 @dataclass(frozen=True)

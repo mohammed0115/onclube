@@ -148,6 +148,12 @@ def default_video_provider():
     return StubVideoProvider()
 
 
+def default_meeting_token_provider():
+    # STUB — replace with a real RTC token minter behind the same port later.
+    from infrastructure.gateways.meeting_token import StubMeetingTokenProvider
+    return StubMeetingTokenProvider()
+
+
 def default_ai_provider():
     # STUB — replace with OpenAIProvider in a later phase.
     return StubAIProvider()

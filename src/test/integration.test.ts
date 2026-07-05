@@ -56,7 +56,7 @@ describe("MVP flow: register → goal → pay → admin approval → book → se
         txn: isForm ? (body as FormData).get("transactionNumber") : undefined,
       };
       return new Response(
-        JSON.stringify({ id: "pp1", status: "pending_review", transactionNumber: "TRX-1", planName: "Regular", amount: 220, currency: "SAR", transferDatetime: "x", receiptName: "receipt.jpg", submittedAt: "x", retainUntil: null, senderName: null, receiverName: null, reviewedAt: null, reviewNote: null, receiptUrl: "u" }),
+        JSON.stringify({ id: "pp1", status: "pending_review", transactionNumber: "TRX-1", planName: "Regular", amount: 220, currency: "SDG", transferDatetime: "x", receiptName: "receipt.jpg", submittedAt: "x", retainUntil: null, senderName: null, receiverName: null, reviewedAt: null, reviewNote: null, receiptUrl: "u" }),
         { status: 201, headers: { "Content-Type": "application/json" } }
       );
     }) as typeof fetch;

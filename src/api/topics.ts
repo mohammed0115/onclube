@@ -1,12 +1,15 @@
 import { api } from "./client";
 import type {
+  AdminBookingItem,
   AdminDashboard,
   AvailabilitySlot,
+  Cancellation,
   GoalOption,
   InstructorDashboard,
   PaymentApprovalItem,
   PaymentApprovalResult,
   PaymentDecision,
+  PaymentProofDetail,
   QuestionFull,
   TopicFull,
   TopicPreview,
@@ -54,13 +57,25 @@ export const topicsApi = {
   adminPaymentProofs(): Promise<PaymentApprovalItem[]> {
     return api.get<PaymentApprovalItem[]>("/admin/payment-proofs/");
   },
+  adminPaymentProofDetail(proofId: string): Promise<PaymentProofDetail> {
+    return api.get<PaymentProofDetail>(`/admin/payment-proofs/${proofId}/`);
+  },
   approvePayment(proofId: string): Promise<PaymentApprovalResult> {
     return api.post<PaymentApprovalResult>(`/admin/payment-proofs/${proofId}/approve/`);
   },
   rejectPayment(proofId: string, note?: string): Promise<PaymentDecision> {
     return api.post<PaymentDecision>(`/admin/payment-proofs/${proofId}/reject/`, { note });
   },
+  requestPaymentInfo(proofId: string, note: string): Promise<PaymentDecision> {
+    return api.post<PaymentDecision>(`/admin/payment-proofs/${proofId}/request-info/`, { note });
+  },
   reopenPayment(proofId: string): Promise<PaymentDecision> {
     return api.post<PaymentDecision>(`/admin/payment-proofs/${proofId}/reopen/`);
+  },
+  adminBookings(): Promise<AdminBookingItem[]> {
+    return api.get<AdminBookingItem[]>("/admin/bookings/");
+  },
+  adminUpdateBooking(bookingId: string, body: { status: "cancelled"; forceCredit?: boolean }): Promise<Cancellation> {
+    return api.patch<Cancellation>(`/admin/bookings/${bookingId}/`, body);
   },
 };

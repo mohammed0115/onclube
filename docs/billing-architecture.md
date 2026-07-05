@@ -11,6 +11,30 @@ admin approval. AI/OCR may later *assist* the admin but must **never auto-approv
 This document is grounded in the current codebase (`apps/billing`, `application/billing`,
 `apps/admin_ops`, `api/`, `src/pages/billing`, `src/pages/admin`).
 
+> **Implemented — Sprint 6 (Journey 3 complete).** The gaps designed above are now
+> live:
+> - **G1 `needs_info` state** — `PaymentProofStatus.NEEDS_INFO` +
+>   `PaymentStatus.NEEDS_INFO`; state machine `pending_review → approved | rejected |
+>   needs_info`; `needs_info` reopens to `pending_review` (admin reopen) or the student
+>   re-submits.
+> - **G2 Request-more-information** — `apps.billing.services.request_payment_info` +
+>   `RequestPaymentInformationUseCase` (admin-only, note required) +
+>   `POST /admin/payment-proofs/{id}/request-info/`, audited as `PAYMENT_REQUEST_INFO`,
+>   notifies the student. No subscription is activated.
+> - **G3 Admin proof-detail** — `GET /admin/payment-proofs/{id}/`
+>   (`GetAdminPaymentProofUseCase`) returns the full proof + `receiptUrl` + student
+>   context so admins no longer approve blind.
+> - **Student status** — `GET /billing/payment-proof/latest/`
+>   (`GetMyLatestPaymentProofUseCase`) drives the under-review screen's
+>   pending / approved / rejected / needs-info states + review note.
+> - **One active subscription** — approving a second proof for an already-active student
+>   now raises a clean `409 subscription_already_active` (was an unmapped 500).
+> - **Currency is `SDG`** (Sudanese pound) everywhere — plans, proofs, factory, and
+>   fixtures — matching the Bank of Khartoum default (was `SAR`).
+> Activation, credit assignment, idempotency, duplicate-transaction rejection, and
+> proof immutability are unchanged and covered by tests
+> (`api/tests/test_billing_journey3_api.py`, `src/test/journey3.test.tsx`).
+
 ---
 
 ## 1. Current State Review (gap analysis)

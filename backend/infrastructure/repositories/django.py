@@ -170,6 +170,19 @@ class DjangoBookingRepository(BookingRepository):
             .order_by("-scheduled_at")
         )
 
+    def list_slots_in_range(self, instructor_id, start, end):
+        return list(
+            AvailabilitySlot.objects.filter(
+                instructor_id=instructor_id, start_at__gte=start, start_at__lt=end
+            ).order_by("start_at")
+        )
+
+    def list_all(self):
+        return list(
+            Booking.objects.select_related("student__user", *_BOOKING_LIST_RELATED)
+            .order_by("-scheduled_at")
+        )
+
 
 class DjangoTopicRepository(TopicRepository):
     def get(self, topic_id):

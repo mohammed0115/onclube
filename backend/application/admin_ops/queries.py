@@ -34,7 +34,7 @@ class GetAdminDashboardUseCase:
         pending = self.payments.list_by_status(PaymentProofStatus.PENDING)
         approved = self.payments.list_by_status(PaymentProofStatus.APPROVED)
         revenue = sum((p.amount for p in approved), 0)
-        currency = approved[0].currency if approved else "SAR"
+        currency = approved[0].currency if approved else "SDG"
 
         recent_activity = [
             {

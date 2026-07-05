@@ -142,7 +142,7 @@ export const handlers = [
 
   http.get(`${B}/billing/plans/`, () =>
     HttpResponse.json([
-      { id: "p1", code: "regular", name: "Regular", emoji: "⭐", price: 220, currency: "SAR", cadence: "/ month", description: "Steady progress", sessionsPerMonth: 8, features: ["8 sessions"], recommended: true },
+      { id: "p1", code: "regular", name: "Regular", emoji: "⭐", price: 220, currency: "SDG", cadence: "/ month", description: "Steady progress", sessionsPerMonth: 8, features: ["8 sessions"], recommended: true },
     ])
   ),
 
@@ -155,7 +155,7 @@ export const handlers = [
         id: "pp1",
         planName: "Regular",
         amount: 220,
-        currency: "SAR",
+        currency: "SDG",
         transactionNumber: txn,
         transferDatetime: "2026-06-25T10:00:00Z",
         receiptName: "receipt.jpg",
@@ -171,6 +171,18 @@ export const handlers = [
       { status: 201 }
     );
   }),
+
+  // Student's own latest payment proof (status + review note). Tests override this.
+  http.get(`${B}/billing/payment-proof/latest/`, () =>
+    HttpResponse.json({
+      id: "pp1", planName: "Regular", amount: 220, currency: "SDG",
+      transactionNumber: "TRX-1", transferDatetime: "2026-06-25T10:00:00Z",
+      receiptName: "receipt.jpg", status: state.approved ? "approved" : "pending_review",
+      submittedAt: "2026-06-25T10:01:00Z", retainUntil: null, senderName: null, receiverName: null,
+      reviewedAt: null, reviewNote: null, receiptUrl: "https://files.local/receipts/pp1.jpg",
+      studentId: null, studentName: null,
+    })
+  ),
 
   http.get(`${B}/student/subscription/`, () => {
     if (!state.approved) {
@@ -258,8 +270,23 @@ export const handlers = [
   // ── admin ──
   http.get(`${B}/admin/payment-proofs/`, () =>
     HttpResponse.json([
-      { id: "pp1", studentName: "Test Student", planName: "Regular", amount: 220, currency: "SAR", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z" },
+      { id: "pp1", studentName: "Test Student", planName: "Regular", amount: 220, currency: "SDG", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z" },
     ])
+  ),
+
+  http.get(`${B}/admin/payment-proofs/:id/`, ({ params }) =>
+    HttpResponse.json({
+      id: params.id, planName: "Regular", amount: 220, currency: "SDG",
+      transactionNumber: "TRX-1", transferDatetime: "2026-06-25T10:00:00Z",
+      receiptName: "receipt.jpg", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z",
+      retainUntil: null, senderName: "Test Student", receiverName: null,
+      reviewedAt: null, reviewNote: null, receiptUrl: "https://files.local/receipts/pp1.jpg",
+      studentId: "st1", studentName: "Test Student",
+    })
+  ),
+
+  http.post(`${B}/admin/payment-proofs/:id/request-info/`, ({ params }) =>
+    HttpResponse.json({ proofId: params.id, status: "needs_info", reviewedById: "adm1" })
   ),
 
   http.post(`${B}/admin/payment-proofs/:id/approve/`, ({ params }) => {
@@ -298,6 +325,25 @@ export const handlers = [
     HttpResponse.json([{ id: "slot1", instructorId: "i1", startAt: "2026-06-30T18:00:00Z", durationMinutes: 45, status: "open" }])
   ),
 
+  // Weekly calendar (Mon–Sun). Tuesday has one available slot; others empty.
+  http.get(`${B}/student/calendar/`, ({ request }) => {
+    const topicId = new URL(request.url).searchParams.get("topicId") ?? "t1";
+    const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((weekday, i) => ({
+      date: `2026-06-${String(29 + i).padStart(2, "0")}`,
+      weekday,
+      slots:
+        weekday === "tuesday"
+          ? [{ id: "slot1", startAt: "2026-06-30T18:00:00Z", durationMinutes: 45, status: "available" }]
+          : weekday === "wednesday"
+          ? [{ id: "slot2", startAt: "2026-07-01T18:00:00Z", durationMinutes: 45, status: "booked" }]
+          : [],
+    }));
+    return HttpResponse.json({
+      topicId, instructorId: "i1", instructorName: "Sarah Mitchell",
+      weekStart: "2026-06-29", weekEnd: "2026-07-05", days,
+    });
+  }),
+
   http.post(`${B}/student/bookings/`, async ({ request }) => {
     const body = (await request.json()) as { topicId: string; slotId: string };
     return HttpResponse.json(
@@ -307,8 +353,21 @@ export const handlers = [
   }),
 
   // ── sessions / reports ──
+  http.get(`${B}/sessions/:id/waiting-room/`, ({ params }) =>
+    HttpResponse.json({
+      sessionId: params.id, bookingId: "b1", topicTitle: "Job Interview Practice",
+      instructorName: "Sarah Mitchell", scheduledAt: "2026-06-30T18:00:00Z", durationMinutes: 30,
+      phase: "waiting", canJoin: true,
+      joinOpensAt: "2026-06-30T17:45:00Z", joinClosesAt: "2026-06-30T18:45:00Z", viewerRole: "student",
+    })
+  ),
+
   http.post(`${B}/sessions/:id/join/`, ({ params }) =>
     HttpResponse.json({ sessionId: params.id, provider: "stub", agoraAppId: "stub-app-id", channel: `session-${params.id}`, agoraToken: "stub-token", uid: "u1", expiresAt: "2026-06-30T19:00:00Z" })
+  ),
+
+  http.post(`${B}/sessions/:id/leave/`, ({ params }) =>
+    HttpResponse.json({ sessionId: params.id, status: "scheduled", startedAt: null, endedAt: null, reportPending: false })
   ),
 
   http.get(`${B}/student/topics/:id/`, ({ params }) =>
@@ -346,8 +405,8 @@ export const handlers = [
 
   http.get(`${B}/admin/dashboard/`, () =>
     HttpResponse.json({
-      pendingPayments: 1, activeMembers: 12, instructors: 3, revenue: 1840, currency: "SAR",
-      pendingProofs: [{ id: "pp1", studentName: "Test Student", planName: "Regular", amount: 220, currency: "SAR", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z" }],
+      pendingPayments: 1, activeMembers: 12, instructors: 3, revenue: 1840, currency: "SDG",
+      pendingProofs: [{ id: "pp1", studentName: "Test Student", planName: "Regular", amount: 220, currency: "SDG", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z" }],
       recentActivity: [{ actor: "Test Student", action: "submitted payment TRX-1", when: "2026-06-25T10:01:00Z" }],
     })
   ),

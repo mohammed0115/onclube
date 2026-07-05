@@ -232,6 +232,9 @@ export interface PaymentProofDetail {
   reviewedAt: string | null;
   reviewNote: string | null;
   receiptUrl: string | null;
+  // Admin-review context (null for the student's own view).
+  studentId: string | null;
+  studentName: string | null;
 }
 
 export interface BookingListItem {
@@ -319,6 +322,43 @@ export interface AvailabilitySlot {
   status: string;
 }
 
+// ── weekly calendar (Sprint 7) ────────────────────────────────────────────────
+export type CalendarSlotStatus = "available" | "booked" | "blocked" | "completed";
+
+export interface CalendarSlot {
+  id: string;
+  startAt: string;
+  durationMinutes: number;
+  status: CalendarSlotStatus;
+}
+
+export interface CalendarDay {
+  date: string; // ISO date (YYYY-MM-DD)
+  weekday: string; // monday..sunday
+  slots: CalendarSlot[];
+}
+
+export interface WeeklyCalendar {
+  topicId: string;
+  instructorId: string;
+  instructorName: string;
+  weekStart: string;
+  weekEnd: string;
+  days: CalendarDay[];
+}
+
+export interface AdminBookingItem {
+  id: string;
+  studentId: string;
+  studentName: string;
+  topicTitle: string;
+  instructorName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+  creditRefunded: boolean;
+}
+
 export interface InstructorDashboard {
   upcomingSessions: number;
   activeStudents: number;
@@ -383,6 +423,26 @@ export interface SessionResult {
   startedAt: string | null;
   endedAt: string | null;
   reportPending: boolean;
+}
+
+// ── waiting room (Sprint 8.0) ─────────────────────────────────────────────────
+// Pre-join view: session info + join window + the viewer's eligibility. Mirrors
+// the WaitingRoomSerializer. No ORM/video fields ever leak here.
+export type SessionPhase = "waiting" | "live" | "completed" | "cancelled" | "expired";
+export type WaitingRoomViewerRole = "student" | "instructor" | "admin";
+
+export interface WaitingRoom {
+  sessionId: string;
+  bookingId: string;
+  topicTitle: string;
+  instructorName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  phase: SessionPhase;
+  canJoin: boolean;
+  joinOpensAt: string;
+  joinClosesAt: string;
+  viewerRole: WaitingRoomViewerRole;
 }
 
 export interface VideoJoin {

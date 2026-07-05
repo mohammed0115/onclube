@@ -126,6 +126,14 @@ export const useSubscription = () =>
 export const useBillingHistory = () =>
   useQuery({ queryKey: qk.billingHistory, queryFn: billingApi.billingHistory });
 
+/** The student's latest payment proof status (pending / approved / rejected / needs-info). */
+export const useLatestPaymentProof = (options?: { refetchInterval?: number }) =>
+  useQuery({
+    queryKey: qk.latestPaymentProof,
+    queryFn: billingApi.latestPaymentProof,
+    refetchInterval: options?.refetchInterval,
+  });
+
 export function useSubmitPaymentProof() {
   const qc = useQueryClient();
   return useMutation({
@@ -168,6 +176,13 @@ export const useOpenSlots = (instructorId: string) =>
     enabled: !!instructorId,
   });
 
+export const useWeeklyCalendar = (topicId: string, weekStart?: string) =>
+  useQuery({
+    queryKey: qk.calendar(topicId, weekStart),
+    queryFn: () => bookingApi.calendar(topicId, weekStart),
+    enabled: !!topicId,
+  });
+
 export function useCreateBooking() {
   const qc = useQueryClient();
   return useMutation({
@@ -208,6 +223,13 @@ export const useAdminDashboard = () =>
 export const useAdminProofs = () =>
   useQuery({ queryKey: qk.adminProofs, queryFn: topicsApi.adminPaymentProofs });
 
+export const useAdminProofDetail = (proofId: string | null) =>
+  useQuery({
+    queryKey: proofId ? qk.adminProofDetail(proofId) : ["admin", "proofs", "none"],
+    queryFn: () => topicsApi.adminPaymentProofDetail(proofId as string),
+    enabled: !!proofId,
+  });
+
 export function useApprovePayment() {
   const qc = useQueryClient();
   return useMutation({
@@ -231,13 +253,56 @@ export function useRejectPayment() {
   });
 }
 
+export function useRequestPaymentInfo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ proofId, note }: { proofId: string; note: string }) =>
+      topicsApi.requestPaymentInfo(proofId, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminProofs });
+      qc.invalidateQueries({ queryKey: qk.adminDashboard });
+    },
+  });
+}
+
 // ── sessions ──────────────────────────────────────────────────────────────────
 export const useSession = (id: string) =>
   useQuery({ queryKey: qk.session(id), queryFn: () => sessionsApi.detail(id), enabled: !!id });
 
+// Waiting room. Poll so the join window (canJoin/phase) re-opens on its own as
+// the scheduled time approaches, without the user reloading.
+export const useWaitingRoom = (id: string) =>
+  useQuery({
+    queryKey: qk.waitingRoom(id),
+    queryFn: () => sessionsApi.waitingRoom(id),
+    enabled: !!id,
+    refetchInterval: 20_000,
+  });
+
 export function useJoinSession() {
   return useMutation({ mutationFn: (id: string) => sessionsApi.join(id) });
 }
+
+export function useLeaveSession() {
+  return useMutation({ mutationFn: (id: string) => sessionsApi.leave(id) });
+}
+
+export { useVideoRoom } from "./useVideoRoom";
+export type { VideoRoomController } from "./useVideoRoom";
+export { useSessionChat } from "./useSessionChat";
+export type { SessionChatController } from "./useSessionChat";
+export { useWhiteboard } from "./useWhiteboard";
+export type { WhiteboardController } from "./useWhiteboard";
+export { useSessionFiles } from "./useSessionFiles";
+export type { SessionFilesController } from "./useSessionFiles";
+export { useParticipantSignals } from "./useParticipantSignals";
+export type { ParticipantSignalsController } from "./useParticipantSignals";
+export { useSessionRecording } from "./useSessionRecording";
+export type { SessionRecordingController } from "./useSessionRecording";
+export { useSessionPresence } from "./useSessionPresence";
+export type { SessionPresenceController } from "./useSessionPresence";
+export { useSessionTranscript } from "./useSessionTranscript";
+export type { SessionTranscriptController } from "./useSessionTranscript";
 
 export function useEndSession() {
   const qc = useQueryClient();

@@ -20,8 +20,11 @@ import { PaymentUnderReviewPage } from "@/pages/billing/PaymentUnderReviewPage";
 // Student
 import { StudentDashboardPage } from "@/pages/student/StudentDashboardPage";
 import { BookSessionPage } from "@/pages/student/BookSessionPage";
+import { BookingCalendarPage } from "@/pages/student/BookingCalendarPage";
+import { BookingSummaryPage } from "@/pages/student/BookingSummaryPage";
+import { BookingSuccessPage } from "@/pages/student/BookingSuccessPage";
 import { QuestionsPreviewPage } from "@/pages/student/QuestionsPreviewPage";
-import { LiveSessionPage } from "@/pages/student/LiveSessionPage";
+import { WaitingRoomPage } from "@/pages/student/WaitingRoomPage";
 import { AIReportPage } from "@/pages/student/AIReportPage";
 
 // Instructor
@@ -55,9 +58,12 @@ export function AppRoutes() {
       {/* 11–15 Student */}
       <Route path="/student" element={<RequireRole roles={["student"]}><StudentDashboardPage /></RequireRole>} />
       <Route path="/student/book" element={<RequireRole roles={["student"]}><BookSessionPage /></RequireRole>} />
+      <Route path="/student/book/:topicId" element={<RequireRole roles={["student"]}><BookingCalendarPage /></RequireRole>} />
+      <Route path="/student/book/:topicId/confirm/:slotId" element={<RequireRole roles={["student"]}><BookingSummaryPage /></RequireRole>} />
+      <Route path="/student/book/success/:bookingId" element={<RequireRole roles={["student"]}><BookingSuccessPage /></RequireRole>} />
       <Route path="/student/questions/:id" element={<RequireRole roles={["student"]}><QuestionsPreviewPage /></RequireRole>} />
       {/* Session room is shared by the booked student and the assigned instructor. */}
-      <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><LiveSessionPage /></RequireRole>} />
+      <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><WaitingRoomPage /></RequireRole>} />
       <Route path="/student/report/:id" element={<RequireRole roles={["student", "instructor", "admin"]}><AIReportPage /></RequireRole>} />
 
       {/* 16–18 Instructor */}

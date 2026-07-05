@@ -272,6 +272,46 @@ class CancellationSerializer(serializers.Serializer):
     sessionsRemaining = serializers.IntegerField(source="sessions_remaining")
 
 
+# ── weekly calendar (Sprint 7) ────────────────────────────────────────────────
+class CalendarSlotSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    startAt = serializers.DateTimeField(source="start_at")
+    durationMinutes = serializers.IntegerField(source="duration_minutes")
+    status = serializers.CharField()  # available | booked | blocked | completed
+
+
+class CalendarDaySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    weekday = serializers.CharField()
+    slots = CalendarSlotSerializer(many=True)
+
+
+class WeeklyCalendarSerializer(serializers.Serializer):
+    topicId = serializers.CharField(source="topic_id")
+    instructorId = serializers.CharField(source="instructor_id")
+    instructorName = serializers.CharField(source="instructor_name")
+    weekStart = serializers.DateField(source="week_start")
+    weekEnd = serializers.DateField(source="week_end")
+    days = CalendarDaySerializer(many=True)
+
+
+class AdminBookingItemSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    studentId = serializers.CharField(source="student_id")
+    studentName = serializers.CharField(source="student_name")
+    topicTitle = serializers.CharField(source="topic_title")
+    instructorName = serializers.CharField(source="instructor_name")
+    scheduledAt = serializers.DateTimeField(source="scheduled_at")
+    durationMinutes = serializers.IntegerField(source="duration_minutes")
+    status = serializers.CharField()
+    creditRefunded = serializers.BooleanField(source="credit_refunded")
+
+
+class AdminBookingUpdateInputSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["cancelled"])
+    forceCredit = serializers.BooleanField(required=False, allow_null=True, default=None)
+
+
 class StudentDashboardSerializer(serializers.Serializer):
     sessionsRemaining = serializers.IntegerField(source="sessions_remaining")
     sessionsCompleted = serializers.IntegerField(source="sessions_completed")
@@ -339,6 +379,20 @@ class VideoJoinSerializer(serializers.Serializer):
     agoraToken = serializers.CharField(source="token")
     uid = serializers.CharField()
     expiresAt = serializers.DateTimeField(source="expires_at", allow_null=True)
+
+
+class WaitingRoomSerializer(serializers.Serializer):
+    sessionId = serializers.CharField(source="session_id")
+    bookingId = serializers.CharField(source="booking_id")
+    topicTitle = serializers.CharField(source="topic_title")
+    instructorName = serializers.CharField(source="instructor_name")
+    scheduledAt = serializers.DateTimeField(source="scheduled_at")
+    durationMinutes = serializers.IntegerField(source="duration_minutes")
+    phase = serializers.CharField()  # waiting | live | completed | cancelled | expired
+    canJoin = serializers.BooleanField(source="can_join")
+    joinOpensAt = serializers.DateTimeField(source="join_opens_at")
+    joinClosesAt = serializers.DateTimeField(source="join_closes_at")
+    viewerRole = serializers.CharField(source="viewer_role", allow_null=True)
 
 
 class TranscriptSerializer(serializers.Serializer):
@@ -470,6 +524,9 @@ class PaymentProofDetailSerializer(serializers.Serializer):
     reviewedAt = serializers.DateTimeField(source="reviewed_at", allow_null=True)
     reviewNote = serializers.CharField(source="review_note", allow_null=True)
     receiptUrl = serializers.CharField(source="receipt_url", allow_null=True)
+    # Admin-review context (null for the student's own view).
+    studentId = serializers.CharField(source="student_id", allow_null=True)
+    studentName = serializers.CharField(source="student_name", allow_null=True)
 
 
 class CreateTopicInputSerializer(serializers.Serializer):

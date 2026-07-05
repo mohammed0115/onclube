@@ -52,6 +52,19 @@ def approve_payment_proof(proof: PaymentProof, admin) -> Subscription:
     now = timezone.now()
     plan = proof.plan
 
+    # One active subscription per student (§2.2): block a second activation with a
+    # clean domain error rather than letting the partial-unique constraint 500.
+    existing_active = (
+        Subscription.objects.filter(student=proof.student, status=SubscriptionStatus.ACTIVE)
+        .exclude(pk=proof.subscription_id)  # allow re-activating the proof's OWN subscription
+        .first()
+    )
+    if existing_active is not None:
+        raise BusinessRuleError(
+            "This student already has an active subscription.",
+            code="subscription_already_active",
+        )
+
     subscription = proof.subscription
     if subscription is None:
         subscription = Subscription.objects.create(
@@ -120,6 +133,39 @@ def reject_payment_proof(proof: PaymentProof, admin, *, note=None) -> PaymentPro
         type=NotificationType.PAYMENT_REJECTED,
         title="Payment needs attention",
         body=note or "Your payment proof was rejected. Please re-submit.",
+    )
+    return proof
+
+
+@transaction.atomic
+def request_payment_info(proof: PaymentProof, admin, *, note) -> PaymentProof:
+    """
+    Ask the student for more information about a pending proof (§6 review).
+
+    Moves a PENDING proof to NEEDS_INFO with a required note. This is NOT an
+    approval or rejection: no subscription is activated and no credit is assigned.
+    The student may re-submit (a new proof) or an admin may reopen it to PENDING.
+    """
+    proof = PaymentProof.objects.select_for_update().get(pk=proof.pk)
+    if proof.status != PaymentProofStatus.PENDING:
+        raise PaymentAlreadyDecided("Only a pending proof can be sent back for more information.")
+    proof.status = PaymentProofStatus.NEEDS_INFO
+    proof.reviewed_by = admin
+    proof.reviewed_at = timezone.now()
+    proof.review_note = note
+    proof.full_clean(exclude=["retain_until"])
+    proof.save()
+
+    student = proof.student
+    student.payment_status = PaymentStatus.NEEDS_INFO
+    student.save(update_fields=["payment_status", "updated_at"])
+
+    _log_admin_action(admin, AdminActionType.PAYMENT_REQUEST_INFO, proof, reason=note)
+    Notification.objects.create(
+        user=student.user,
+        type=NotificationType.PAYMENT_INFO_REQUESTED,
+        title="More information needed",
+        body=note or "We need more information about your payment. Please review and re-submit.",
     )
     return proof
 

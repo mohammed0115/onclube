@@ -72,6 +72,57 @@ class SessionNotJoinable(DomainError):
     default_message = "This session cannot be joined in its current state."
 
 
+class SessionExpired(DomainError):
+    default_code = "session_expired"
+    default_message = "This session's join window has closed."
+
+
+# ── in-session chat (Sprint 8.3) ──────────────────────────────────────────────
+class EmptyChatMessage(DomainError):
+    default_code = "empty_message"
+    default_message = "A chat message cannot be empty."
+
+
+class ChatMessageTooLong(DomainError):
+    default_code = "message_too_long"
+    default_message = "This chat message exceeds the maximum length."
+
+
+# ── whiteboard (Sprint 8.4) ───────────────────────────────────────────────────
+class InvalidWhiteboardOperation(DomainError):
+    default_code = "operation_rejected"
+    default_message = "This whiteboard operation is not valid."
+
+
+# ── file sharing (Sprint 8.5) ─────────────────────────────────────────────────
+class UnsupportedFileType(DomainError):
+    default_code = "unsupported_file_type"
+    default_message = "This file type is not allowed."
+
+
+class FileTooLarge(DomainError):
+    default_code = "file_too_large"
+    default_message = "This file exceeds the maximum allowed size."
+
+
+# ── participant signals (Sprint 8.6) ──────────────────────────────────────────
+class UnsupportedReaction(DomainError):
+    default_code = "unsupported_reaction"
+    default_message = "This reaction is not allowed."
+
+
+# ── session recording (Sprint 8.7) ────────────────────────────────────────────
+class InvalidRecordingTransition(DomainError):
+    default_code = "invalid_recording_state"
+    default_message = "This recording action is not valid in the current state."
+
+
+# ── attendance & presence (Sprint 8.8) ────────────────────────────────────────
+class AttendanceLocked(DomainError):
+    default_code = "attendance_locked"
+    default_message = "Attendance for this session has been finalized and is locked."
+
+
 class AIReportAlreadyGenerated(DomainError):
     default_code = "ai_report_already_generated"
     default_message = "An AI report has already been generated for this session."

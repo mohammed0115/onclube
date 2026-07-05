@@ -36,6 +36,7 @@ urlpatterns = [
     # Backward-compatible alias of bank-account (subset shape).
     path("billing/payment-instructions/", v.PaymentInstructionsView.as_view()),
     path("billing/payment-proof/", v.SubmitPaymentProofView.as_view()),
+    path("billing/payment-proof/latest/", v.StudentLatestPaymentProofView.as_view()),
     path("student/subscription/", v.StudentSubscriptionView.as_view()),
     path("student/billing/history/", v.StudentBillingHistoryView.as_view()),
 
@@ -45,6 +46,7 @@ urlpatterns = [
     path("student/topics/<uuid:topic_id>/", v.StudentTopicDetailView.as_view()),
     path("student/topics/<uuid:topic_id>/questions/", v.StudentTopicQuestionsView.as_view()),
     path("instructors/<uuid:instructor_id>/availability/", v.InstructorOpenSlotsView.as_view()),
+    path("student/calendar/", v.StudentCalendarView.as_view()),
     path("student/bookings/", v.StudentBookingsView.as_view()),
     path("student/bookings/<uuid:booking_id>/", v.StudentBookingDetailView.as_view()),
 
@@ -64,17 +66,23 @@ urlpatterns = [
     # ── Admin ──
     path("admin/dashboard/", v.AdminDashboardView.as_view()),
     path("admin/payment-proofs/", v.AdminPaymentProofListView.as_view()),
+    path("admin/payment-proofs/<uuid:proof_id>/", v.AdminPaymentProofDetailView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/approve/", v.AdminApprovePaymentView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/reject/", v.AdminRejectPaymentView.as_view()),
+    path("admin/payment-proofs/<uuid:proof_id>/request-info/", v.AdminRequestPaymentInfoView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/reopen/", v.AdminReopenPaymentView.as_view()),
     path("admin/subscriptions/<uuid:subscription_id>/extend/", v.AdminExtendSubscriptionView.as_view()),
     path("admin/subscriptions/<uuid:subscription_id>/topup/", v.AdminTopUpSubscriptionView.as_view()),
     path("admin/subscriptions/<uuid:subscription_id>/refund-note/", v.AdminRefundNoteView.as_view()),
+    path("admin/bookings/", v.AdminBookingsListView.as_view()),
+    path("admin/bookings/<uuid:booking_id>/", v.AdminBookingUpdateView.as_view()),
     path("admin/bookings/<uuid:booking_id>/cancel/", v.AdminCancelBookingView.as_view()),
 
     # ── Sessions ──
     path("sessions/<uuid:session_id>/", v.SessionDetailView.as_view()),
+    path("sessions/<uuid:session_id>/waiting-room/", v.SessionWaitingRoomView.as_view()),
     path("sessions/<uuid:session_id>/join/", v.SessionJoinView.as_view()),
+    path("sessions/<uuid:session_id>/leave/", v.SessionLeaveView.as_view()),
     path("sessions/<uuid:session_id>/start/", v.SessionStartView.as_view()),
     path("sessions/<uuid:session_id>/end/", v.SessionEndView.as_view()),
     path("sessions/<uuid:session_id>/transcript/", v.SessionTranscriptView.as_view()),

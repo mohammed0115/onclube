@@ -5,26 +5,97 @@ All enforce ownership/role via the permission boundary and return DTOs only.
 The full-question gate (§2.5) lives in GetTopicPreviewOrFullUseCase /
 GetQuestionsForBookingUseCase.
 """
+from datetime import datetime, time, timedelta
+
+from django.utils import timezone
+
 from apps.common.enums import BookingStatus
 from application import mappers
 from application.permissions import (
+    ensure_admin,
     ensure_booking_viewer,
     get_instructor_profile,
     get_student_profile,
 )
 from domain.dtos import (
+    CalendarDayResult,
+    CalendarSlotResult,
     InstructorDashboardResult,
     StudentDashboardResult,
     TopicFullResult,
     TopicPreviewResult,
+    WeeklyCalendarResult,
 )
 from domain.exceptions import QuestionsNotAvailable
+from domain.rules import scheduling as sched_rules
 from infrastructure.container import (
     default_ai_report_repository,
     default_booking_repository,
     default_question_repository,
     default_topic_repository,
 )
+
+
+class GetWeeklyCalendarUseCase:
+    """Weekly (Mon–Sun) calendar of a topic's instructor slots. Each slot is
+    presented as available / booked / blocked / completed — only `available` is
+    selectable. Read-only; no booking side effects."""
+
+    def __init__(self, *, topics=None, bookings=None):
+        self.topics = topics or default_topic_repository()
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor, topic_id, week_start=None, now=None) -> WeeklyCalendarResult:
+        get_student_profile(actor)  # student action
+        topic = self.topics.get(topic_id)
+        now = now or timezone.now()
+        ws = week_start or sched_rules.week_start_for(now)  # Monday (date)
+
+        start_dt = timezone.make_aware(datetime.combine(ws, time.min))
+        end_dt = timezone.make_aware(datetime.combine(ws + timedelta(days=7), time.min))
+        slots = self.bookings.list_slots_in_range(topic.instructor_id, start_dt, end_dt)
+
+        by_day = {}
+        for s in slots:
+            by_day.setdefault(s.start_at.date(), []).append(s)
+
+        days = []
+        for i in range(7):
+            d = ws + timedelta(days=i)
+            day_slots = tuple(
+                CalendarSlotResult(
+                    id=str(s.id),
+                    start_at=s.start_at,
+                    duration_minutes=s.duration_minutes,
+                    status=sched_rules.calendar_slot_status(
+                        slot_status=s.status, start_at=s.start_at, now=now
+                    ),
+                )
+                for s in by_day.get(d, [])
+            )
+            days.append(
+                CalendarDayResult(date=d, weekday=sched_rules.WEEKDAY_NAMES[i], slots=day_slots)
+            )
+
+        return WeeklyCalendarResult(
+            topic_id=str(topic.id),
+            instructor_id=str(topic.instructor_id),
+            instructor_name=topic.instructor.user.full_name,
+            week_start=ws,
+            week_end=ws + timedelta(days=6),
+            days=tuple(days),
+        )
+
+
+class ListAdminBookingsUseCase:
+    """All bookings (admin), newest first. Cancelled bookings are preserved."""
+
+    def __init__(self, *, bookings=None):
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor) -> list:
+        ensure_admin(actor)
+        return [mappers.admin_booking_item(b) for b in self.bookings.list_all()]
 
 
 # ── Student ───────────────────────────────────────────────────────────────────
