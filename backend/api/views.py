@@ -104,6 +104,7 @@ from application.sessions.use_cases import (
 # AI reports
 from application.ai_reports.queries import GetAIReportDetailUseCase, GetSessionReportUseCase
 from application.ai_reports.use_cases import (
+    GenerateAISessionReportUseCase,
     GenerateDiscussionQuestionsUseCase,
     GenerateSessionReportUseCase,
     GenerateTopicSubtopicsUseCase,
@@ -613,10 +614,21 @@ class AIReportDetailView(APIView):
 
 
 class SessionReportGenerateView(APIView):
+    """Sprint 9 — generate the AI session report from server-side artifacts.
+    Generate-once + idempotent; the finalized transcript is read server-side (never
+    supplied by the client)."""
+
     def post(self, request, session_id):
-        data = _validated(s.GenerateReportInputSerializer, request)
-        dto = GenerateSessionReportUseCase().execute(
-            actor=request.user, session_id=session_id, transcript=data.get("transcript")
+        dto = GenerateAISessionReportUseCase().execute(actor=request.user, session_id=session_id)
+        return Response(s.AIReportAckSerializer(dto).data, status=status.HTTP_201_CREATED)
+
+
+class AdminSessionReportRegenerateView(APIView):
+    """Explicit admin-only regeneration of a session report."""
+
+    def post(self, request, session_id):
+        dto = GenerateAISessionReportUseCase().execute(
+            actor=request.user, session_id=session_id, regenerate=True
         )
         return Response(s.AIReportAckSerializer(dto).data, status=status.HTTP_201_CREATED)
 

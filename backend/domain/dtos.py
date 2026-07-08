@@ -483,6 +483,9 @@ class AIReportDetailResult:
     recommendations: list = field(default_factory=list)
     vocabulary: list = field(default_factory=list)
     instructor_note: Optional[str] = None
+    # Sprint 9 — the validated AI session report (11 feedback fields, camelCase),
+    # or None while pending. Contains ONLY report content — no prompt/provider/raw.
+    content: Optional[dict] = None
 
 
 @dataclass(frozen=True)

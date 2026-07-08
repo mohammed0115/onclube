@@ -143,20 +143,72 @@ def default_notification_gateway():
     return DjangoNotificationGateway()
 
 
+def _provider_mode() -> str:
+    """development | testing | staging | production. Read ONLY here (Sprint 10)."""
+    from django.conf import settings
+    return getattr(settings, "PROVIDER_MODE", "development")
+
+
+def _is_production_mode() -> bool:
+    return _provider_mode() in ("staging", "production")
+
+
 def default_video_provider():
-    # STUB — replace with AgoraVideoProvider in a later phase.
+    # Real Agora video provisioning in staging/production WHEN configured; else stub.
+    from django.conf import settings
+
+    app_id = getattr(settings, "AGORA_APP_ID", "") or ""
+    if _is_production_mode() and app_id:
+        from infrastructure.gateways.agora import AgoraVideoProvider
+        return AgoraVideoProvider(app_id=app_id, fallback=StubVideoProvider())
     return StubVideoProvider()
 
 
 def default_meeting_token_provider():
-    # STUB — replace with a real RTC token minter behind the same port later.
+    # Real Agora token minting in staging/production WHEN app id + certificate are
+    # configured; otherwise the stub. The Agora adapter also self-heals to the stub
+    # on any signing failure.
+    from django.conf import settings
     from infrastructure.gateways.meeting_token import StubMeetingTokenProvider
+
+    app_id = getattr(settings, "AGORA_APP_ID", "") or ""
+    certificate = getattr(settings, "AGORA_APP_CERTIFICATE", "") or ""
+    if _is_production_mode() and app_id and certificate:
+        from infrastructure.gateways.agora import AgoraMeetingTokenProvider
+        return AgoraMeetingTokenProvider(
+            app_id=app_id,
+            app_certificate=certificate,
+            ttl_seconds=getattr(settings, "AGORA_TOKEN_TTL_SECONDS", 3600),
+            fallback=StubMeetingTokenProvider(),
+        )
     return StubMeetingTokenProvider()
 
 
 def default_ai_provider():
     # STUB — replace with OpenAIProvider in a later phase.
     return StubAIProvider()
+
+
+def default_session_report_provider():
+    """AI session report generator (Sprint 9). OpenAI is primary WHEN a key is
+    configured; otherwise the deterministic heuristic is used. OpenAI always falls
+    back to the heuristic on any failure."""
+    from django.conf import settings
+
+    from domain.session_report import HeuristicSessionReportProvider
+
+    heuristic = HeuristicSessionReportProvider()
+    api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+    if api_key:
+        from infrastructure.gateways.session_report import OpenAISessionReportProvider
+
+        return OpenAISessionReportProvider(
+            fallback=heuristic,
+            api_key=api_key,
+            model=getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+            timeout=getattr(settings, "OPENAI_TIMEOUT_SECONDS", 20),
+        )
+    return heuristic
 
 
 def default_interviewer_provider():

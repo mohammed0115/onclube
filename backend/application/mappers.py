@@ -280,6 +280,7 @@ def ai_report_detail(report, *, vocabulary=None) -> dtos.AIReportDetailResult:
         recommendations=report.recommendations,
         vocabulary=vocabulary or [],
         instructor_note=report.instructor_note,
+        content=report.content,  # validated 11-field report (or None while pending)
     )
 
 

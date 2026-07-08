@@ -9,6 +9,7 @@
 // Pages/hooks never read tokens or touch fetch directly; they call the typed
 // per-domain modules which call this.
 import type { ApiErrorBody, TokenPair } from "./types";
+import { newRequestId, recordEvent, setLastRequestId } from "@/lib/diagnostics";
 
 const BASE = "/api/v1";
 
@@ -110,6 +111,10 @@ async function rawRequest<T>(path: string, opts: RequestOptions, accessOverride?
     const access = accessOverride ?? tokenStore.access();
     if (access) headers["Authorization"] = `Bearer ${access}`;
   }
+  // Request correlation: propagate a client-generated request id (the server
+  // echoes/overrides it and returns X-Request-ID). Observability only.
+  const requestId = newRequestId();
+  headers["X-Request-ID"] = requestId;
 
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -117,6 +122,10 @@ async function rawRequest<T>(path: string, opts: RequestOptions, accessOverride?
     signal,
     body: body === undefined ? undefined : form ? (body as BodyInit) : JSON.stringify(body),
   });
+
+  const serverRequestId = res.headers.get("X-Request-ID") ?? requestId;
+  setLastRequestId(serverRequestId);
+  if (!res.ok) recordEvent("http.error", { status: res.status, path }, serverRequestId);
 
   if (res.status === 204) return undefined as T;
   if (res.ok) return (await res.json()) as T;

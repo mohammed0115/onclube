@@ -1,17 +1,56 @@
 import { useParams, Link } from "react-router";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
-import { Sparkles, AlertCircle, ArrowRight, Calendar, Clock, MessageSquareQuote } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  Calendar,
+  Clock,
+  BookOpen,
+  MessageSquareQuote,
+  ThumbsUp,
+  AlertCircle,
+  Lightbulb,
+  Target,
+  GraduationCap,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SkillScoreBar } from "@/components/cards";
-import { AIBadge, AIInsightCard, RecommendationList } from "@/components/ai";
+import { AIBadge } from "@/components/ai";
 import { useReport } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
+import type { SessionReportContent } from "@/api/types";
 
-function initialsOf(name: string): string {
-  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+// Pure presentation: renders the validated report DTO. No AI, no calculations.
+
+function FeedbackCard({ title, body, icon }: { title: string; body: string; icon: React.ReactNode }) {
+  return (
+    <Card className="p-5">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+        {icon} {title}
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+    </Card>
+  );
+}
+
+function BulletList({ title, items, icon, tone }: { title: string; items: string[]; icon: React.ReactNode; tone: string }) {
+  if (items.length === 0) return null;
+  return (
+    <Card className="p-5">
+      <div className={`mb-3 flex items-center gap-2 text-sm font-semibold ${tone}`}>
+        {icon} {title}
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+            <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current opacity-40" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
 }
 
 export function AIReportPage() {
@@ -28,21 +67,22 @@ export function AIReportPage() {
   if (query.isError || !query.data) {
     return (
       <DashboardLayout>
-        <ErrorState error={query.error} onRetry={() => query.refetch()} />
+        <ErrorState error={query.error} onRetry={() => query.refetch()} title="Couldn’t load your report" />
       </DashboardLayout>
     );
   }
 
   const r = query.data;
+  const content: SessionReportContent | null = r.content;
 
-  // The report may still be generating (pending). Show a gentle waiting state.
-  if (r.status !== "ready") {
+  // Still generating (pending) or no content yet → gentle waiting state.
+  if (r.status !== "ready" || !content) {
     return (
       <DashboardLayout>
         <PageHeader title="Session report" subtitle={`${r.topicTitle} · with ${r.instructorName}`} back="/student" />
         <EmptyState
           title="Your report is being prepared"
-          description="The AI is analysing your session. This usually takes a moment — check back shortly."
+          description="Your tutor report is being written from the session. This usually takes a moment — check back shortly."
           icon={<Sparkles size={26} className="text-purple-500" />}
           action={
             <Button variant="ghost" size="sm" onClick={() => query.refetch()}>
@@ -55,7 +95,9 @@ export function AIReportPage() {
   }
 
   const date = new Date(r.sessionDate);
-  const dateLabel = isNaN(date.getTime()) ? r.sessionDate : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const dateLabel = isNaN(date.getTime())
+    ? r.sessionDate
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
   return (
     <DashboardLayout>
@@ -63,9 +105,10 @@ export function AIReportPage() {
         title="Session report"
         subtitle={`${r.topicTitle} · with ${r.instructorName}`}
         back="/student"
-        action={<AIBadge label="AI analysis" />}
+        action={<AIBadge label="AI-generated" />}
       />
 
+      {/* Hero: summary + confidence */}
       <div className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 p-6 text-white sm:p-8">
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
           <div>
@@ -77,90 +120,51 @@ export function AIReportPage() {
                 <Clock size={13} /> {r.durationMinutes} min
               </span>
             </div>
-            <h2 className="font-display text-2xl font-extrabold">Great work on this session!</h2>
-            <p className="mt-1 max-w-md text-sm text-indigo-100">
-              Here&apos;s your AI-generated analysis of how the conversation went and where to focus next.
+            <h2 className="font-display text-xl font-extrabold">Session summary</h2>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-indigo-50" data-testid="overall-summary">
+              {content.overallSummary}
             </p>
           </div>
           <div className="flex flex-col items-center">
-            <div className="text-5xl font-extrabold">{r.overallScore ?? "—"}%</div>
-            <div className="text-xs uppercase tracking-wide text-indigo-100">Overall</div>
+            <div className="text-5xl font-extrabold" data-testid="confidence-score">
+              {content.confidenceScore}
+            </div>
+            <div className="text-xs uppercase tracking-wide text-indigo-100">Confidence</div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card className="p-6">
-            <h3 className="mb-5 font-display font-bold text-foreground">Skill breakdown</h3>
-            <div className="mb-6 space-y-4">
-              {r.skills.map((s) => (
-                <SkillScoreBar key={s.label} {...s} />
-              ))}
-            </div>
-            <div style={{ width: "100%", height: 200 }}>
-              <ResponsiveContainer>
-                <BarChart data={r.skills} margin={{ top: 6, right: 6, bottom: 0, left: -24 }}>
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} />
-                  <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={42}>
-                    {r.skills.map((s) => (
-                      <Cell key={s.label} fill={s.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <AlertCircle size={18} className="text-amber-500" />
-              <h3 className="font-display font-bold text-foreground">Things to fix</h3>
-            </div>
-            <div className="space-y-3">
-              {r.mistakes.map((m) => (
-                <div key={m.label} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="text-sm font-semibold text-foreground">{m.label}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{m.example}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <AIInsightCard title="AI recommendations" icon={<Sparkles size={18} />}>
-            <div className="rounded-xl bg-white/95 p-4">
-              <RecommendationList items={r.recommendations} />
-            </div>
-          </AIInsightCard>
-
-          {/* Human instructor note — deliberately separate from AI output. */}
-          {r.instructorNote && (
-            <Card className="border-indigo-100 bg-indigo-50/40 p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-xs font-bold text-white">
-                  {initialsOf(r.instructorName)}
-                </span>
-                <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <MessageSquareQuote size={14} className="text-indigo-600" /> Note from {r.instructorName}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Your instructor — not AI</div>
-                </div>
-              </div>
-              <p className="text-sm leading-relaxed text-foreground">{r.instructorNote}</p>
-            </Card>
-          )}
-
-          <Button asChild className="w-full">
-            <Link to="/student/book">
-              Book a follow-up session <ArrowRight size={16} />
-            </Link>
-          </Button>
-        </div>
+      {/* Per-skill feedback */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FeedbackCard title="Grammar" body={content.grammarFeedback} icon={<BookOpen size={16} className="text-indigo-500" />} />
+        <FeedbackCard title="Vocabulary" body={content.vocabularyFeedback} icon={<Sparkles size={16} className="text-purple-500" />} />
+        <FeedbackCard title="Fluency" body={content.fluencyFeedback} icon={<MessageSquareQuote size={16} className="text-sky-500" />} />
+        <FeedbackCard title="Pronunciation" body={content.pronunciationFeedback} icon={<GraduationCap size={16} className="text-emerald-500" />} />
       </div>
+
+      {/* Strengths / weaknesses / topics / homework */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BulletList title="Strengths" items={content.strengths} icon={<ThumbsUp size={16} />} tone="text-emerald-600" />
+        <BulletList title="To work on" items={content.weaknesses} icon={<AlertCircle size={16} />} tone="text-amber-600" />
+        <BulletList title="Recommended topics" items={content.recommendedTopics} icon={<Lightbulb size={16} />} tone="text-indigo-600" />
+        <BulletList title="Homework" items={content.homework} icon={<BookOpen size={16} />} tone="text-purple-600" />
+      </div>
+
+      {/* Next lesson focus */}
+      <Card className="mt-6 border-indigo-100 bg-indigo-50/40 p-5">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-indigo-700">
+          <Target size={16} /> Focus for your next lesson
+        </div>
+        <p className="text-sm leading-relaxed text-foreground" data-testid="next-lesson-focus">
+          {content.nextLessonFocus}
+        </p>
+      </Card>
+
+      <Button asChild className="mt-6 w-full sm:w-auto">
+        <Link to="/student/book">
+          Book a follow-up session <ArrowRight size={16} />
+        </Link>
+      </Button>
     </DashboardLayout>
   );
 }

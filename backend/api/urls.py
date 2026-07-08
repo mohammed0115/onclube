@@ -2,9 +2,15 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from api import health as h
 from api import views as v
 
 urlpatterns = [
+    # ── Health / Observability (Sprint 11 — operational, unauthenticated) ──
+    path("health/liveness/", h.LivenessView.as_view()),
+    path("health/readiness/", h.ReadinessView.as_view()),
+    path("health/providers/", h.ProvidersHealthView.as_view()),
+
     # ── Auth / Profile ──
     path("auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
@@ -91,6 +97,7 @@ urlpatterns = [
     path("reports/<uuid:report_id>/", v.AIReportDetailView.as_view()),
     path("sessions/<uuid:session_id>/report/", v.SessionReportView.as_view()),
     path("sessions/<uuid:session_id>/report/generate/", v.SessionReportGenerateView.as_view()),
+    path("admin/sessions/<uuid:session_id>/report/regenerate/", v.AdminSessionReportRegenerateView.as_view()),
 
     # ── Notifications ──
     path("notifications/", v.NotificationListView.as_view()),

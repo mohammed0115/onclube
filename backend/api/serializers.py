@@ -424,6 +424,8 @@ class AIReportDetailSerializer(serializers.Serializer):
     recommendations = serializers.JSONField()
     vocabulary = serializers.JSONField()
     instructorNote = serializers.CharField(source="instructor_note", allow_null=True)
+    # Sprint 9 — validated AI session report content (11 fields) or null while pending.
+    content = serializers.JSONField(allow_null=True, required=False)
 
 
 # ── notifications ─────────────────────────────────────────────────────────────

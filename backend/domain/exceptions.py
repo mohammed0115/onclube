@@ -123,6 +123,15 @@ class AttendanceLocked(DomainError):
     default_message = "Attendance for this session has been finalized and is locked."
 
 
+# ── AI session report (Sprint 9) ──────────────────────────────────────────────
+class InvalidSessionReport(DomainError):
+    """Raised INTERNALLY when a provider payload fails schema validation; the
+    adapter catches it and falls back to the heuristic. Never surfaced via the API."""
+
+    default_code = "invalid_session_report"
+    default_message = "The generated session report was malformed."
+
+
 class AIReportAlreadyGenerated(DomainError):
     default_code = "ai_report_already_generated"
     default_message = "An AI report has already been generated for this session."

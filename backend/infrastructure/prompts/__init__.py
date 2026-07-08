@@ -10,6 +10,7 @@ from .placement_assessment import (
     PLACEMENT_ASSESSMENT_TEMPLATE,
     PlacementAssessmentPromptBuilder,
 )
+from .session_report import SESSION_REPORT_TEMPLATE, SessionReportPromptBuilder
 
 __all__ = [
     "PromptTemplate",
@@ -18,4 +19,6 @@ __all__ = [
     "PromptBuilder",
     "PlacementAssessmentPromptBuilder",
     "PLACEMENT_ASSESSMENT_TEMPLATE",
+    "SessionReportPromptBuilder",
+    "SESSION_REPORT_TEMPLATE",
 ]

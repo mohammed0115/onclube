@@ -286,3 +286,71 @@ describe("Architecture — live transcript (STT) stays inside the provider/hook"
     expect(consumers).toEqual([join(ROOT, "components/session/SessionTranscript.tsx")]);
   });
 });
+
+describe("Architecture — AI report generation stays server-side (Sprint 9)", () => {
+  it("no React page imports an LLM SDK or generates a report", () => {
+    const offenders: string[] = [];
+    for (const file of filesUnder(join(ROOT, "pages"))) {
+      const src = readFileSync(file, "utf8").toLowerCase();
+      if (["from \"openai\"", "from 'openai'", "@anthropic", "generatereport", "buildprompt"].some((t) => src.includes(t))) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the AI report page renders the DTO only — no prompt/provider/raw references in source", () => {
+    const src = readFileSync(join(ROOT, "pages/student/AIReportPage.tsx"), "utf8").toLowerCase();
+    for (const banned of ["prompt", "apikey", "providername", "systemmessage", "openai"]) {
+      expect(src).not.toContain(banned);
+    }
+  });
+});
+
+describe("Architecture — production provider integration (Sprint 10)", () => {
+  const PROD_ADAPTERS = ["wsTransport", "wsProvider", "httpProvider", "agoraProvider", "cloudProvider"];
+
+  it("native WebSocket is constructed ONLY inside the wsClient primitive", () => {
+    const offenders: string[] = [];
+    for (const file of filesUnder(ROOT)) {
+      if (file.endsWith("lib/net/wsClient.ts")) continue; // the allowed home
+      if (file.includes(`${ROOT}/test/`)) continue;
+      const src = readFileSync(file, "utf8");
+      if (src.includes("new WebSocket(")) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the Agora SDK specifier appears ONLY inside the video adapter (lazy, optional)", () => {
+    const offenders: string[] = [];
+    for (const file of filesUnder(ROOT)) {
+      if (file.endsWith("lib/video/agoraProvider.ts")) continue;
+      if (file.includes(`${ROOT}/test/`)) continue;
+      const src = readFileSync(file, "utf8");
+      if (src.includes("agora-rtc-sdk-ng")) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("production adapters are imported ONLY by the composition root (@/lib/providers)", () => {
+    const offenders: string[] = [];
+    for (const file of filesUnder(join(ROOT, "pages")).concat(filesUnder(join(ROOT, "components")), filesUnder(join(ROOT, "hooks")))) {
+      const src = readFileSync(file, "utf8");
+      if (PROD_ADAPTERS.some((a) => src.includes(`/${a}"`) || src.includes(`/${a}'`))) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("provider selection lives only in the composition root", () => {
+    const consumers: string[] = [];
+    for (const file of filesUnder(ROOT)) {
+      if (file.includes(`${ROOT}/test/`)) continue;
+      const src = readFileSync(file, "utf8");
+      if (src.includes("resolveProviders")) consumers.push(file);
+    }
+    // Only the composition root + the app-root wiring reference selection.
+    expect(consumers.sort()).toEqual(
+      [join(ROOT, "lib/providers.ts"), join(ROOT, "app/LiveSessionProviders.tsx")].sort()
+    );
+  });
+});

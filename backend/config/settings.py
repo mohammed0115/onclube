@@ -40,6 +40,43 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
 OPENAI_TIMEOUT_SECONDS = env.int("OPENAI_TIMEOUT_SECONDS", default=20)
 
+# ── Live-session provider selection (Sprint 10) ────────────────────────────────
+# Environment-based selection is read ONLY by the composition root (container.py).
+# development / testing → stub adapters (no network, no keys).
+# staging / production   → real adapters WHEN configured, otherwise stub fallback.
+PROVIDER_MODE = env("PROVIDER_MODE", default="development")
+# Agora RTC. The APP_ID is public (safe to hand to clients); the APP_CERTIFICATE is
+# a SECRET — it is used only to sign tokens server-side and is NEVER serialized.
+AGORA_APP_ID = env("AGORA_APP_ID", default="")
+AGORA_APP_CERTIFICATE = env("AGORA_APP_CERTIFICATE", default="")
+AGORA_TOKEN_TTL_SECONDS = env.int("AGORA_TOKEN_TTL_SECONDS", default=3600)
+# Generic provider I/O budget (timeouts / retries) for real adapters.
+PROVIDER_TIMEOUT_SECONDS = env.int("PROVIDER_TIMEOUT_SECONDS", default=10)
+
+# ── Observability & monitoring (Sprint 11) ─────────────────────────────────────
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+METRICS_ENABLED = env.bool("METRICS_ENABLED", default=True)
+TRACING_ENABLED = env.bool("TRACING_ENABLED", default=True)
+HEALTHCHECK_ENABLED = env.bool("HEALTHCHECK_ENABLED", default=True)
+# standard | verbose | off — reserved for future sink/verbosity selection.
+OBSERVABILITY_MODE = env("OBSERVABILITY_MODE", default="standard")
+
+# Structured logging: the observability + api loggers emit single-line JSON.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "structured": {"()": "infrastructure.observability.logging.StructuredFormatter"},
+    },
+    "handlers": {
+        "structured": {"class": "logging.StreamHandler", "formatter": "structured"},
+    },
+    "loggers": {
+        "observability": {"handlers": ["structured"], "level": LOG_LEVEL, "propagate": False},
+        "api": {"handlers": ["structured"], "level": "WARNING", "propagate": False},
+    },
+}
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -71,6 +108,8 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Request correlation + HTTP observability (early, so every log/metric shares ids).
+    "infrastructure.observability.middleware.RequestObservabilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

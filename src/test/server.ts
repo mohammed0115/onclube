@@ -435,6 +435,19 @@ export const handlers = [
       recommendations: ["Review irregular verbs"],
       vocabulary: ["motivated"],
       instructorNote: "Great session!",
+      content: {
+        overallSummary: "A productive session with steady engagement.",
+        grammarFeedback: "Watch past-tense endings.",
+        vocabularyFeedback: "Good everyday range; add precision.",
+        fluencyFeedback: "Steady pace with natural pauses.",
+        pronunciationFeedback: "Clear and understandable.",
+        strengths: ["Stayed engaged", "Clear ideas"],
+        weaknesses: ["Tense slips"],
+        recommendedTopics: ["Travel", "Small talk"],
+        homework: ["Write five past-tense sentences."],
+        nextLessonFocus: "Reinforce past-tense narration.",
+        confidenceScore: 72,
+      },
     })
   ),
 ];

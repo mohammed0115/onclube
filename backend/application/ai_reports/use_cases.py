@@ -30,9 +30,11 @@ from domain.exceptions import (
     PermissionDenied,
 )
 from domain.rules import sessions as session_rules
+from domain.session_report import SessionReportContext
 from infrastructure.container import (
     default_ai_provider,
     default_event_bus,
+    default_session_report_provider,
     default_session_repository,
     default_topic_repository,
 )
@@ -118,6 +120,97 @@ class GenerateDiscussionQuestionsUseCase:
             )
             created.append(str(q.id))
         return SuggestionResult(topic_id=str(topic.id), items=texts, created_ids=created)
+
+
+def _transcript_lines(session) -> tuple:
+    """Extract FINALIZED transcript text lines (read-only). Never partial/live."""
+    existing = SessionTranscript.objects.filter(session=session).first()
+    content = existing.content if existing else []
+    lines = []
+    if isinstance(content, list):
+        for seg in content:
+            if isinstance(seg, dict) and seg.get("text"):
+                lines.append(str(seg["text"]))
+    return tuple(lines)
+
+
+class GenerateAISessionReportUseCase:
+    """Sprint 9 — produce the structured AI Session Report from completed-session
+    artifacts, via the provider-neutral SessionReportProvider. Generate-once and
+    idempotent; regeneration requires an explicit admin action. Never touches the
+    transcript, attendance, or recording."""
+
+    def __init__(self, *, sessions=None, reports_provider=None, events=None):
+        self.sessions = sessions or default_session_repository()
+        self.reports_provider = reports_provider or default_session_report_provider()
+        self.events = events or default_event_bus()
+
+    @transaction.atomic
+    def execute(self, *, actor, session_id, regenerate: bool = False) -> AIReportResult:
+        session = self.sessions.get(session_id)
+        ensure_session_participant(actor, session)  # admin may act; others must be participants
+
+        if not session_rules.is_completed(session.status):
+            raise InvalidStateTransition("Session must be completed before report generation.")
+
+        booking = session.booking
+        report, _ = AIReport.objects.get_or_create(
+            session=session,
+            defaults=dict(
+                booking=booking,
+                student=booking.student,
+                topic_title=booking.topic_title,
+                instructor_name=booking.instructor_name,
+                session_date=booking.scheduled_at,
+                duration_minutes=booking.duration_minutes,
+                status=AIReportStatus.PENDING,
+            ),
+        )
+
+        already_generated = report.status == AIReportStatus.READY and report.content is not None
+        if already_generated and not regenerate:
+            # Idempotent: return the existing report without re-calling the provider.
+            return self._result(report)
+        if regenerate and getattr(actor, "role", None) != UserRole.ADMIN:
+            # Regeneration is an explicit ADMIN action only.
+            raise PermissionDenied("Only an administrator may regenerate a report.")
+
+        student = booking.student
+        goal_obj = getattr(student, "goal", None)
+        context = SessionReportContext(
+            topic_title=booking.topic_title,
+            instructor_name=booking.instructor_name,
+            duration_minutes=booking.duration_minutes,
+            goal=getattr(goal_obj, "label", None) or getattr(goal_obj, "code", None),
+            level=student.level or None,
+            transcript_lines=_transcript_lines(session),  # read-only
+            teacher_notes=report.instructor_note,
+        )
+
+        generated = self.reports_provider.generate(context=context)
+        content = generated.content
+
+        report.content = content.to_camel_dict()  # validated 11 fields only
+        report.provider_name = generated.provider_name  # server-side meta (not serialized)
+        report.fallback_used = generated.fallback_used
+        report.overall_score = content.confidence_score  # satisfies chk_ready_report_complete
+        report.status = AIReportStatus.READY
+        report.generated_at = timezone.now()
+        report.save()
+
+        self.events.publish(
+            domain_events.AIReportGenerated(report_id=str(report.id), session_id=str(session.id))
+        )
+        return self._result(report)
+
+    @staticmethod
+    def _result(report) -> AIReportResult:
+        return AIReportResult(
+            report_id=str(report.id),
+            session_id=str(report.session_id),
+            status=report.status,
+            overall_score=report.overall_score,
+        )
 
 
 class GenerateSessionReportUseCase:

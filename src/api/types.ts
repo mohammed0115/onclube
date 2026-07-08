@@ -455,6 +455,23 @@ export interface VideoJoin {
   expiresAt: string | null;
 }
 
+// ── AI session report (Sprint 9) ──────────────────────────────────────────────
+// The validated report content — EXACTLY these fields. No prompt, provider, raw
+// output, CEFR level, grade, or attendance score is ever present here.
+export interface SessionReportContent {
+  overallSummary: string;
+  grammarFeedback: string;
+  vocabularyFeedback: string;
+  fluencyFeedback: string;
+  pronunciationFeedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendedTopics: string[];
+  homework: string[];
+  nextLessonFocus: string;
+  confidenceScore: number; // 0-100
+}
+
 export interface AIReportDetail {
   id: string;
   sessionId: string;
@@ -470,6 +487,8 @@ export interface AIReportDetail {
   recommendations: string[];
   vocabulary: string[];
   instructorNote: string | null;
+  // Sprint 9 — the validated AI session report, or null while pending.
+  content: SessionReportContent | null;
 }
 
 export interface NotificationItem {

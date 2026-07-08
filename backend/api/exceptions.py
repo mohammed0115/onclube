@@ -93,7 +93,7 @@ def api_exception_handler(exc, context):
     #    escape a use case) → 409 Conflict. The raw DB message is NOT echoed to
     #    the client; it is logged server-side instead so nothing leaks.
     if isinstance(exc, IntegrityError):
-        logger.warning("IntegrityError surfaced to API layer: %s", exc, exc_info=True)
+        _capture("db.integrity_error", exc)
         return Response(
             {
                 "code": "conflict",
@@ -115,8 +115,22 @@ def api_exception_handler(exc, context):
     # 5) Anything DRF did not handle is an unexpected server error. Never leak the
     #    exception message or a stack trace to the client — log it and return the
     #    standard envelope so the API contract holds for every response.
-    logger.exception("Unhandled exception in API request", exc_info=exc)
+    _capture("api.unhandled", exc)
     return Response(
         {"code": "server_error", "detail": "An unexpected error occurred."},
         status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+
+
+def _capture(operation, exc):
+    """Structured error reporting: the exception TYPE only (never its message,
+    args, or a stack trace) + an error metric. Observability must never break the
+    request path, so it is best-effort."""
+    try:
+        from infrastructure.observability import metrics
+        from infrastructure.observability.logging import log_event
+
+        metrics.increment(metrics.ERRORS, kind=type(exc).__name__)
+        log_event(operation, status="failure", severity="error", error=type(exc).__name__)
+    except Exception:  # noqa: BLE001
+        pass
