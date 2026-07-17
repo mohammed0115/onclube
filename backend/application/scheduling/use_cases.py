@@ -35,6 +35,33 @@ from infrastructure.container import (
 )
 
 
+class RateSessionUseCase:
+    """A student rates their completed session (drives the instructor's rating)."""
+
+    def execute(self, *, actor, booking_id, stars, comment=""):
+        student = get_student_profile(actor)
+        rating = scheduling_services.rate_booking(student, booking_id, stars=stars, comment=comment)
+        return {"bookingId": str(rating.booking_id), "stars": rating.stars, "comment": rating.comment}
+
+
+class JoinGroupSessionUseCase:
+    """A student reserves a seat in an upcoming group session."""
+
+    def execute(self, *, actor, group_session_id):
+        student = get_student_profile(actor)
+        gs = scheduling_services.join_group_session(student, group_session_id)
+        return {"groupSessionId": str(gs.id), "joined": True}
+
+
+class LeaveGroupSessionUseCase:
+    """A student releases their seat in a group session."""
+
+    def execute(self, *, actor, group_session_id):
+        student = get_student_profile(actor)
+        gs = scheduling_services.leave_group_session(student, group_session_id)
+        return {"groupSessionId": str(gs.id), "joined": False}
+
+
 class CreateBookingUseCase:
     def __init__(self, *, bookings=None, topics=None, events=None):
         self.bookings = bookings or default_booking_repository()

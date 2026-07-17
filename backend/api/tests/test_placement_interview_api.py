@@ -11,7 +11,6 @@ from rest_framework.test import APIClient
 
 from apps.common.factories import make_student
 from application.placement.interview import GetSpeakingInterviewUseCase
-from infrastructure.gateways.interviewer import _SYSTEM_INSTRUCTIONS
 
 pytestmark = pytest.mark.django_db
 
@@ -53,9 +52,10 @@ def test_interview_never_leaks_prompt_or_scoring_fields():
     call_command("seed_placement")
     data = client_for(make_student().user).get("/api/v1/placement/interview/").data
     flat = str(data).lower()
-    # The server-only system prompt must never appear in the payload.
-    assert "you are an english placement interviewer" not in flat
-    assert _SYSTEM_INSTRUCTIONS.lower() not in flat
+    # Sprint 2.0.1A: the interview is fully deterministic — there is NO system
+    # prompt to leak. Guard against any prompt/LLM markers regardless.
+    for prompt_marker in ("you are an english placement interviewer", "system_message", "prompt_id", "openai", "api_key", "gpt-"):
+        assert prompt_marker not in flat
     # No assessment leakage — the interviewer does not score.
     for banned in ("cefr", "score", "correct", "grammar_score", "pronunciation", "recommend"):
         assert banned not in flat
@@ -89,6 +89,18 @@ def test_interview_uses_the_injected_interviewer_and_fixed_questions():
 
         def closing(self):
             return "FAKE-CLOSING"
+
+        def script_id(self):
+            return "fake.script"
+
+        def script_version(self):
+            return "0.0.0"
+
+        def language(self):
+            return "en"
+
+        def resume_messages(self, *, total):
+            return tuple(f"FAKE-RESUME-{k}" for k in range(1, max(total, 1)))
 
     dto = GetSpeakingInterviewUseCase(interviewer=FakeInterviewer()).execute(actor=student.user)
     assert dto.greeting == "FAKE-GREETING"

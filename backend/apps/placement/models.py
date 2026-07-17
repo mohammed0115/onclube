@@ -204,6 +204,9 @@ class InterviewSession(UUIDModel, TimeStampedModel):
     current_question_index = models.PositiveIntegerField(default=0)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # Deterministic OneClub interview script version in effect for this session
+    # (Sprint 2.0.1A) — recorded for auditability / result disputes.
+    script_version = models.CharField(max_length=20, default="", blank=True)
 
     class Meta:
         db_table = "placement_interview_session"

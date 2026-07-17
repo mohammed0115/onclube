@@ -18,7 +18,11 @@ from api import serializers as s
 # Use cases — accounts / onboarding
 from application.accounts.queries import GetCurrentUserProfileUseCase
 from application.accounts.use_cases import (
+    ChangePasswordUseCase,
+    ConfirmPasswordResetUseCase,
+    InviteUserUseCase,
     RegisterStudentUseCase,
+    RequestPasswordResetUseCase,
     UpdateCurrentProfileUseCase,
 )
 from application.onboarding.queries import ListGoalOptionsUseCase
@@ -59,11 +63,16 @@ from application.billing.use_cases import (
 
 # Instructor authoring
 from application.instructor.use_cases import (
+    AddAvailabilityExceptionUseCase,
     AddManualQuestionUseCase,
     ApproveAIQuestionUseCase,
     CreateTopicUseCase,
+    GetInstructorProfileUseCase,
+    ListAvailabilityExceptionsUseCase,
     PublishTopicUseCase,
+    RemoveAvailabilityExceptionUseCase,
     SetAvailabilityUseCase,
+    UpdateInstructorProfileUseCase,
     UpdateTopicUseCase,
 )
 
@@ -74,11 +83,13 @@ from application.notifications.use_cases import MarkNotificationReadUseCase
 from application.scheduling.queries import (
     GetBookingDetailUseCase,
     GetInstructorDashboardUseCase,
+    GetPracticeContentUseCase,
     GetQuestionsForBookingUseCase,
     GetStudentDashboardUseCase,
     GetTopicPreviewOrFullUseCase,
     GetWeeklyCalendarUseCase,
     ListAdminBookingsUseCase,
+    ListCommunitySessionsUseCase,
     ListInstructorAvailabilityUseCase,
     ListInstructorTopicsUseCase,
     ListStudentAvailableTopicsUseCase,
@@ -87,7 +98,10 @@ from application.scheduling.queries import (
 from application.scheduling.use_cases import (
     CancelBookingUseCase,
     CreateBookingUseCase,
+    JoinGroupSessionUseCase,
+    LeaveGroupSessionUseCase,
     ListAvailableSlotsUseCase,
+    RateSessionUseCase,
 )
 
 # Sessions
@@ -127,6 +141,7 @@ def _validated(serializer_cls, request):
 # ── Auth / Profile ────────────────────────────────────────────────────────────
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"  # blunt automated sign-up abuse
 
     def post(self, request):
         data = _validated(s.RegisterInputSerializer, request)
@@ -145,6 +160,83 @@ class MeView(APIView):
         data = _validated(s.UpdateProfileInputSerializer, request)
         dto = UpdateCurrentProfileUseCase().execute(actor=request.user, full_name=data["fullName"])
         return Response(s.UserProfileSerializer(dto).data)
+
+
+class ChangePasswordView(APIView):
+    """Any authenticated user changes their own password."""
+
+    def post(self, request):
+        data = _validated(s.ChangePasswordInputSerializer, request)
+        result = ChangePasswordUseCase().execute(
+            actor=request.user,
+            current_password=data["currentPassword"],
+            new_password=data["newPassword"],
+        )
+        return Response(result)
+
+
+class PasswordResetRequestView(APIView):
+    """Public — email a password-reset link. Always 200 (no account enumeration)."""
+
+    permission_classes = [AllowAny]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        data = _validated(s.PasswordResetRequestInputSerializer, request)
+        result = RequestPasswordResetUseCase().execute(email=data["email"])
+        return Response(result)
+
+
+class PasswordResetConfirmView(APIView):
+    """Public — set a new password from a valid uid+token (also activates invitees)."""
+
+    permission_classes = [AllowAny]
+    throttle_scope = "auth"
+
+    def post(self, request):
+        data = _validated(s.PasswordResetConfirmInputSerializer, request)
+        result = ConfirmPasswordResetUseCase().execute(
+            uid=data["uid"], token=data["token"], new_password=data["newPassword"]
+        )
+        return Response(result)
+
+
+class AdminInviteUserView(APIView):
+    """Admin invites a user (instructor/admin/student) and emails a set-password link."""
+
+    def post(self, request):
+        data = _validated(s.InviteUserInputSerializer, request)
+        result = InviteUserUseCase().execute(
+            actor=request.user, full_name=data["fullName"], email=data["email"], role=data["role"]
+        )
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class InstructorProfileView(APIView):
+    """The instructor reads (GET) and edits (PATCH) their own teaching profile."""
+
+    def get(self, request):
+        dto = GetInstructorProfileUseCase().execute(actor=request.user)
+        return Response(s.InstructorProfileSerializer(dto).data)
+
+    def patch(self, request):
+        data = _validated(s.UpdateInstructorProfileInputSerializer, request)
+        mapped = {
+            "full_name": data.get("fullName"),
+            "headline": data.get("headline"),
+            "bio": data.get("bio"),
+            "country": data.get("country"),
+            "specialty": data.get("specialty"),
+            "languages": data.get("languages"),
+            "interests": data.get("interests"),
+            "years_experience": data.get("yearsExperience"),
+            "avatar_url": data.get("avatarUrl"),
+            "intro_video_url": data.get("introVideoUrl"),
+        }
+        dto = UpdateInstructorProfileUseCase().execute(
+            actor=request.user, **{k: v for k, v in mapped.items() if v is not None}
+        )
+        return Response(s.InstructorProfileSerializer(dto).data)
 
 
 class MeGoalView(APIView):
@@ -247,6 +339,17 @@ class PlacementResultView(APIView):
     def get(self, request):
         dto = GetMyPlacementResultUseCase().execute(actor=request.user)
         return Response(s.PlacementAssessmentSerializer(dto).data)
+
+
+class PlacementReviewView(APIView):
+    """Transparent per-question review of the assessed attempt (questions, the
+    learner's answers, correct answers, transcripts, and scores)."""
+
+    def get(self, request):
+        from application.placement.use_cases import GetPlacementReviewUseCase
+
+        data = GetPlacementReviewUseCase().execute(actor=request.user)
+        return Response(data)
 
 
 class PlacementStatusView(APIView):
@@ -388,6 +491,45 @@ class StudentBookingDetailView(APIView):
     def delete(self, request, booking_id):
         dto = CancelBookingUseCase().execute(actor=request.user, booking_id=booking_id)
         return Response(s.CancellationSerializer(dto).data)
+
+
+class SessionRatingView(APIView):
+    """A student rates their completed session (1–5 + optional review)."""
+
+    def post(self, request, booking_id):
+        data = _validated(s.RateSessionInputSerializer, request)
+        result = RateSessionUseCase().execute(
+            actor=request.user, booking_id=booking_id, stars=data["stars"], comment=data.get("comment", "")
+        )
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class StudentPracticeView(APIView):
+    """Practice-hub study material (vocabulary + practice phrases)."""
+
+    def get(self, request):
+        data = GetPracticeContentUseCase().execute(actor=request.user)
+        return Response(data)
+
+
+class CommunitySessionsView(APIView):
+    """Upcoming group/community sessions a student can browse and join."""
+
+    def get(self, request):
+        sessions = ListCommunitySessionsUseCase().execute(actor=request.user)
+        return Response(s.GroupSessionSerializer(sessions, many=True).data)
+
+
+class CommunitySessionJoinView(APIView):
+    """Join (POST) or leave (DELETE) a group session."""
+
+    def post(self, request, group_session_id):
+        result = JoinGroupSessionUseCase().execute(actor=request.user, group_session_id=group_session_id)
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, group_session_id):
+        result = LeaveGroupSessionUseCase().execute(actor=request.user, group_session_id=group_session_id)
+        return Response(result)
 
 
 class StudentCalendarView(APIView):
@@ -737,6 +879,31 @@ class InstructorSetAvailabilityView(APIView):
         ]
         dtos = SetAvailabilityUseCase().execute(actor=request.user, slots=slots)
         return Response(s.InstructorSlotSerializer(dtos, many=True).data)
+
+
+class InstructorAvailabilityExceptionsView(APIView):
+    """Instructor's availability exceptions — vacation / holiday / block time."""
+
+    def get(self, request):
+        items = ListAvailabilityExceptionsUseCase().execute(actor=request.user)
+        return Response(s.AvailabilityExceptionSerializer(items, many=True).data)
+
+    def post(self, request):
+        data = _validated(s.AddAvailabilityExceptionInputSerializer, request)
+        exc = AddAvailabilityExceptionUseCase().execute(
+            actor=request.user,
+            kind=data["kind"],
+            start_at=data["startAt"],
+            end_at=data["endAt"],
+            note=data.get("note", ""),
+        )
+        return Response(s.AvailabilityExceptionSerializer(exc).data, status=status.HTTP_201_CREATED)
+
+
+class InstructorAvailabilityExceptionDetailView(APIView):
+    def delete(self, request, exception_id):
+        result = RemoveAvailabilityExceptionUseCase().execute(actor=request.user, exception_id=exception_id)
+        return Response(result)
 
 
 # ── AI Reports: read by session (202 if pending) ──────────────────────────────

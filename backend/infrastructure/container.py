@@ -212,9 +212,13 @@ def default_session_report_provider():
 
 
 def default_interviewer_provider():
-    # STUB — replace with a real conversational adapter behind the same port later.
-    from infrastructure.gateways.interviewer import StubInterviewerProvider
-    return StubInterviewerProvider()
+    # Sprint 2.0.1A: the placement interview is FULLY DETERMINISTIC and OneClub-owned
+    # — NO LLM in the interview path. Every spoken line comes from the fixed, versioned
+    # OneClub script. (The separate placement ASSESSMENT engine keeps its own OpenAI
+    # adapter and is untouched.)
+    from infrastructure.gateways.interviewer import OneClubInterviewScriptProvider
+
+    return OneClubInterviewScriptProvider()
 
 
 def default_file_storage():

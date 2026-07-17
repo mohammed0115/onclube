@@ -13,6 +13,7 @@ from apps.admin_ops.models import AdminAction
 from apps.common.enums import (
     AdminActionType,
     BookingStatus,
+    GroupSessionStatus,
     NotificationType,
     SlotStatus,
     SubscriptionStatus,
@@ -30,9 +31,132 @@ from domain.exceptions import (
 from domain.rules.scheduling import (
     CANCELLATION_CREDIT_WINDOW,  # re-exported for backward compatibility
     cancellation_refunds_credit,
+    is_covered_by_intervals,
 )
 
-from .models import AvailabilitySlot, Booking, Question, Topic
+from .models import (
+    AvailabilityException,
+    AvailabilitySlot,
+    Booking,
+    GroupSession,
+    GroupSessionAttendee,
+    Question,
+    SessionRating,
+    Topic,
+)
+
+
+def list_availability_exceptions(instructor):
+    return list(AvailabilityException.objects.filter(instructor=instructor).order_by("start_at"))
+
+
+def add_availability_exception(instructor, *, kind, start_at, end_at, note=""):
+    if end_at <= start_at:
+        raise BusinessRuleError("End must be after the start.", code="invalid_exception_range")
+    return AvailabilityException.objects.create(
+        instructor=instructor, kind=kind, start_at=start_at, end_at=end_at, note=(note or "").strip()
+    )
+
+
+def remove_availability_exception(instructor, exception_id):
+    exc = AvailabilityException.objects.filter(pk=exception_id, instructor=instructor).first()
+    if exc is None:
+        raise BusinessRuleError("Exception not found.", code="exception_not_found")
+    exc.delete()
+    return exception_id
+
+
+def exception_intervals(instructor_id):
+    """Half-open [start, end) intervals during which the instructor is unavailable."""
+    return [
+        (e.start_at, e.end_at)
+        for e in AvailabilityException.objects.filter(instructor_id=instructor_id).only("start_at", "end_at")
+    ]
+
+
+def list_upcoming_group_sessions():
+    """Scheduled group sessions in the future, soonest first, with attendees
+    prefetched for seat counting and roster display."""
+    return list(
+        GroupSession.objects.filter(
+            status=GroupSessionStatus.SCHEDULED,
+            start_at__gte=timezone.now(),
+            deleted_at__isnull=True,
+        )
+        .prefetch_related("attendees__student__user")
+        .order_by("start_at")
+    )
+
+
+@transaction.atomic
+def join_group_session(student, group_session_id):
+    """Reserve the student a seat. Idempotent per (session, student); rejects a
+    full or already-started session. Returns the GroupSession."""
+    gs = (
+        GroupSession.objects.select_for_update()
+        .filter(pk=group_session_id, deleted_at__isnull=True)
+        .first()
+    )
+    if gs is None:
+        raise BusinessRuleError("Group session not found.", code="group_session_not_found")
+    if gs.status != GroupSessionStatus.SCHEDULED or gs.start_at < timezone.now():
+        raise BusinessRuleError("This session is no longer open to join.", code="group_session_closed")
+
+    already = GroupSessionAttendee.objects.filter(group_session=gs, student=student).exists()
+    if not already:
+        if gs.attendees.count() >= gs.capacity:
+            raise BusinessRuleError("This session is full.", code="group_session_full")
+        GroupSessionAttendee.objects.create(group_session=gs, student=student)
+    return gs
+
+
+@transaction.atomic
+def leave_group_session(student, group_session_id):
+    """Release the student's seat (idempotent). Returns the GroupSession."""
+    gs = GroupSession.objects.filter(pk=group_session_id, deleted_at__isnull=True).first()
+    if gs is None:
+        raise BusinessRuleError("Group session not found.", code="group_session_not_found")
+    GroupSessionAttendee.objects.filter(group_session=gs, student=student).delete()
+    return gs
+
+
+@transaction.atomic
+def rate_booking(student, booking_id, *, stars, comment=""):
+    """A student rates their own COMPLETED session. Upserts one rating per booking
+    and recomputes the instructor's aggregate rating. Returns the SessionRating."""
+    from django.db.models import Avg
+    from decimal import Decimal, ROUND_HALF_UP
+
+    if stars is None or not (1 <= int(stars) <= 5):
+        raise BusinessRuleError("Rating must be between 1 and 5.", code="invalid_rating")
+
+    booking = (
+        Booking.objects.select_related("instructor")
+        .filter(pk=booking_id, student=student)
+        .first()
+    )
+    if booking is None:
+        raise BusinessRuleError("Booking not found.", code="booking_not_found")
+    if booking.status != BookingStatus.COMPLETED:
+        raise BusinessRuleError("You can only rate a completed session.", code="session_not_completed")
+
+    rating, _ = SessionRating.objects.update_or_create(
+        booking=booking,
+        defaults={
+            "student": student,
+            "instructor": booking.instructor,
+            "stars": int(stars),
+            "comment": (comment or "").strip(),
+        },
+    )
+
+    # Recompute the instructor's aggregate rating (avg of all their ratings).
+    agg = SessionRating.objects.filter(instructor=booking.instructor).aggregate(avg=Avg("stars"))
+    avg = agg["avg"] or 0
+    instructor = booking.instructor
+    instructor.rating = Decimal(str(avg)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    instructor.save(update_fields=["rating", "updated_at"])
+    return rating
 
 
 @transaction.atomic
@@ -50,9 +174,24 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
     if slot.status != SlotStatus.OPEN:
         raise SlotAlreadyBooked()
 
+    # A slot that has already PASSED can't be booked (it would be born "Missed").
+    # A grace window keeps a session that is starting now / just started bookable
+    # (it's still joinable) — only clearly-past slots are rejected.
+    from datetime import timedelta
+    if slot.start_at < timezone.now() - timedelta(minutes=slot.duration_minutes or 45):
+        raise BusinessRuleError(
+            "That time has already passed. Please pick a later slot.", code="slot_unavailable"
+        )
+
     if slot.instructor_id != topic.instructor_id:
         raise BusinessRuleError(
             "Slot does not belong to the topic's instructor.", code="slot_instructor_mismatch"
+        )
+
+    # The instructor may have blocked this time (vacation / holiday / block).
+    if is_covered_by_intervals(slot.start_at, exception_intervals(slot.instructor_id)):
+        raise BusinessRuleError(
+            "The instructor is unavailable at that time.", code="instructor_unavailable"
         )
 
     subscription = (

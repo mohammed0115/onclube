@@ -90,6 +90,11 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
             />
+            <div className="text-right">
+              <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           {error && (

@@ -30,6 +30,48 @@ export function useSetGoal() {
   });
 }
 
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fullName: string) => authApi.updateProfile(fullName),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.me }),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      authApi.changePassword(input.currentPassword, input.newPassword),
+  });
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({ mutationFn: (email: string) => authApi.requestPasswordReset(email) });
+}
+
+export function useConfirmPasswordReset() {
+  return useMutation({
+    mutationFn: (input: { uid: string; token: string; newPassword: string }) =>
+      authApi.confirmPasswordReset(input.uid, input.token, input.newPassword),
+  });
+}
+
+// ── instructor profile ──────────────────────────────────────────────────────
+export const useInstructorProfile = () =>
+  useQuery({ queryKey: qk.instructorProfile, queryFn: topicsApi.instructorProfile });
+
+export function useUpdateInstructorProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<import("@/api/types").InstructorProfile>) =>
+      topicsApi.updateInstructorProfile(patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.instructorProfile });
+      qc.invalidateQueries({ queryKey: qk.me });
+    },
+  });
+}
+
 // ── onboarding ──────────────────────────────────────────────────────────────
 export const useGoals = () => useQuery({ queryKey: qk.goals, queryFn: topicsApi.goals });
 
@@ -62,11 +104,15 @@ export function useFinalizeInterview() {
   });
 }
 
+
 export const usePlacementStatus = () =>
   useQuery({ queryKey: qk.placementStatus, queryFn: placementApi.status });
 
 export const usePlacementResult = (enabled = true) =>
   useQuery({ queryKey: qk.placementResult, queryFn: placementApi.result, enabled });
+
+export const usePlacementReview = (enabled = true) =>
+  useQuery({ queryKey: qk.placementReview, queryFn: placementApi.resultReview, enabled });
 
 export function useStartPlacementAttempt() {
   const qc = useQueryClient();
@@ -150,6 +196,9 @@ export function useSubmitPaymentProof() {
 export const useStudentDashboard = () =>
   useQuery({ queryKey: qk.studentDashboard, queryFn: bookingApi.studentDashboard });
 
+export const usePractice = () =>
+  useQuery({ queryKey: qk.practice, queryFn: topicsApi.practice });
+
 export const useStudentTopics = (category?: string) =>
   useQuery({ queryKey: qk.studentTopics(category), queryFn: () => topicsApi.studentTopics(category) });
 
@@ -206,6 +255,31 @@ export function useCancelBooking() {
   });
 }
 
+export function useRateSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { bookingId: string; stars: number; comment: string }) =>
+      bookingApi.rateSession(input.bookingId, input.stars, input.comment),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.bookings });
+      qc.invalidateQueries({ queryKey: qk.studentDashboard });
+    },
+  });
+}
+
+// ── community / group sessions ─────────────────────────────────────────────────
+export const useCommunitySessions = () =>
+  useQuery({ queryKey: qk.community, queryFn: bookingApi.communitySessions });
+
+export function useJoinGroupSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; join: boolean }) =>
+      input.join ? bookingApi.joinGroupSession(input.id) : bookingApi.leaveGroupSession(input.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.community }),
+  });
+}
+
 // ── instructor ────────────────────────────────────────────────────────────────
 export const useInstructorDashboard = () =>
   useQuery({ queryKey: qk.instructorDashboard, queryFn: topicsApi.instructorDashboard });
@@ -215,6 +289,40 @@ export const useInstructorTopics = () =>
 
 export const useInstructorAvailability = () =>
   useQuery({ queryKey: qk.instructorAvailability, queryFn: topicsApi.instructorAvailability });
+
+export function useSetAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slots: { startAt: string; durationMinutes?: number }[]) => topicsApi.setAvailability(slots),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.instructorAvailability }),
+  });
+}
+
+export const useAvailabilityExceptions = () =>
+  useQuery({ queryKey: qk.availabilityExceptions, queryFn: topicsApi.availabilityExceptions });
+
+export function useAddAvailabilityException() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { kind: string; startAt: string; endAt: string; note?: string }) =>
+      topicsApi.addAvailabilityException(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.availabilityExceptions });
+      qc.invalidateQueries({ queryKey: qk.instructorAvailability });
+    },
+  });
+}
+
+export function useRemoveAvailabilityException() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => topicsApi.removeAvailabilityException(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.availabilityExceptions });
+      qc.invalidateQueries({ queryKey: qk.instructorAvailability });
+    },
+  });
+}
 
 // ── admin ─────────────────────────────────────────────────────────────────────
 export const useAdminDashboard = () =>

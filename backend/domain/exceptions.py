@@ -183,6 +183,11 @@ class InterviewIncomplete(DomainError):
     default_message = "Every interview question must be answered before finalizing."
 
 
+class EmptyTranscript(DomainError):
+    default_code = "empty_transcript"
+    default_message = "An interview answer cannot be empty — please record or type your answer."
+
+
 class InvalidAssessmentInput(DomainError):
     default_code = "invalid_assessment_input"
     default_message = "The assessment input is not valid."

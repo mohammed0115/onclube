@@ -118,6 +118,28 @@ class GetBookingDetailUseCase:
         return mappers.booking_detail(booking)
 
 
+class GetPracticeContentUseCase:
+    """Study material for the practice hub — vocabulary + practice phrases."""
+
+    def __init__(self, *, topics=None):
+        self.topics = topics or default_topic_repository()
+
+    def execute(self, *, actor) -> dict:
+        get_student_profile(actor)  # student-only
+        return self.topics.practice_content()
+
+
+class ListCommunitySessionsUseCase:
+    """Upcoming group/community sessions a student can browse and join."""
+
+    def execute(self, *, actor) -> list:
+        from apps.scheduling import services
+
+        student = get_student_profile(actor)
+        sessions = services.list_upcoming_group_sessions()
+        return [mappers.group_session(gs, student_id=student.id) for gs in sessions]
+
+
 class ListStudentAvailableTopicsUseCase:
     def __init__(self, *, topics=None):
         self.topics = topics or default_topic_repository()
@@ -179,6 +201,15 @@ class GetStudentDashboardUseCase:
             for i, r in enumerate(ready_reports)
         ]
 
+        # Gamification (pure, deterministic) — streak, XP, milestone board.
+        from domain import gamification as gam
+        board = gam.compute(
+            sessions_completed=len(completed),
+            session_dates=[b.scheduled_at for b in completed],
+            has_level=bool(student.level),
+            now=timezone.now(),
+        )
+
         return StudentDashboardResult(
             sessions_remaining=student.sessions_remaining,
             sessions_completed=len(completed),
@@ -188,6 +219,7 @@ class GetStudentDashboardUseCase:
             next_session=mappers.booking_list_item(next_b) if next_b else None,
             recent_sessions=[mappers.booking_list_item(b) for b in bookings[:5]],
             progress_trend=progress,
+            gamification=board,
         )
 
 

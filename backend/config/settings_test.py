@@ -17,3 +17,13 @@ os.environ.setdefault("PROVIDER_MODE", "testing")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 from config.settings import *  # noqa: F401,F403,E402
+
+# Tests must be deterministic and never call external APIs. Force the OpenAI key
+# empty so every provider (placement assessment, session report, AI interviewer)
+# uses its deterministic stub/heuristic in the suite — regardless of any key that
+# leaked in from a local .env.
+OPENAI_API_KEY = ""  # noqa: F405
+
+# Throttling is a production concern; disable it in the suite so tests that hit an
+# endpoint repeatedly (as the same user) never see spurious 429s.
+REST_FRAMEWORK = {**REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": (), "DEFAULT_THROTTLE_RATES": {}}  # noqa: F405

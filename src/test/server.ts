@@ -213,13 +213,17 @@ export const handlers = [
 
   http.get(`${B}/placement/interview/`, () =>
     HttpResponse.json({
-      greeting: "Hello, and welcome!",
-      instructions: "I'll ask you five simple questions, one at a time.",
-      encouragement: "Great, thank you for sharing that.",
-      closing: "That's the end of the interview — thank you!",
+      greeting: "Hello. Welcome to your OneClub speaking assessment.",
+      instructions: "I will ask you five short questions. Please answer naturally in English. You can listen again or record your answer again before confirming it.",
+      encouragement: "Thank you.",
+      closing: "You have completed the speaking interview. Your answers have been saved.",
+      scriptId: "oneclub.placement.interview",
+      scriptVersion: "1.0.0",
+      language: "en",
+      resumeMessages: ["Welcome back. Let's continue with question two."],
       steps: [
-        { questionId: "sq1", order: 1, prompt: "What is your name?", preamble: "Let's start with the first question.", clarification: "Could you tell me your name, please?" },
-        { questionId: "sq2", order: 2, prompt: "How old are you?", preamble: "Thank you. Here's the next question.", clarification: "May I ask how old you are?" },
+        { questionId: "sq1", order: 1, prompt: "What is your name?", preamble: "Let's begin with the first question.", clarification: "Please tell me the name people call you." },
+        { questionId: "sq2", order: 2, prompt: "How old are you?", preamble: "Here is the last question.", clarification: "Please tell me your age." },
       ],
     })
   ),
@@ -312,7 +316,68 @@ export const handlers = [
       nextSession: null,
       recentSessions: [],
       progressTrend: [],
+      gamification: {
+        points: 50, streakWeeks: 0, sessionsCompleted: 0, milestonesEarned: 1, milestonesTotal: 6,
+        milestones: [
+          { key: "placed", label: "Level unlocked", description: "Complete the placement test", icon: "Award", earned: true },
+          { key: "first_session", label: "First session", description: "Complete your first live session", icon: "Play", earned: false },
+          { key: "regular", label: "Getting regular", description: "Complete 5 sessions", icon: "Flame", earned: false },
+          { key: "dedicated", label: "Dedicated", description: "Complete 10 sessions", icon: "Zap", earned: false },
+          { key: "champion", label: "Champion", description: "Complete 25 sessions", icon: "Trophy", earned: false },
+          { key: "streak_3", label: "On a roll", description: "Practise 3 weeks in a row", icon: "TrendingUp", earned: false },
+        ],
+      },
     })
+  ),
+
+  http.get(`${B}/instructor/profile/`, () =>
+    HttpResponse.json({
+      id: "i1", fullName: "Sarah Mitchell", email: "sarah@oneclub.local", headline: "Coach",
+      bio: "", country: "UK", specialty: "", languages: [], interests: [], yearsExperience: 0,
+      avatarUrl: "", introVideoUrl: "", rating: 4.8, sessionsHosted: 12,
+    })
+  ),
+  http.patch(`${B}/instructor/profile/`, async ({ request }) => {
+    const patch = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      id: "i1", fullName: "Sarah Mitchell", email: "sarah@oneclub.local", headline: "Coach",
+      bio: "", country: "UK", specialty: "", languages: [], interests: [], yearsExperience: 0,
+      avatarUrl: "", introVideoUrl: "", rating: 4.8, sessionsHosted: 12, ...patch,
+    });
+  }),
+  http.post(`${B}/me/password/`, () => HttpResponse.json({ changed: true })),
+  http.get(`${B}/instructor/availability/`, () => HttpResponse.json([])),
+  http.get(`${B}/instructor/availability/exceptions/`, () => HttpResponse.json([])),
+  http.post(`${B}/instructor/availability/exceptions/`, async ({ request }) => {
+    const b = (await request.json()) as { kind: string; startAt: string; endAt: string; note?: string };
+    return HttpResponse.json({ id: "e1", kind: b.kind, startAt: b.startAt, endAt: b.endAt, note: b.note ?? "" }, { status: 201 });
+  }),
+  http.delete(`${B}/instructor/availability/exceptions/:id/`, ({ params }) => HttpResponse.json({ removed: params.id })),
+  http.put(`${B}/instructor/availability/set/`, async ({ request }) => {
+    const body = (await request.json()) as { slots: { startAt: string; durationMinutes?: number }[] };
+    return HttpResponse.json(
+      body.slots.map((s, i) => ({ id: `s${i}`, instructorId: "i1", startAt: s.startAt, durationMinutes: s.durationMinutes ?? 45, status: "open" }))
+    );
+  }),
+  http.post(`${B}/auth/password/reset/`, () => HttpResponse.json({ sent: true })),
+  http.post(`${B}/auth/password/reset/confirm/`, () => HttpResponse.json({ reset: true })),
+
+  http.get(`${B}/student/community/`, () =>
+    HttpResponse.json([
+      {
+        id: "gs1", title: "Conversation Club", description: "Practise together.", instructorName: "Sarah Mitchell",
+        level: "B1", startAt: "2026-08-01T18:00:00Z", durationMinutes: 45, capacity: 6, seatsTaken: 2, seatsLeft: 4,
+        joined: false, attendees: ["Ali", "Noor"], status: "scheduled",
+      },
+    ])
+  ),
+
+  http.post(`${B}/student/community/:id/join/`, ({ params }) =>
+    HttpResponse.json({ groupSessionId: params.id, joined: true }, { status: 201 })
+  ),
+
+  http.delete(`${B}/student/community/:id/join/`, ({ params }) =>
+    HttpResponse.json({ groupSessionId: params.id, joined: false })
   ),
 
   http.get(`${B}/student/topics/`, () =>

@@ -89,6 +89,22 @@ class InterviewerProvider(ABC):
     def closing(self) -> str:
         """A polite closing line for the finished interview."""
 
+    # ── deterministic OneClub script metadata (Sprint 2.0.1A) ──
+    # Non-abstract with safe defaults so lightweight test doubles keep working;
+    # the real deterministic provider overrides them.
+    def script_id(self) -> str:
+        return ""
+
+    def script_version(self) -> str:
+        return ""
+
+    def language(self) -> str:
+        return "en"
+
+    def resume_messages(self, *, total: int) -> tuple:
+        """Fixed 'Welcome back' lines, one per progress point (k answers saved)."""
+        return ()
+
 
 class AIProvider(ABC):
     @abstractmethod

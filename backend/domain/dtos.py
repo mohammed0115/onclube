@@ -197,6 +197,24 @@ class UserProfileResult:
 
 
 @dataclass(frozen=True)
+class InstructorProfileResult:
+    id: str
+    full_name: str
+    email: str
+    headline: str
+    bio: str
+    country: str
+    specialty: str
+    languages: list
+    interests: list
+    years_experience: int
+    avatar_url: str
+    intro_video_url: str
+    rating: float
+    sessions_hosted: int
+
+
+@dataclass(frozen=True)
 class GoalOptionResult:
     id: str
     code: str
@@ -313,6 +331,23 @@ class BookingListItemResult:
 
 
 @dataclass(frozen=True)
+class GroupSessionResult:
+    id: str
+    title: str
+    description: str
+    instructor_name: str
+    level: str
+    start_at: datetime
+    duration_minutes: int
+    capacity: int
+    seats_taken: int
+    seats_left: int
+    joined: bool
+    attendees: list  # first-name display list
+    status: str
+
+
+@dataclass(frozen=True)
 class BookingDetailResult:
     id: str
     topic_id: str
@@ -418,6 +453,7 @@ class StudentDashboardResult:
     next_session: Optional["BookingListItemResult"] = None
     recent_sessions: list = field(default_factory=list)    # [BookingListItemResult]
     progress_trend: list = field(default_factory=list)     # [{label, score}]
+    gamification: dict = field(default_factory=dict)       # streak, points, milestones
 
 
 @dataclass(frozen=True)

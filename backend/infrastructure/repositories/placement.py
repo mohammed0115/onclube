@@ -167,6 +167,48 @@ class DjangoPlacementAnswerRepository(PlacementAnswerRepository):
             for a in PlacementWrittenAnswer.objects.filter(attempt_id=attempt_id).order_by("question__order")
         ]
 
+    def written_review(self, attempt_id):
+        """Post-submission transparency: each written question with the learner's
+        answer, the correct answer, and whether it was right. (Answer key is only
+        ever revealed AFTER the attempt is assessed — never during the test.)"""
+        rows = []
+        for a in (
+            PlacementWrittenAnswer.objects.select_related("question")
+            .filter(attempt_id=attempt_id)
+            .order_by("question__order")
+        ):
+            q = a.question
+            correct = q.correct_answer
+            rows.append({
+                "questionId": str(q.id),
+                "order": q.order,
+                "prompt": q.prompt,
+                "skill": q.skill,
+                "options": list(q.options or []),
+                "yourAnswer": a.answer_text,
+                "correctAnswer": correct,
+                "isCorrect": (a.answer_text or "").strip().lower() == (correct or "").strip().lower(),
+            })
+        return rows
+
+    def spoken_review(self, attempt_id):
+        """Post-submission transparency: each spoken question with the learner's
+        recorded transcript."""
+        return [
+            {
+                "questionId": str(a.question_id),
+                "order": a.question.order,
+                "prompt": a.question.prompt,
+                "skill": a.question.skill,
+                "yourAnswer": a.transcript_text,
+            }
+            for a in (
+                PlacementSpokenAnswer.objects.select_related("question")
+                .filter(attempt_id=attempt_id)
+                .order_by("question__order")
+            )
+        ]
+
     def list_spoken(self, attempt_id):
         return [
             spoken_answer_to_dto(a)
@@ -256,8 +298,12 @@ class DjangoPlacementInterviewSessionRepository(PlacementInterviewSessionReposit
         return interview_session_to_dto(session) if session else None
 
     def create(self, attempt_id):
+        # Record the deterministic OneClub script version in effect at creation
+        # (Sprint 2.0.1A) for auditability / result disputes.
+        from infrastructure.gateways.interviewer import SCRIPT_VERSION
+
         session = InterviewSession.objects.create(
-            attempt_id=attempt_id, status=InterviewStatus.CREATED
+            attempt_id=attempt_id, status=InterviewStatus.CREATED, script_version=SCRIPT_VERSION
         )
         return interview_session_to_dto(session)
 

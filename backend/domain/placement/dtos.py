@@ -112,6 +112,12 @@ class SpeakingInterviewDTO:
     encouragement: str
     closing: str
     steps: tuple = ()
+    # Deterministic OneClub script metadata (Sprint 2.0.1A) — exposed for
+    # auditability/reproducibility. No prompts/keys — safe to serialize.
+    script_id: str = ""
+    script_version: str = ""
+    language: str = "en"
+    resume_messages: tuple = ()  # fixed "Welcome back" lines, one per progress point
 
 
 @dataclass(frozen=True)
@@ -137,6 +143,7 @@ class InterviewSessionDTO:
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     answers: tuple = ()
+    script_version: str = ""  # OneClub script version recorded for this session
 
 
 @dataclass(frozen=True)

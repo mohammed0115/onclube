@@ -77,6 +77,12 @@ export interface SpeakingInterview {
   encouragement: string;
   closing: string;
   steps: InterviewStep[];
+  // Deterministic OneClub script metadata (Sprint 2.0.1A).
+  scriptId: string;
+  scriptVersion: string;
+  language: string;
+  /** Fixed "Welcome back" lines, one per progress point (k answers saved). */
+  resumeMessages: string[];
 }
 
 // Interview SESSION (Sprint 2.5) — lifecycle + transcript only, NO assessment.
@@ -104,6 +110,45 @@ export interface InterviewAnswerInput {
   questionId: string;
   transcriptText: string;
   source: AnswerSource;
+}
+
+export interface WrittenReviewItem {
+  questionId: string;
+  order: number;
+  prompt: string;
+  skill: string;
+  options: string[];
+  yourAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+}
+
+export interface SpokenReviewItem {
+  questionId: string;
+  order: number;
+  prompt: string;
+  skill: string;
+  yourAnswer: string;
+}
+
+export interface PlacementReview {
+  level: string;
+  levelLabel: string;
+  scores: {
+    overall: number;
+    grammar: number;
+    vocabulary: number;
+    fluency: number;
+    confidence: number;
+    written: number;
+    spoken: number;
+  };
+  writtenCorrect: number;
+  writtenTotal: number;
+  written: WrittenReviewItem[];
+  spoken: SpokenReviewItem[];
+  evaluatedBy: string;
+  aiUsed: boolean;
 }
 
 export interface PlacementAttempt {
@@ -280,6 +325,40 @@ export interface StudentDashboard {
   nextSession: BookingListItem | null;
   recentSessions: BookingListItem[];
   progressTrend: { label: string; score: number }[];
+  gamification: Gamification;
+}
+
+export interface Milestone {
+  key: string;
+  label: string;
+  description: string;
+  icon: string;
+  earned: boolean;
+}
+
+export interface Gamification {
+  points: number;
+  streakWeeks: number;
+  sessionsCompleted: number;
+  milestonesEarned: number;
+  milestonesTotal: number;
+  milestones: Milestone[];
+}
+
+export interface GroupSession {
+  id: string;
+  title: string;
+  description: string;
+  instructorName: string;
+  level: string;
+  startAt: string;
+  durationMinutes: number;
+  capacity: number;
+  seatsTaken: number;
+  seatsLeft: number;
+  joined: boolean;
+  attendees: string[];
+  status: string;
 }
 
 export interface SubtopicJSON {
@@ -367,6 +446,33 @@ export interface InstructorDashboard {
   todaySessions: BookingListItem[];
   topics: { id: string; title: string; published: boolean; level: CEFR }[];
   weekly: Record<string, number>;
+}
+
+export type AvailabilityExceptionKind = "vacation" | "holiday" | "block";
+
+export interface AvailabilityException {
+  id: string;
+  kind: AvailabilityExceptionKind;
+  startAt: string;
+  endAt: string;
+  note: string;
+}
+
+export interface InstructorProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  headline: string;
+  bio: string;
+  country: string;
+  specialty: string;
+  languages: string[];
+  interests: string[];
+  yearsExperience: number;
+  avatarUrl: string;
+  introVideoUrl: string;
+  rating: number;
+  sessionsHosted: number;
 }
 
 export interface PaymentApprovalItem {

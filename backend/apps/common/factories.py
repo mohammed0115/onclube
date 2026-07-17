@@ -163,7 +163,12 @@ def make_slot(instructor, *, start_at=None, days_ahead=3):
 
 
 def make_booking(*, student=None, instructor=None, plan=None, sessions=4, days_ahead=3):
-    """Build a confirmed booking via the real booking service (active sub + slot)."""
+    """Build a confirmed booking via the real booking service (active sub + slot).
+
+    The booking service rejects slots already in the past (a production rule), so
+    to build a past/expired booking for tests we book a valid future slot and then
+    backdate it — the fixture is past without bypassing the real booking path.
+    """
     from apps.scheduling.services import create_booking
 
     instructor = instructor or make_instructor()
@@ -171,8 +176,15 @@ def make_booking(*, student=None, instructor=None, plan=None, sessions=4, days_a
     plan = plan or make_plan()
     make_active_subscription(student, plan, sessions=sessions)
     topic = make_topic(instructor)
-    slot = make_slot(instructor, days_ahead=days_ahead)
-    return create_booking(student, topic, slot)
+    slot = make_slot(instructor, days_ahead=max(days_ahead, 1))
+    booking = create_booking(student, topic, slot)
+    if days_ahead < 1:
+        past = timezone.now() + timedelta(days=days_ahead)
+        slot.start_at = past
+        slot.save(update_fields=["start_at"])
+        booking.scheduled_at = past
+        booking.save(update_fields=["scheduled_at"])
+    return booking
 
 
 def make_session(booking=None, *, status=SessionStatus.SCHEDULED, agora_channel=None):

@@ -14,6 +14,7 @@ const LEVEL_LABEL: Record<string, string> = {
   B1: "Intermediate",
   B2: "Upper-intermediate",
   C1: "Advanced",
+  C2: "Proficient",
 };
 
 const DIFFICULTY_COPY: Record<string, string> = {

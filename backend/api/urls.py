@@ -5,6 +5,19 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from api import health as h
 from api import views as v
 
+
+class _ThrottledTokenObtainPairView(TokenObtainPairView):
+    """Login endpoint under the hard "auth" throttle scope (credential-stuffing)."""
+    throttle_scope = "auth"
+
+
+class _ThrottledTokenRefreshView(TokenRefreshView):
+    # Refresh is NOT under the tight "auth" scope: it needs a valid refresh token
+    # (so it can't be brute-forced) and legitimate multi-tab use refreshes often.
+    # It still falls under the default anon/user rate limits.
+    pass
+
+
 urlpatterns = [
     # ── Health / Observability (Sprint 11 — operational, unauthenticated) ──
     path("health/liveness/", h.LivenessView.as_view()),
@@ -12,10 +25,13 @@ urlpatterns = [
     path("health/providers/", h.ProvidersHealthView.as_view()),
 
     # ── Auth / Profile ──
-    path("auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/token/", _ThrottledTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("auth/token/refresh/", _ThrottledTokenRefreshView.as_view(), name="token_refresh"),
     path("auth/register/", v.RegisterView.as_view()),
+    path("auth/password/reset/", v.PasswordResetRequestView.as_view()),
+    path("auth/password/reset/confirm/", v.PasswordResetConfirmView.as_view()),
     path("me/", v.MeView.as_view(), name="me"),
+    path("me/password/", v.ChangePasswordView.as_view()),
     path("me/goal/", v.MeGoalView.as_view()),
 
     # ── Onboarding / Goals ──
@@ -32,6 +48,7 @@ urlpatterns = [
     path("placement/spoken-transcripts/", v.PlacementSpokenTranscriptsView.as_view()),
     path("placement/submit/", v.PlacementSubmitView.as_view()),
     path("placement/result/", v.PlacementResultView.as_view()),
+    path("placement/result/review/", v.PlacementReviewView.as_view()),
     path("placement/status/", v.PlacementStatusView.as_view()),
     path("admin/placement/<uuid:student_id>/reset-spoken/", v.AdminPlacementResetSpokenView.as_view()),
 
@@ -48,6 +65,9 @@ urlpatterns = [
 
     # ── Student Scheduling ──
     path("student/dashboard/", v.StudentDashboardView.as_view()),
+    path("student/practice/", v.StudentPracticeView.as_view()),
+    path("student/community/", v.CommunitySessionsView.as_view()),
+    path("student/community/<uuid:group_session_id>/join/", v.CommunitySessionJoinView.as_view()),
     path("student/topics/", v.StudentTopicListView.as_view()),
     path("student/topics/<uuid:topic_id>/", v.StudentTopicDetailView.as_view()),
     path("student/topics/<uuid:topic_id>/questions/", v.StudentTopicQuestionsView.as_view()),
@@ -55,9 +75,11 @@ urlpatterns = [
     path("student/calendar/", v.StudentCalendarView.as_view()),
     path("student/bookings/", v.StudentBookingsView.as_view()),
     path("student/bookings/<uuid:booking_id>/", v.StudentBookingDetailView.as_view()),
+    path("student/bookings/<uuid:booking_id>/rating/", v.SessionRatingView.as_view()),
 
     # ── Instructor ──
     path("instructor/dashboard/", v.InstructorDashboardView.as_view()),
+    path("instructor/profile/", v.InstructorProfileView.as_view()),
     path("instructor/topics/", v.InstructorTopicListView.as_view()),
     path("instructor/topics/create/", v.InstructorTopicCreateView.as_view()),
     path("instructor/topics/<uuid:topic_id>/", v.InstructorTopicUpdateView.as_view()),
@@ -66,11 +88,14 @@ urlpatterns = [
     path("instructor/topics/<uuid:topic_id>/questions/<uuid:question_id>/approve/", v.InstructorApproveQuestionView.as_view()),
     path("instructor/availability/", v.InstructorAvailabilityView.as_view()),
     path("instructor/availability/set/", v.InstructorSetAvailabilityView.as_view()),
+    path("instructor/availability/exceptions/", v.InstructorAvailabilityExceptionsView.as_view()),
+    path("instructor/availability/exceptions/<uuid:exception_id>/", v.InstructorAvailabilityExceptionDetailView.as_view()),
     path("instructor/topics/<uuid:topic_id>/suggest-subtopics/", v.InstructorSuggestSubtopicsView.as_view()),
     path("instructor/topics/<uuid:topic_id>/suggest-questions/", v.InstructorSuggestQuestionsView.as_view()),
 
     # ── Admin ──
     path("admin/dashboard/", v.AdminDashboardView.as_view()),
+    path("admin/users/invite/", v.AdminInviteUserView.as_view()),
     path("admin/payment-proofs/", v.AdminPaymentProofListView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/", v.AdminPaymentProofDetailView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/approve/", v.AdminApprovePaymentView.as_view()),

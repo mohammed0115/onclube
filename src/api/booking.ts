@@ -5,6 +5,7 @@ import type {
   BookingListItem,
   BookingResult,
   Cancellation,
+  GroupSession,
   StudentDashboard,
   WeeklyCalendar,
 } from "./types";
@@ -39,5 +40,21 @@ export const bookingApi = {
 
   cancel(id: string): Promise<Cancellation> {
     return api.del<Cancellation>(`/student/bookings/${id}/`);
+  },
+
+  rateSession(bookingId: string, stars: number, comment: string): Promise<{ bookingId: string; stars: number; comment: string }> {
+    return api.post(`/student/bookings/${bookingId}/rating/`, { stars, comment });
+  },
+
+  communitySessions(): Promise<GroupSession[]> {
+    return api.get<GroupSession[]>("/student/community/");
+  },
+
+  joinGroupSession(id: string): Promise<{ groupSessionId: string; joined: boolean }> {
+    return api.post(`/student/community/${id}/join/`, {});
+  },
+
+  leaveGroupSession(id: string): Promise<{ groupSessionId: string; joined: boolean }> {
+    return api.del(`/student/community/${id}/join/`);
   },
 };

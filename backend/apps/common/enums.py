@@ -70,6 +70,19 @@ class BookingStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class GroupSessionStatus(models.TextChoices):
+    SCHEDULED = "scheduled", "Scheduled"
+    LIVE = "live", "Live"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class AvailabilityExceptionKind(models.TextChoices):
+    VACATION = "vacation", "Vacation"
+    HOLIDAY = "holiday", "Holiday"
+    BLOCK = "block", "Block time"
+
+
 class SessionStatus(models.TextChoices):
     SCHEDULED = "scheduled", "Scheduled"  # the waiting-room state
     LIVE = "live", "Live"

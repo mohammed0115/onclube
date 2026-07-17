@@ -10,6 +10,8 @@ Rules:
 """
 from __future__ import annotations
 
+import dataclasses
+
 from application.permissions import ensure_admin, get_student_profile
 from domain.exceptions import PlacementAttemptNotFound, PlacementResultNotFound
 from domain.placement import attempt_rules
@@ -28,7 +30,24 @@ from infrastructure.container import (
     default_placement_result_repository,
 )
 
-EVALUATOR_VERSION = "heuristic-v1"
+EVALUATOR_VERSION = "oneclub-score-v2"
+
+
+def _cefr_from_percentage(pct: int) -> str:
+    """Map the overall placement percentage (0–100) to CEFR — 100% = C2.
+    OneClub scoring model: overall = (written% + spoken%) / 2, equal weight,
+    no spoken cap. Product-owned bands (Sprint 2.0.2)."""
+    if pct >= 90:
+        return "C2"
+    if pct >= 75:
+        return "C1"
+    if pct >= 60:
+        return "B2"
+    if pct >= 45:
+        return "B1"
+    if pct >= 25:
+        return "A2"
+    return "A1"
 
 
 # ── 1. list questions ─────────────────────────────────────────────────────────
@@ -166,11 +185,36 @@ class SubmitPlacementAttemptUseCase:
         # only — persistence below is the use case's responsibility, not the engine's.
         result = self.engine.assess(written=written, spoken=spoken, goal=goal_code)
 
+        # ── OneClub scoring model (product spec) ────────────────────────────────
+        # Written is scored OBJECTIVELY from MCQ correctness (5/5 → 100). Overall is
+        # the equal-weight average of written% + spoken%, with NO spoken cap, mapped
+        # to A1–C2 (100% = C2). This overrides the engine's provider-derived
+        # written_score / cefr so correct answers always count.
+        review = self.answers.written_review(attempt.id)
+        correct = sum(1 for r in review if r["isCorrect"])
+        written_score = round(correct / len(review) * 100) if review else 0
+        spoken_score = result.spoken_score
+        overall = round((written_score + spoken_score) / 2)
+        cefr_level = _cefr_from_percentage(overall)
+        result = dataclasses.replace(
+            result,
+            written_score=written_score,
+            spoken_score=spoken_score,
+            overall_conversation_score=overall,
+            cefr_level=cefr_level,
+            spoken_capped=False,
+            spoken_ceiling=cefr_level,
+        )
+
+        # `result.source` reflects the provider that ACTUALLY scored ("openai" when
+        # the AI succeeded, "heuristic" when it fell back). Persist the real flag so
+        # the result is honest about how it was evaluated (never hardcode fallback).
+        fallback_used = result.source != "openai"
         stored = self.results.save(
             attempt_id=attempt.id, result=result,
-            evaluator_version=EVALUATOR_VERSION, provider_name=result.source, fallback_used=True,
+            evaluator_version=EVALUATOR_VERSION, provider_name=result.source, fallback_used=fallback_used,
         )
-        self.attempts.mark_assessed(attempt.id, provider_name=result.source, fallback_used=True)
+        self.attempts.mark_assessed(attempt.id, provider_name=result.source, fallback_used=fallback_used)
         # Personalize the student's level (placement does NOT unlock booking).
         self.profiles.set_level(student, result.cefr_level)
         return stored  # PlacementStoredResult — flat, carries providerName + fallbackUsed
@@ -187,6 +231,53 @@ class GetMyPlacementResultUseCase:
         if stored is None:
             raise PlacementResultNotFound()
         return stored
+
+
+_CEFR_LABELS = {
+    "A1": "Beginner", "A2": "Elementary", "B1": "Intermediate",
+    "B2": "Upper-Intermediate", "C1": "Advanced", "C2": "Proficient",
+}
+
+
+class GetPlacementReviewUseCase:
+    """Post-submission transparency: the learner's questions, their own answers, the
+    correct answers (written), their recorded spoken transcripts, and every score —
+    so the placement result is explainable, not a black box."""
+
+    def __init__(self, *, results=None, answers=None):
+        self.results = results or default_placement_result_repository()
+        self.answers = answers or default_placement_answer_repository()
+
+    def execute(self, *, actor) -> dict:
+        student = get_student_profile(actor)
+        stored = self.results.get_latest_for_student(student)
+        if stored is None:
+            raise PlacementResultNotFound()
+
+        written = self.answers.written_review(stored.attempt_id)
+        spoken = self.answers.spoken_review(stored.attempt_id)
+        written_correct = sum(1 for w in written if w["isCorrect"])
+
+        return {
+            "level": stored.cefr_level,
+            "levelLabel": _CEFR_LABELS.get(stored.cefr_level, ""),
+            "scores": {
+                "overall": stored.overall_conversation_score,
+                "grammar": stored.grammar_score,
+                "vocabulary": stored.vocabulary_score,
+                "fluency": stored.fluency_score,
+                "confidence": stored.confidence_score,
+                "written": stored.written_score,
+                "spoken": stored.spoken_score,
+            },
+            "writtenCorrect": written_correct,
+            "writtenTotal": len(written),
+            "written": written,
+            "spoken": spoken,
+            # Transparency about HOW it was scored (real AI vs deterministic fallback).
+            "evaluatedBy": "AI (OpenAI)" if (stored.provider_name == "openai" and not stored.fallback_used) else "Automatic estimate",
+            "aiUsed": stored.provider_name == "openai" and not stored.fallback_used,
+        }
 
 
 # ── 7. admin reset spoken ─────────────────────────────────────────────────────

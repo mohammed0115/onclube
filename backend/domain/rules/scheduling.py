@@ -49,12 +49,20 @@ def week_start_for(reference):
     return d - timedelta(days=d.weekday())  # Monday = weekday 0
 
 
+def is_covered_by_intervals(dt, intervals) -> bool:
+    """True if `dt` falls inside any half-open [start, end) interval — used to test
+    whether a slot time lands within an instructor's availability exception."""
+    return any(start <= dt < end for start, end in intervals)
+
+
 def calendar_slot_status(*, slot_status, start_at, now, open_value="open",
                          booked_value="booked", blocked_value="blocked") -> str:
     """Present a slot's status for the weekly calendar. A booked slot whose start
-    time has passed is shown as `completed`. Only `available` is selectable."""
+    time has passed is shown as `completed`. An open slot in the past is NOT
+    selectable (shown as `blocked`) so a student can never book a slot that is
+    already in the past and would be born `Missed`. Only `available` is selectable."""
     if slot_status == open_value:
-        return "available"
+        return "blocked" if start_at < now else "available"
     if slot_status == blocked_value:
         return "blocked"
     if slot_status == booked_value:

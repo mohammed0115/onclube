@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { Lock, ArrowRight, Sparkles, Clock } from "lucide-react";
+import { Lock, ArrowRight, Sparkles, Clock, TrendingUp, Flame, Zap, Award, Play, Trophy, type LucideIcon } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -11,8 +11,9 @@ import { AIBadge } from "@/components/ai";
 import { useAuth } from "@/auth/AuthProvider";
 import { useStudentDashboard } from "@/hooks";
 import { Loading, ErrorState } from "@/components/states";
-import type { BookingListItem } from "@/api/types";
+import type { BookingListItem, Gamification } from "@/api/types";
 import type { Booking, BookingStatus, PaymentStatus } from "@/types";
+import { cn } from "@/lib/utils";
 
 /** Adapt an API booking list item to the row's view model (date/time split). */
 function toBookingRow(b: BookingListItem): Booking {
@@ -55,6 +56,8 @@ export function StudentDashboardPage() {
   const d = query.data;
   const canBook = d.paymentStatus === "approved";
   const firstName = (user?.fullName ?? "there").split(" ")[0];
+  // Most recent session that has a generated report (recentSessions is newest-first).
+  const latestReportId = d.recentSessions.find((b) => b.reportId)?.reportId ?? null;
 
   return (
     <DashboardLayout>
@@ -89,32 +92,43 @@ export function StudentDashboardPage() {
         <StatCard icon="Calendar" value={`${d.sessionsRemaining}`} label="Sessions remaining" tone="bg-indigo-100 text-indigo-600" />
         <StatCard icon="CheckCircle" value={`${d.sessionsCompleted}`} label="Sessions completed" tone="bg-emerald-100 text-emerald-600" />
         <StatCard icon="TrendingUp" value={d.latestScore != null ? `${d.latestScore}%` : "—"} label="Latest session score" tone="bg-purple-100 text-purple-600" />
-        <StatCard icon="Award" value={d.level ?? "—"} label="Current level" tone="bg-amber-100 text-amber-600" />
+        <Link to="/onboarding/placement-result" className="block rounded-2xl transition-transform hover:-translate-y-0.5" title="View your placement result">
+          <StatCard icon="Award" value={d.level ?? "—"} label="Current level · view result" tone="bg-amber-100 text-amber-600" />
+        </Link>
       </div>
+
+      <Achievements g={d.gamification} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display font-bold text-foreground">Progress over sessions</h3>
-              <span className="text-xs text-muted-foreground">Last {d.progressTrend.length} sessions</span>
+              {d.progressTrend.length > 1 && <span className="text-xs text-muted-foreground">Last {d.progressTrend.length} sessions</span>}
             </div>
-            <div style={{ width: "100%", height: 220 }}>
-              <ResponsiveContainer>
-                <AreaChart data={d.progressTrend} margin={{ top: 6, right: 6, bottom: 0, left: -24 }}>
-                  <defs>
-                    <linearGradient id="score" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
-                  <YAxis domain={[40, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
-                  <Tooltip cursor={{ stroke: "#bfdbfe" }} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="score" stroke="#3B82F6" strokeWidth={2.5} fill="url(#score)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            {d.progressTrend.length < 2 ? (
+              <div className="flex h-[220px] flex-col items-center justify-center gap-2 rounded-2xl bg-muted/30 text-center">
+                <TrendingUp size={26} className="text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Complete a few sessions to see your progress trend here.</p>
+              </div>
+            ) : (
+              <div style={{ width: "100%", height: 220 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={d.progressTrend} margin={{ top: 6, right: 6, bottom: 0, left: -24 }}>
+                    <defs>
+                      <linearGradient id="score" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
+                    <YAxis domain={[40, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#9ca3af" }} />
+                    <Tooltip cursor={{ stroke: "#bfdbfe" }} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }} />
+                    <Area type="monotone" dataKey="score" stroke="#3B82F6" strokeWidth={2.5} fill="url(#score)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
           <div>
@@ -178,14 +192,71 @@ export function StudentDashboardPage() {
 
           <Card className="p-5">
             <div className="mb-3 flex items-center gap-2">
-              <AIBadge label="AI tip" />
+              <AIBadge label="Latest AI report" />
             </div>
-            <p className="text-sm leading-relaxed text-foreground">
-              Review your latest AI report and practise the recommended drills before your next session.
-            </p>
+            {latestReportId ? (
+              <>
+                <p className="mb-4 text-sm leading-relaxed text-foreground">
+                  Your most recent session report is ready — review the feedback and recommended drills before your next session.
+                </p>
+                <Button asChild variant="soft" size="sm" className="w-full">
+                  <Link to={`/student/report/${latestReportId}`}>
+                    View my latest report <ArrowRight size={15} />
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                After your first session, your AI report will appear here with feedback and recommended drills.
+              </p>
+            )}
           </Card>
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+const MILESTONE_ICONS: Record<string, LucideIcon> = {
+  Award, Play, Flame, Zap, Trophy, TrendingUp,
+};
+
+/** Streak + XP + milestone board (gamification). */
+function Achievements({ g }: { g: Gamification }) {
+  return (
+    <Card className="mb-6 p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-display font-bold text-foreground">Your achievements</h3>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-600">
+            <Flame size={15} /> {g.streakWeeks} week{g.streakWeeks === 1 ? "" : "s"} streak
+          </span>
+          <span className="flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-600">
+            <Zap size={15} /> {g.points} XP
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">{g.milestonesEarned}/{g.milestonesTotal} badges</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {g.milestones.map((m) => {
+          const Icon = MILESTONE_ICONS[m.icon] ?? Award;
+          return (
+            <div
+              key={m.key}
+              title={m.description}
+              className={cn(
+                "flex flex-col items-center gap-2 rounded-2xl border p-3 text-center",
+                m.earned ? "border-amber-200 bg-amber-50" : "border-border bg-muted/30 opacity-60"
+              )}
+            >
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", m.earned ? "bg-amber-100 text-amber-600" : "bg-muted text-muted-foreground")}>
+                <Icon size={18} />
+              </div>
+              <span className={cn("text-xs font-semibold", m.earned ? "text-foreground" : "text-muted-foreground")}>{m.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

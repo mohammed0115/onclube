@@ -6,13 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AIBadge } from "@/components/ai";
 import { Loading, ErrorState } from "@/components/states";
-import { SpeakingInterview } from "@/components/placement/SpeakingInterview";
+import { TutorInterview } from "@/components/placement/interview/TutorInterview";
 import {
   usePlacementTest,
-  useSpeakingInterview,
-  useInterviewSession,
-  useSaveInterviewAnswer,
-  useFinalizeInterview,
   usePlacementStatus,
   useStartPlacementAttempt,
   useSaveWrittenAnswers,
@@ -44,7 +40,6 @@ function messageForError(err: unknown): string {
 export function PlacementTestPage() {
   const navigate = useNavigate();
   const testQuery = usePlacementTest();
-  const interviewQuery = useSpeakingInterview();
   const statusQuery = usePlacementStatus();
   const start = useStartPlacementAttempt();
   const saveWritten = useSaveWrittenAnswers();
@@ -52,10 +47,6 @@ export function PlacementTestPage() {
 
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("written");
-  // The interview session (resume state) is only needed once we reach the spoken step.
-  const sessionQuery = useInterviewSession(section === "spoken" && !!attemptId);
-  const saveInterviewAnswer = useSaveInterviewAnswer();
-  const finalizeInterview = useFinalizeInterview();
   const [written, setWritten] = useState<Record<string, string>>({});
   const [writtenIndex, setWrittenIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -300,31 +291,14 @@ export function PlacementTestPage() {
             )}
           </div>
         </>
-      ) : interviewQuery.isLoading || sessionQuery.isLoading || !sessionQuery.data ? (
-        <Loading label="Preparing your interview…" />
-      ) : interviewQuery.isError ? (
-        <ErrorState error={interviewQuery.error} onRetry={() => interviewQuery.refetch()} />
-      ) : sessionQuery.isError ? (
-        <ErrorState error={sessionQuery.error} onRetry={() => sessionQuery.refetch()} />
       ) : (
         <>
           {error && <ErrorBanner>{error}</ErrorBanner>}
-          <SpeakingInterview
-            interview={interviewQuery.data!}
-            session={sessionQuery.data}
-            onAnswer={(input) =>
-              saveInterviewAnswer.mutateAsync(input).catch((e) => {
-                throw new Error(messageForError(e));
-              })
-            }
-            onFinalize={() =>
-              finalizeInterview.mutateAsync().catch((e) => {
-                throw new Error(messageForError(e));
-              })
-            }
-            onFinished={onSeeResult}
-            finishedCtaLabel="See my result"
-          />
+          <p className="mb-4 text-sm text-muted-foreground">
+            Your AI tutor will ask five short questions, one at a time. Just speak your answer — it&apos;s
+            saved automatically and the tutor moves on. You can repeat or ask to explain any question.
+          </p>
+          <TutorInterview onFinished={onSeeResult} finishedCtaLabel="See my result" />
         </>
       )}
     </Shell>

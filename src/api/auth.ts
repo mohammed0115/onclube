@@ -22,6 +22,18 @@ export const authApi = {
     return api.patch<UserProfile>("/me/", { fullName });
   },
 
+  changePassword(currentPassword: string, newPassword: string): Promise<{ changed: boolean }> {
+    return api.post("/me/password/", { currentPassword, newPassword });
+  },
+
+  requestPasswordReset(email: string): Promise<{ sent: boolean }> {
+    return api.post("/auth/password/reset/", { email }, { auth: false });
+  },
+
+  confirmPasswordReset(uid: string, token: string, newPassword: string): Promise<{ reset: boolean }> {
+    return api.post("/auth/password/reset/confirm/", { uid, token, newPassword }, { auth: false });
+  },
+
   setGoal(goalId: string): Promise<UserProfile> {
     return api.put<UserProfile>("/me/goal/", { goalId });
   },

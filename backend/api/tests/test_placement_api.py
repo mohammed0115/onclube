@@ -121,7 +121,7 @@ def test_submit_complete_returns_cefr_result():
     resp = _run_full(client_for(make_student().user), w, s)
     assert resp.status_code == 200
     d = resp.data
-    assert d["cefrLevel"] in ("A1", "A2", "B1", "B2", "C1")
+    assert d["cefrLevel"] in ("A1", "A2", "B1", "B2", "C1", "C2")
     for field in ("overallConversationScore", "grammarScore", "vocabularyScore",
                   "fluencyScore", "confidenceScore", "writtenScore", "spokenScore",
                   "strengths", "weaknesses", "recommendedFocus",

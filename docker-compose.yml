@@ -1,0 +1,88 @@
+# OneClup — production stack (independent of the existing Onlenco deployment).
+#
+#   web       Django + Gunicorn, published ONLY on 127.0.0.1:8001 (Nginx proxies it)
+#   postgres  optional bundled DB      → enable with:  --profile db
+#   redis     optional cache/broker    → enable with:  --profile cache
+#
+# Self-hosted DB + cache:   docker compose --profile db --profile cache up -d --build
+# External managed DB:      set USE_EXTERNAL_DB=true + DATABASE_URL, then: docker compose up -d --build
+#
+# The container is never exposed publicly. Nginx (host) serves ./frontend_dist,
+# ./staticfiles and ./media, and proxies the API/admin to 127.0.0.1:8001.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Baked into the SPA at build time (App ID is public; the certificate is
+        # a backend-only secret and is NOT passed here).
+        VITE_PROVIDER_MODE: ${VITE_PROVIDER_MODE:-production}
+        VITE_AGORA_APP_ID: ${VITE_AGORA_APP_ID:-}
+    image: oneclup-web:latest
+    container_name: oneclup_web
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    # Publish ONLY to the loopback interface — Nginx is the sole public entrypoint.
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      # Served by host Nginx (populated by the entrypoint / collectstatic).
+      - ./frontend_dist:/app/frontend
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/api/v1/health/liveness/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # No hard depends_on: the entrypoint waits for Postgres (nc) and `restart`
+    # retries until it is ready, so a profiled-off DB never force-starts.
+    networks:
+      - oneclup
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: oneclup_postgres
+    restart: unless-stopped
+    profiles: ["db"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oneclup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-oneclup}
+    volumes:
+      - oneclup_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oneclup} -d ${POSTGRES_DB:-oneclup}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oneclup
+
+  redis:
+    image: redis:7-alpine
+    container_name: oneclup_redis
+    restart: unless-stopped
+    profiles: ["cache"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - oneclup_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oneclup
+
+networks:
+  oneclup:
+    name: oneclup_net
+
+volumes:
+  oneclup_pg_data:
+  oneclup_redis_data:

@@ -1,0 +1,44 @@
+# Keep the build context small & the image clean.
+
+# VCS / CI
+.git
+.github
+.gitignore
+
+# Node / frontend
+node_modules
+dist
+.vite
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+backend/.venv
+.venv
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Local databases / uploads / collected static (created at runtime)
+backend/db.sqlite3
+staticfiles
+media
+frontend_dist
+
+# Secrets & local env — NEVER bake into the image
+.env
+.env.*
+!.env.production.example
+backend/.env
+backend/.env.*
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.log
+tsconfig.tsbuildinfo
+
+# Deployment docs (not needed inside the image)
+deploy/DEPLOYMENT.md

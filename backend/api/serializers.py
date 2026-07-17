@@ -312,6 +312,37 @@ class AdminBookingUpdateInputSerializer(serializers.Serializer):
     forceCredit = serializers.BooleanField(required=False, allow_null=True, default=None)
 
 
+class AvailabilityExceptionSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    kind = serializers.CharField()
+    startAt = serializers.DateTimeField(source="start_at")
+    endAt = serializers.DateTimeField(source="end_at")
+    note = serializers.CharField(allow_blank=True)
+
+
+class AddAvailabilityExceptionInputSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=["vacation", "holiday", "block"])
+    startAt = serializers.DateTimeField()
+    endAt = serializers.DateTimeField()
+    note = serializers.CharField(max_length=160, required=False, allow_blank=True)
+
+
+class GroupSessionSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    instructorName = serializers.CharField(source="instructor_name")
+    level = serializers.CharField()
+    startAt = serializers.DateTimeField(source="start_at")
+    durationMinutes = serializers.IntegerField(source="duration_minutes")
+    capacity = serializers.IntegerField()
+    seatsTaken = serializers.IntegerField(source="seats_taken")
+    seatsLeft = serializers.IntegerField(source="seats_left")
+    joined = serializers.BooleanField()
+    attendees = serializers.ListField(child=serializers.CharField())
+    status = serializers.CharField()
+
+
 class StudentDashboardSerializer(serializers.Serializer):
     sessionsRemaining = serializers.IntegerField(source="sessions_remaining")
     sessionsCompleted = serializers.IntegerField(source="sessions_completed")
@@ -321,6 +352,7 @@ class StudentDashboardSerializer(serializers.Serializer):
     nextSession = BookingListItemSerializer(source="next_session", allow_null=True)
     recentSessions = BookingListItemSerializer(source="recent_sessions", many=True)
     progressTrend = serializers.JSONField(source="progress_trend")
+    gamification = serializers.JSONField()
 
 
 class InstructorDashboardSerializer(serializers.Serializer):
@@ -428,6 +460,11 @@ class AIReportDetailSerializer(serializers.Serializer):
     content = serializers.JSONField(allow_null=True, required=False)
 
 
+class RateSessionInputSerializer(serializers.Serializer):
+    stars = serializers.IntegerField(min_value=1, max_value=5)
+    comment = serializers.CharField(required=False, allow_blank=True, default="", max_length=1000)
+
+
 # ── notifications ─────────────────────────────────────────────────────────────
 class NotificationSerializer(serializers.Serializer):
     id = serializers.CharField()
@@ -489,6 +526,58 @@ class RegisterInputSerializer(serializers.Serializer):
 
 class UpdateProfileInputSerializer(serializers.Serializer):
     fullName = serializers.CharField(max_length=150)
+
+
+class InstructorProfileSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    fullName = serializers.CharField(source="full_name")
+    email = serializers.EmailField()
+    headline = serializers.CharField(allow_blank=True)
+    bio = serializers.CharField(allow_blank=True)
+    country = serializers.CharField(allow_blank=True)
+    specialty = serializers.CharField(allow_blank=True)
+    languages = serializers.ListField(child=serializers.CharField())
+    interests = serializers.ListField(child=serializers.CharField())
+    yearsExperience = serializers.IntegerField(source="years_experience")
+    avatarUrl = serializers.CharField(source="avatar_url", allow_blank=True)
+    introVideoUrl = serializers.CharField(source="intro_video_url", allow_blank=True)
+    rating = serializers.FloatField()
+    sessionsHosted = serializers.IntegerField(source="sessions_hosted")
+
+
+class UpdateInstructorProfileInputSerializer(serializers.Serializer):
+    """All fields optional — PATCH semantics. camelCase in, snake_case to the use case."""
+    fullName = serializers.CharField(max_length=150, required=False)
+    headline = serializers.CharField(max_length=160, required=False, allow_blank=True)
+    bio = serializers.CharField(required=False, allow_blank=True)
+    country = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    specialty = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    languages = serializers.ListField(child=serializers.CharField(max_length=40), required=False)
+    interests = serializers.ListField(child=serializers.CharField(max_length=40), required=False)
+    yearsExperience = serializers.IntegerField(min_value=0, max_value=80, required=False)
+    avatarUrl = serializers.URLField(max_length=500, required=False, allow_blank=True)
+    introVideoUrl = serializers.URLField(max_length=500, required=False, allow_blank=True)
+
+
+class ChangePasswordInputSerializer(serializers.Serializer):
+    currentPassword = serializers.CharField(write_only=True)
+    newPassword = serializers.CharField(min_length=8, write_only=True)
+
+
+class PasswordResetRequestInputSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmInputSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    newPassword = serializers.CharField(min_length=8, write_only=True)
+
+
+class InviteUserInputSerializer(serializers.Serializer):
+    fullName = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(choices=["instructor", "admin", "student"])
 
 
 class SetGoalInputSerializer(serializers.Serializer):
@@ -602,6 +691,11 @@ class SpeakingInterviewSerializer(serializers.Serializer):
     encouragement = serializers.CharField()
     closing = serializers.CharField()
     steps = InterviewStepSerializer(many=True)
+    # Deterministic OneClub script metadata (Sprint 2.0.1A).
+    scriptId = serializers.CharField(source="script_id")
+    scriptVersion = serializers.CharField(source="script_version")
+    language = serializers.CharField()
+    resumeMessages = serializers.ListField(child=serializers.CharField(), source="resume_messages")
 
 
 # Interview SESSION (Sprint 2.5) — lifecycle + transcript only, NO assessment fields.
@@ -620,12 +714,15 @@ class InterviewSessionSerializer(serializers.Serializer):
     startedAt = serializers.DateTimeField(source="started_at", allow_null=True)
     finishedAt = serializers.DateTimeField(source="finished_at", allow_null=True)
     answers = InterviewAnswerSerializer(many=True)
+    scriptVersion = serializers.CharField(source="script_version", required=False, default="")
 
 
 class InterviewAnswerInputSerializer(serializers.Serializer):
     questionId = serializers.UUIDField()
     transcriptText = serializers.CharField(allow_blank=True, trim_whitespace=False)
     source = serializers.ChoiceField(choices=["voice", "manual"], default="manual")
+
+
 
 
 class PlacementAttemptSerializer(serializers.Serializer):

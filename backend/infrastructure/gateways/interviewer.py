@@ -1,65 +1,91 @@
 """
-Interviewer provider — deterministic STUB.
+OneClub placement interview script — DETERMINISTIC and version-controlled.
 
-This is the seam where a real conversational model (e.g. OpenAI) will plug in
-later behind the same `InterviewerProvider` port. It makes NO network calls and
-returns fixed, offline English lines.
+NO LLM. NO prompts. NO network. Every line the tutor speaks in the placement
+speaking interview comes from the fixed strings below, and the five questions are
+OneClub-owned and asked verbatim, in order (the questions themselves live in the
+seeded PlacementQuestion rows).
 
-SECURITY: the model system instructions / prompt live in `_SYSTEM_INSTRUCTIONS`
-below and are NEVER returned from any method — only short presentational lines
-cross the boundary. The real adapter must keep prompts and provider keys internal
-in exactly the same way.
+Sprint 2.0.1A: this module — and the whole placement-interview path — must never
+import or call any language-model provider. A static test enforces that. The
+separate placement ASSESSMENT engine keeps its own OpenAI adapter and is untouched.
 """
 from application.ports.gateways import InterviewerProvider
 
-# Server-only. NEVER serialized or returned to a caller/client. Kept here to show
-# the boundary the real adapter must honour: prompts stay inside the adapter.
-_SYSTEM_INSTRUCTIONS = (
-    "You are an English placement interviewer. Ask ONLY the provided fixed "
-    "questions in order. Do not generate new questions, do not teach, correct, "
-    "hint, or score. Keep replies brief and encouraging."
-)
+# ── versioned OneClub script identity (exposed for auditability) ───────────────
+SCRIPT_ID = "oneclub.placement.interview"
+SCRIPT_VERSION = "1.0.0"
+LANGUAGE = "en"
 
-# Fixed, meaning-preserving rephrasings keyed by the canonical question text.
-# Deterministic — NOT model-generated — so the meaning can never drift.
+# ── fixed dialogue (reviewed, deterministic) ──────────────────────────────────
+_GREETING = "Hello. Welcome to your OneClub speaking assessment."
+_INSTRUCTIONS = (
+    "I will ask you five short questions. Please answer naturally in English. "
+    "You can listen again or record your answer again before confirming it."
+)
+_CLOSING = "You have completed the speaking interview. Your answers have been saved."
+_ENCOURAGEMENT = "Thank you."
+
+# Fixed, reviewed, meaning-preserving clarifications keyed by the canonical
+# question text. No sample answers, no hints, no grammar/scoring cues.
 _CLARIFICATIONS = {
-    "What is your name?": "Could you tell me your name, please?",
-    "How old are you?": "May I ask how old you are?",
-    "Where are you from?": "Which country or city are you from?",
-    "What do you do for a living?": "What is your job or occupation?",
-    "Why do you want to learn English?": "What is your reason for learning English?",
+    "What is your name?": "Please tell me the name people call you.",
+    "How old are you?": "Please tell me your age.",
+    "Where are you from?": "Please tell me your country or city.",
+    "What do you do for a living?": "Please tell me your job or what you study.",
+    "Why do you want to learn English?": "Please tell me your reason for learning English.",
 }
 
+_ORDINAL = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven"}
 
-class StubInterviewerProvider(InterviewerProvider):
-    provider_name = "stub"
 
+class OneClubInterviewScriptProvider(InterviewerProvider):
+    """The deterministic OneClub interview script. Fixed, offline, versioned —
+    identical input always yields identical lines. No model, no prompt, no key."""
+
+    provider_name = "oneclub-script"
+
+    # ── script identity ──
+    def script_id(self) -> str:
+        return SCRIPT_ID
+
+    def script_version(self) -> str:
+        return SCRIPT_VERSION
+
+    def language(self) -> str:
+        return LANGUAGE
+
+    # ── fixed dialogue ──
     def greeting(self) -> str:
-        return "Hello, and welcome! I'm your interviewer for today's short speaking practice."
+        return _GREETING
 
     def instructions(self) -> str:
-        return (
-            "I'll ask you five simple questions, one at a time. Just answer naturally in "
-            "English — there are no right or wrong answers, and this is only for practice. "
-            "Take your time, and let's begin whenever you're ready."
-        )
-
-    def preamble(self, *, order: int, total: int) -> str:
-        if order <= 1:
-            return "Let's start with the first question."
-        if order >= total:
-            return "Here's the last question."
-        return "Thank you. Here's the next question."
-
-    def clarification(self, *, prompt: str) -> str:
-        # Meaning-preserving rephrase; falls back to a neutral repeat.
-        return _CLARIFICATIONS.get(prompt, f"Let me say that again: {prompt}")
-
-    def encouragement(self) -> str:
-        return "Great, thank you for sharing that."
+        return _INSTRUCTIONS
 
     def closing(self) -> str:
-        return (
-            "That's the end of the interview — thank you for your answers! "
-            "Your responses have been saved."
-        )
+        return _CLOSING
+
+    def encouragement(self) -> str:
+        return _ENCOURAGEMENT
+
+    def preamble(self, *, order: int, total: int) -> str:
+        # Neutral, fixed lead-in — never a paraphrase of the question itself.
+        if order <= 1:
+            return "Let's begin with the first question."
+        if order >= total:
+            return "Here is the last question."
+        return "Let's continue."
+
+    def clarification(self, *, prompt: str) -> str:
+        # Fixed reviewed mapping; unknown prompt falls back to the exact question
+        # (never altered), so meaning can never drift.
+        return _CLARIFICATIONS.get(prompt, prompt)
+
+    def resume_messages(self, *, total: int) -> tuple:
+        """One deterministic 'Welcome back' line per progress point: when k answers
+        (1..total-1) are already saved, continue with question k+1."""
+        out = []
+        for k in range(1, max(total, 1)):
+            nxt = _ORDINAL.get(k + 1, str(k + 1))
+            out.append(f"Welcome back. Let's continue with question {nxt}.")
+        return tuple(out)

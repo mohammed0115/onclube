@@ -17,9 +17,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AIBadge } from "@/components/ai";
-import { useReport } from "@/hooks";
+import { useReport, useRateSession } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { SessionReportContent } from "@/api/types";
+import { useState } from "react";
+import { Star } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 // Pure presentation: renders the validated report DTO. No AI, no calculations.
 
@@ -160,11 +164,65 @@ export function AIReportPage() {
         </p>
       </Card>
 
+      {r.bookingId && <RateSessionCard bookingId={r.bookingId} instructorName={r.instructorName} />}
+
       <Button asChild className="mt-6 w-full sm:w-auto">
         <Link to="/student/book">
           Book a follow-up session <ArrowRight size={16} />
         </Link>
       </Button>
     </DashboardLayout>
+  );
+}
+
+/** Lets the student rate the session (1–5) — feeds the instructor's rating. */
+function RateSessionCard({ bookingId, instructorName }: { bookingId: string; instructorName: string }) {
+  const rate = useRateSession();
+  const [stars, setStars] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState("");
+  const [done, setDone] = useState(false);
+
+  if (done)
+    return (
+      <Card className="mt-6 border-emerald-100 bg-emerald-50/50 p-5">
+        <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+          <Star size={16} className="fill-emerald-500 text-emerald-500" /> Thanks for rating your session!
+        </p>
+      </Card>
+    );
+
+  const submit = async () => {
+    if (stars < 1) return;
+    await rate.mutateAsync({ bookingId, stars, comment: comment.trim() });
+    setDone(true);
+  };
+
+  return (
+    <Card className="mt-6 p-5">
+      <h3 className="mb-1 font-display font-bold text-foreground">Rate your session</h3>
+      <p className="mb-3 text-sm text-muted-foreground">How was your session with {instructorName}?</p>
+      <div className="mb-3 flex items-center gap-1" role="radiogroup" aria-label="Session rating">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n} star${n > 1 ? "s" : ""}`}
+            aria-pressed={stars === n}
+            onClick={() => setStars(n)}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(0)}
+            className="rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <Star size={28} className={cn("transition-colors", (hover || stars) >= n ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40")} />
+          </button>
+        ))}
+      </div>
+      <Textarea rows={2} placeholder="Add a comment (optional)…" value={comment} onChange={(e) => setComment(e.target.value)} aria-label="Session comment" />
+      {rate.isError && <p role="alert" className="mt-2 text-sm text-red-600">Couldn't save your rating. Please try again.</p>}
+      <Button className="mt-3" size="sm" disabled={stars < 1 || rate.isPending} onClick={submit}>
+        {rate.isPending ? "Submitting…" : "Submit rating"}
+      </Button>
+    </Card>
   );
 }

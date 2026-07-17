@@ -108,6 +108,10 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise serves collected static directly from the app process (hashed +
+    # gzip/brotli). It's a safety net behind Nginx and makes the container fully
+    # self-contained. Must sit immediately after SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     # Request correlation + HTTP observability (early, so every log/metric shares ids).
     "infrastructure.observability.middleware.RequestObservabilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -164,8 +168,25 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = env("STATIC_URL", default="static/")
+# collectstatic target (served by Nginx in production; WhiteNoise is the fallback).
+STATIC_ROOT = env("STATIC_ROOT", default=str(BASE_DIR / "staticfiles"))
+MEDIA_URL = env("MEDIA_URL", default="media/")
+MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Hashed + compressed static via WhiteNoise. Only in production (DEBUG=False):
+# the manifest storage requires `collectstatic` to have run, which we don't do in
+# the test suite / local dev (DEBUG=True), so keep the default storage there.
+if not DEBUG:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+
+# Trust the exact HTTPS origins for CSRF (Django 4+ requires scheme). Set per
+# deployment, e.g. CSRF_TRUSTED_ORIGINS=https://oneclup.com,https://www.oneclup.com
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 # ── DRF / JWT (auth wiring only; full APIs are out of scope this phase) ───────
 REST_FRAMEWORK = {
@@ -178,7 +199,65 @@ REST_FRAMEWORK = {
     ),
     # All domain → HTTP translation happens here.
     "EXCEPTION_HANDLER": "api.exceptions.api_exception_handler",
+    # Abuse protection. Rates are env-overridable; the scoped "auth" rate throttles
+    # login/registration/token endpoints hard to blunt credential-stuffing. 429s are
+    # mapped to code "throttled" by the exception handler.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("THROTTLE_ANON", default="120/min"),
+        "user": env("THROTTLE_USER", default="480/min"),
+        # Login/registration — generous enough for real users + dev, tight enough to
+        # blunt credential-stuffing. Override lower in production if desired.
+        "auth": env("THROTTLE_AUTH", default="30/min"),
+    },
 }
+
+# ── Cache (backs DRF throttling + general use) ────────────────────────────────
+# LocMemCache is per-process (fine for a single worker / dev). For multi-worker
+# production set REDIS_URL so throttle counters are shared across workers.
+_REDIS_URL = env("REDIS_URL", default="")
+if _REDIS_URL:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": _REDIS_URL}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# ── Email (transactional notifications) ───────────────────────────────────────
+# Console backend by default (dev prints emails; no external calls). Configure SMTP
+# via env for production and flip NOTIFICATION_EMAILS_ENABLED on. When disabled no
+# email is sent (in-app notifications still work) — tests stay hermetic.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="OneClub <no-reply@oneclub.app>")
+NOTIFICATION_EMAILS_ENABLED = env.bool("NOTIFICATION_EMAILS_ENABLED", default=False)
+# Public base URL of the SPA — used to build password-reset / invite links in emails.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+
+# ── Error monitoring (Sentry) ─────────────────────────────────────────────────
+# No-op unless SENTRY_DSN is set. PII is never sent. Kept out of DEBUG so local
+# runs and the test suite never phone home.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN and not DEBUG:
+    try:  # pragma: no cover - exercised only in configured production
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.1),
+            send_default_pii=False,
+            environment=env("SENTRY_ENVIRONMENT", default="production"),
+        )
+    except Exception:  # never let monitoring wiring break boot
+        pass
 
 from datetime import timedelta  # noqa: E402
 

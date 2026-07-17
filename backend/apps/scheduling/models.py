@@ -10,8 +10,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.common.enums import (
+    AvailabilityExceptionKind,
     BookingStatus,
     CEFRLevel,
+    GroupSessionStatus,
     SlotStatus,
 )
 from apps.common.models import BaseModel, SoftDeleteModel, TimeStampedModel, UUIDModel
@@ -206,3 +208,118 @@ class Booking(BaseModel, SoftDeleteModel):
 
     def __str__(self):
         return f"Booking<{self.student_id} {self.topic_title} {self.status}>"
+
+
+class SessionRating(BaseModel):
+    """A student's rating + optional review of one completed session. Exactly one
+    per booking; drives the instructor's aggregate `rating`."""
+
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name="rating"
+    )
+    student = models.ForeignKey(
+        "accounts.StudentProfile", on_delete=models.CASCADE, related_name="session_ratings"
+    )
+    instructor = models.ForeignKey(
+        "accounts.InstructorProfile", on_delete=models.CASCADE, related_name="session_ratings"
+    )
+    stars = models.PositiveSmallIntegerField()  # 1..5
+    comment = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "session_ratings"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(stars__gte=1) & models.Q(stars__lte=5),
+                name="chk_session_rating_stars_range",
+            ),
+        ]
+        indexes = [models.Index(fields=["instructor"])]
+
+    def __str__(self):
+        return f"SessionRating<{self.booking_id} {self.stars}★>"
+
+
+class GroupSession(BaseModel, SoftDeleteModel):
+    """A scheduled group conversation class: one instructor, many students, a
+    shared topic and a seat capacity. The community side of the club — students
+    browse and join upcoming sessions rather than booking a 1:1 slot."""
+
+    title = models.CharField(max_length=160)
+    description = models.TextField(blank=True, default="")
+    instructor = models.ForeignKey(
+        "accounts.InstructorProfile", on_delete=models.PROTECT, related_name="group_sessions"
+    )
+    instructor_name = models.CharField(max_length=150)  # snapshot
+    level = models.CharField(max_length=2, choices=CEFRLevel.choices)
+    start_at = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField(default=45)
+    capacity = models.PositiveIntegerField(default=6)
+    status = models.CharField(
+        max_length=12, choices=GroupSessionStatus.choices, default=GroupSessionStatus.SCHEDULED
+    )
+
+    class Meta:
+        db_table = "group_sessions"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(capacity__gt=0), name="chk_group_session_capacity_positive"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "start_at"]),
+            models.Index(fields=["instructor", "start_at"]),
+        ]
+
+    def __str__(self):
+        return f"GroupSession<{self.title} @ {self.start_at:%Y-%m-%d %H:%M}>"
+
+
+class GroupSessionAttendee(BaseModel):
+    """One student's seat in a group session. Unique per (session, student)."""
+
+    group_session = models.ForeignKey(
+        GroupSession, on_delete=models.CASCADE, related_name="attendees"
+    )
+    student = models.ForeignKey(
+        "accounts.StudentProfile", on_delete=models.CASCADE, related_name="group_attendances"
+    )
+
+    class Meta:
+        db_table = "group_session_attendees"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_session", "student"], name="uniq_group_session_attendee"
+            ),
+        ]
+        indexes = [models.Index(fields=["student"])]
+
+    def __str__(self):
+        return f"GroupSessionAttendee<{self.group_session_id} {self.student_id}>"
+
+
+class AvailabilityException(BaseModel):
+    """A time range during which an instructor is unavailable — vacation, a public
+    holiday, or an ad-hoc block. Any open slot whose start falls inside an active
+    exception is not bookable, and new bookings in the range are rejected."""
+
+    instructor = models.ForeignKey(
+        "accounts.InstructorProfile", on_delete=models.CASCADE, related_name="availability_exceptions"
+    )
+    kind = models.CharField(max_length=10, choices=AvailabilityExceptionKind.choices)
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    note = models.CharField(max_length=160, blank=True, default="")
+
+    class Meta:
+        db_table = "availability_exceptions"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(end_at__gt=models.F("start_at")),
+                name="chk_availability_exception_range",
+            ),
+        ]
+        indexes = [models.Index(fields=["instructor", "start_at"])]
+
+    def __str__(self):
+        return f"AvailabilityException<{self.instructor_id} {self.kind} {self.start_at:%Y-%m-%d}>"

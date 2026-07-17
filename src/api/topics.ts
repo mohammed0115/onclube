@@ -2,10 +2,12 @@ import { api } from "./client";
 import type {
   AdminBookingItem,
   AdminDashboard,
+  AvailabilityException,
   AvailabilitySlot,
   Cancellation,
   GoalOption,
   InstructorDashboard,
+  InstructorProfile,
   PaymentApprovalItem,
   PaymentApprovalResult,
   PaymentDecision,
@@ -27,6 +29,10 @@ export const topicsApi = {
     return api.get<TopicPreview[]>(`/student/topics/${q}`);
   },
 
+  practice(): Promise<{ vocabulary: string[]; phrases: string[] }> {
+    return api.get("/student/practice/");
+  },
+
   /** Preview before a confirmed booking; full (with questions) after. */
   studentTopic(id: string): Promise<TopicPreview | TopicFull> {
     return api.get<TopicPreview | TopicFull>(`/student/topics/${id}/`);
@@ -40,6 +46,12 @@ export const topicsApi = {
   instructorDashboard(): Promise<InstructorDashboard> {
     return api.get<InstructorDashboard>("/instructor/dashboard/");
   },
+  instructorProfile(): Promise<InstructorProfile> {
+    return api.get<InstructorProfile>("/instructor/profile/");
+  },
+  updateInstructorProfile(patch: Partial<InstructorProfile>): Promise<InstructorProfile> {
+    return api.patch<InstructorProfile>("/instructor/profile/", patch);
+  },
   instructorTopics(): Promise<TopicFull[]> {
     return api.get<TopicFull[]>("/instructor/topics/");
   },
@@ -48,6 +60,15 @@ export const topicsApi = {
   },
   setAvailability(slots: { startAt: string; durationMinutes?: number }[]): Promise<AvailabilitySlot[]> {
     return api.put<AvailabilitySlot[]>("/instructor/availability/set/", { slots });
+  },
+  availabilityExceptions(): Promise<AvailabilityException[]> {
+    return api.get<AvailabilityException[]>("/instructor/availability/exceptions/");
+  },
+  addAvailabilityException(input: { kind: string; startAt: string; endAt: string; note?: string }): Promise<AvailabilityException> {
+    return api.post<AvailabilityException>("/instructor/availability/exceptions/", input);
+  },
+  removeAvailabilityException(id: string): Promise<{ removed: string }> {
+    return api.del(`/instructor/availability/exceptions/${id}/`);
   },
 
   // Admin.

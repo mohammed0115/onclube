@@ -37,6 +37,26 @@ def user_profile(user, student=None, instructor=None) -> dtos.UserProfileResult:
     )
 
 
+def instructor_profile(instructor) -> dtos.InstructorProfileResult:
+    u = instructor.user
+    return dtos.InstructorProfileResult(
+        id=str(instructor.id),
+        full_name=u.full_name,
+        email=u.email,
+        headline=instructor.headline or "",
+        bio=instructor.bio or "",
+        country=instructor.country or "",
+        specialty=instructor.specialty or "",
+        languages=list(instructor.languages or []),
+        interests=list(instructor.interests or []),
+        years_experience=instructor.years_experience or 0,
+        avatar_url=instructor.avatar_url or "",
+        intro_video_url=instructor.intro_video_url or "",
+        rating=float(instructor.rating),
+        sessions_hosted=instructor.sessions_hosted,
+    )
+
+
 # ── onboarding ────────────────────────────────────────────────────────────────
 def goal_option(goal) -> dtos.GoalOptionResult:
     return dtos.GoalOptionResult(
@@ -206,6 +226,28 @@ def booking_list_item(b) -> dtos.BookingListItemResult:
         duration_minutes=b.duration_minutes,
         status=b.status,
         report_id=_safe_related_id(b, "report"),
+    )
+
+
+def group_session(gs, *, student_id) -> dtos.GroupSessionResult:
+    attendees = list(gs.attendees.all())  # prefetched
+    seats_taken = len(attendees)
+    joined = any(a.student_id == student_id for a in attendees)
+    names = [a.student.user.full_name.split()[0] for a in attendees if a.student.user.full_name]
+    return dtos.GroupSessionResult(
+        id=str(gs.id),
+        title=gs.title,
+        description=gs.description or "",
+        instructor_name=gs.instructor_name,
+        level=gs.level,
+        start_at=gs.start_at,
+        duration_minutes=gs.duration_minutes,
+        capacity=gs.capacity,
+        seats_taken=seats_taken,
+        seats_left=max(0, gs.capacity - seats_taken),
+        joined=joined,
+        attendees=names,
+        status=gs.status,
     )
 
 

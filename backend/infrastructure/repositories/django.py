@@ -1,4 +1,6 @@
 """Django ORM implementations of the repository ports."""
+from django.utils import timezone
+
 from apps.accounts.models import User
 from apps.ai_reports.models import AIReport
 from apps.billing.models import PaymentProof, Subscription
@@ -12,7 +14,7 @@ from apps.common.enums import (
 from apps.notifications.models import Notification
 from apps.onboarding.models import Goal, PlacementAttempt, PlacementQuestion, PlacementResult
 from apps.billing.models import Plan
-from apps.scheduling.models import AvailabilitySlot, Booking, Question, Topic
+from apps.scheduling.models import AvailabilityException, AvailabilitySlot, Booking, Question, Topic
 from apps.sessions.models import Session
 
 from application.ports.repositories import (
@@ -33,6 +35,18 @@ from application.ports.repositories import (
 _TOPIC_RELATIONS = ("instructor__user",)
 _TOPIC_PREFETCH = ("subtopics",)
 _BOOKING_LIST_RELATED = ("report", "session")
+
+
+def _exception_intervals(instructor_id):
+    """[start, end) ranges the instructor is unavailable (vacation/holiday/block)."""
+    return [
+        (e.start_at, e.end_at)
+        for e in AvailabilityException.objects.filter(instructor_id=instructor_id).only("start_at", "end_at")
+    ]
+
+
+def _covered(dt, intervals) -> bool:
+    return any(start <= dt < end for start, end in intervals)
 
 
 class DjangoUserRepository(UserRepository):
@@ -138,11 +152,15 @@ class DjangoBookingRepository(BookingRepository):
         return AvailabilitySlot.objects.select_related("instructor__user").get(pk=slot_id)
 
     def list_open_slots(self, instructor_id):
-        return list(
-            AvailabilitySlot.objects.filter(
-                instructor_id=instructor_id, status=SlotStatus.OPEN
-            ).order_by("start_at")
-        )
+        # Only future open slots are bookable; never surface past slots, and drop
+        # any slot that falls inside an availability exception (vacation/holiday/block).
+        slots = AvailabilitySlot.objects.filter(
+            instructor_id=instructor_id,
+            status=SlotStatus.OPEN,
+            start_at__gte=timezone.now(),
+        ).order_by("start_at")
+        intervals = _exception_intervals(instructor_id)
+        return [s for s in slots if not _covered(s.start_at, intervals)]
 
     def list_all_slots(self, instructor):
         return list(
@@ -171,11 +189,11 @@ class DjangoBookingRepository(BookingRepository):
         )
 
     def list_slots_in_range(self, instructor_id, start, end):
-        return list(
-            AvailabilitySlot.objects.filter(
-                instructor_id=instructor_id, start_at__gte=start, start_at__lt=end
-            ).order_by("start_at")
-        )
+        slots = AvailabilitySlot.objects.filter(
+            instructor_id=instructor_id, start_at__gte=start, start_at__lt=end
+        ).order_by("start_at")
+        intervals = _exception_intervals(instructor_id)
+        return [s for s in slots if not _covered(s.start_at, intervals)]
 
     def list_all(self):
         return list(
@@ -201,6 +219,25 @@ class DjangoTopicRepository(TopicRepository):
         if category:
             qs = qs.filter(category=category)
         return list(qs.order_by("category", "title"))
+
+    def practice_content(self):
+        """Study material for the practice hub: deduped vocabulary + practice
+        phrases aggregated from published topics."""
+        vocab, phrases = [], []
+        seen_v, seen_p = set(), set()
+        for t in Topic.objects.filter(published=True).only("vocabulary", "sample_prompts"):
+            for w in (t.vocabulary or []):
+                k = str(w).strip().lower()
+                if k and k not in seen_v:
+                    seen_v.add(k)
+                    vocab.append(str(w).strip())
+            for p in (t.sample_prompts or []):
+                text = (p.get("text") if isinstance(p, dict) else str(p)) or ""
+                k = text.strip().lower()
+                if k and k not in seen_p:
+                    seen_p.add(k)
+                    phrases.append(text.strip())
+        return {"vocabulary": vocab[:60], "phrases": phrases[:30]}
 
     def list_for_instructor(self, instructor):
         return list(

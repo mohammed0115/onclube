@@ -7,6 +7,7 @@ import type {
   PlacementAttemptStatus,
   PlacementResetAudit,
   PlacementSpokenTranscriptInput,
+  PlacementReview,
   PlacementTest,
   PlacementWrittenAnswerInput,
   SpeakingInterview,
@@ -35,6 +36,11 @@ export const placementApi = {
   /** Save one interview answer (with its VOICE/MANUAL source). */
   saveInterviewAnswer(input: InterviewAnswerInput): Promise<InterviewSession> {
     return api.post<InterviewSession>("/placement/interview/answer/", input);
+  },
+
+  /** Transparent per-question review of the assessed attempt. */
+  resultReview(): Promise<PlacementReview> {
+    return api.get<PlacementReview>("/placement/result/review/");
   },
 
   /** Finalize the interview once every question is answered. */

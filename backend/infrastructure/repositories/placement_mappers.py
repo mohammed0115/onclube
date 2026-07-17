@@ -43,6 +43,7 @@ def interview_session_to_dto(s) -> InterviewSessionDTO:
         current_question_index=s.current_question_index,
         started_at=s.started_at,
         finished_at=s.finished_at,
+        script_version=getattr(s, "script_version", "") or "",
     )
 
 

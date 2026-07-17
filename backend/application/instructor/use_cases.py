@@ -16,7 +16,7 @@ from application.permissions import (
     get_instructor_profile,
 )
 from domain import events as domain_events
-from domain.dtos import QuestionFullResult, TopicFullResult
+from domain.dtos import InstructorProfileResult, QuestionFullResult, TopicFullResult
 from domain.exceptions import InvalidStateTransition
 from infrastructure.container import (
     default_event_bus,
@@ -28,6 +28,64 @@ _EDITABLE_TOPIC_FIELDS = (
     "title", "category", "level", "description", "icon", "accent",
     "vocabulary", "sample_prompts",
 )
+
+
+_EDITABLE_PROFILE_FIELDS = (
+    "headline", "bio", "country", "specialty",
+    "languages", "interests", "years_experience",
+    "avatar_url", "intro_video_url",
+)
+
+
+class GetInstructorProfileUseCase:
+    """The authenticated instructor reads their own full teaching profile."""
+
+    def execute(self, *, actor) -> InstructorProfileResult:
+        instructor = get_instructor_profile(actor)
+        return mappers.instructor_profile(instructor)
+
+
+class UpdateInstructorProfileUseCase:
+    """The instructor edits their own profile (optionally their display name)."""
+
+    @transaction.atomic
+    def execute(self, *, actor, full_name=None, **fields) -> InstructorProfileResult:
+        instructor = get_instructor_profile(actor)
+        if full_name is not None:
+            actor.full_name = full_name
+            actor.save(update_fields=["full_name", "updated_at"])
+        changed = []
+        for key, value in fields.items():
+            if key in _EDITABLE_PROFILE_FIELDS and value is not None:
+                setattr(instructor, key, value)
+                changed.append(key)
+        if changed:
+            instructor.save(update_fields=changed + ["updated_at"])
+        return mappers.instructor_profile(instructor)
+
+
+class ListAvailabilityExceptionsUseCase:
+    def execute(self, *, actor):
+        from apps.scheduling import services
+        instructor = get_instructor_profile(actor)
+        return services.list_availability_exceptions(instructor)
+
+
+class AddAvailabilityExceptionUseCase:
+    def execute(self, *, actor, kind, start_at, end_at, note=""):
+        from apps.scheduling import services
+        instructor = get_instructor_profile(actor)
+        return services.add_availability_exception(
+            instructor, kind=kind, start_at=start_at, end_at=end_at, note=note
+        )
+
+
+class RemoveAvailabilityExceptionUseCase:
+    def execute(self, *, actor, exception_id):
+        from apps.scheduling import services
+        instructor = get_instructor_profile(actor)
+        services.remove_availability_exception(instructor, exception_id)
+        return {"removed": str(exception_id)}
 
 
 class CreateTopicUseCase:

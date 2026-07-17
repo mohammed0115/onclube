@@ -156,6 +156,13 @@ class InstructorProfile(BaseModel, SoftDeleteModel):
     rating = models.DecimalField(max_digits=2, decimal_places=1, default=0)
     sessions_hosted = models.PositiveIntegerField(default=0)
     accent = models.CharField(max_length=60, null=True, blank=True)
+    # Public teaching profile (shown to students; editable by the instructor).
+    avatar_url = models.URLField(max_length=500, null=True, blank=True)
+    intro_video_url = models.URLField(max_length=500, null=True, blank=True)
+    languages = models.JSONField(default=list, blank=True)  # e.g. ["English", "Arabic"]
+    specialty = models.CharField(max_length=120, null=True, blank=True)
+    interests = models.JSONField(default=list, blank=True)
+    years_experience = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         db_table = "instructor_profiles"

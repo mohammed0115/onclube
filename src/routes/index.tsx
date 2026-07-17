@@ -5,6 +5,8 @@ import { RequireRole } from "@/auth/guards";
 import { LandingPage } from "@/pages/public/LandingPage";
 import { RegisterPage } from "@/pages/public/RegisterPage";
 import { LoginPage } from "@/pages/public/LoginPage";
+import { ForgotPasswordPage } from "@/pages/public/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/public/ResetPasswordPage";
 
 // Onboarding
 import { GoalSelectionPage } from "@/pages/onboarding/GoalSelectionPage";
@@ -26,11 +28,16 @@ import { BookingSuccessPage } from "@/pages/student/BookingSuccessPage";
 import { QuestionsPreviewPage } from "@/pages/student/QuestionsPreviewPage";
 import { WaitingRoomPage } from "@/pages/student/WaitingRoomPage";
 import { AIReportPage } from "@/pages/student/AIReportPage";
+import { SessionReportsPage } from "@/pages/student/SessionReportsPage";
+import { SettingsPage } from "@/pages/student/SettingsPage";
+import { PracticePage } from "@/pages/student/PracticePage";
+import { CommunityPage } from "@/pages/student/CommunityPage";
 
 // Instructor
 import { InstructorDashboardPage } from "@/pages/instructor/InstructorDashboardPage";
 import { AvailabilityPage } from "@/pages/instructor/AvailabilityPage";
 import { TopicQuestionBuilderPage } from "@/pages/instructor/TopicQuestionBuilderPage";
+import { InstructorProfilePage } from "@/pages/instructor/InstructorProfilePage";
 
 // Admin
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -43,6 +50,9 @@ export function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage mode="reset" />} />
+      <Route path="/set-password" element={<ResetPasswordPage mode="set" />} />
 
       {/* 04–06 Onboarding (authenticated student) */}
       <Route path="/onboarding/goal" element={<RequireRole roles={["student"]}><GoalSelectionPage /></RequireRole>} />
@@ -65,11 +75,16 @@ export function AppRoutes() {
       {/* Session room is shared by the booked student and the assigned instructor. */}
       <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><WaitingRoomPage /></RequireRole>} />
       <Route path="/student/report/:id" element={<RequireRole roles={["student", "instructor", "admin"]}><AIReportPage /></RequireRole>} />
+      <Route path="/student/reports" element={<RequireRole roles={["student"]}><SessionReportsPage /></RequireRole>} />
+      <Route path="/student/practice" element={<RequireRole roles={["student"]}><PracticePage /></RequireRole>} />
+      <Route path="/student/community" element={<RequireRole roles={["student"]}><CommunityPage /></RequireRole>} />
+      <Route path="/student/settings" element={<RequireRole roles={["student"]}><SettingsPage /></RequireRole>} />
 
       {/* 16–18 Instructor */}
       <Route path="/instructor" element={<RequireRole roles={["instructor"]}><InstructorDashboardPage /></RequireRole>} />
       <Route path="/instructor/availability" element={<RequireRole roles={["instructor"]}><AvailabilityPage /></RequireRole>} />
       <Route path="/instructor/topics" element={<RequireRole roles={["instructor"]}><TopicQuestionBuilderPage /></RequireRole>} />
+      <Route path="/instructor/profile" element={<RequireRole roles={["instructor"]}><InstructorProfilePage /></RequireRole>} />
 
       {/* 19–20 Admin */}
       <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />

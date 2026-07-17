@@ -55,6 +55,10 @@ class GetSpeakingInterviewUseCase:
             encouragement=self.interviewer.encouragement(),
             closing=self.interviewer.closing(),
             steps=steps,
+            script_id=self.interviewer.script_id(),
+            script_version=self.interviewer.script_version(),
+            language=self.interviewer.language(),
+            resume_messages=self.interviewer.resume_messages(total=total),
         )
 
 
@@ -105,6 +109,13 @@ class SaveInterviewAnswerUseCase(_InterviewSessionMixin):
     def execute(self, *, actor, question_id, transcript_text, source):
         student, attempt = self._active_attempt(actor)
         question_id = str(question_id)
+
+        # An empty answer can never be saved (and therefore never advances the
+        # interview). Silence/no-speech must be retried, not persisted.
+        if not (transcript_text or "").strip():
+            from domain.exceptions import EmptyTranscript
+
+            raise EmptyTranscript()
 
         # Only fixed, known spoken questions may be answered.
         allowed = self.questions.known_ids("spoken")
