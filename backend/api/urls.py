@@ -98,7 +98,11 @@ urlpatterns = [
 
     # ── Admin ──
     path("admin/dashboard/", v.AdminDashboardView.as_view()),
+    path("admin/users/", v.AdminUsersView.as_view()),
     path("admin/users/invite/", v.AdminInviteUserView.as_view()),
+    path("admin/users/<uuid:user_id>/status/", v.AdminUserStatusView.as_view()),
+    path("admin/users/<uuid:user_id>/role/", v.AdminUserRoleView.as_view()),
+    path("admin/audit/", v.AdminAuditLogView.as_view()),
     path("admin/payment-proofs/", v.AdminPaymentProofListView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/", v.AdminPaymentProofDetailView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/approve/", v.AdminApprovePaymentView.as_view()),

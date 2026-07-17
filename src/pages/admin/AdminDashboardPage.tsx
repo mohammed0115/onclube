@@ -31,10 +31,10 @@ const ALERT_TONE = {
 // The five operational areas of the platform (Operations Center).
 const AREAS = [
   { icon: Activity, label: "Operations", desc: "Payments, sessions & alerts", tone: "text-indigo-600 bg-indigo-50", to: "/admin/payments" },
-  { icon: GraduationCap, label: "Academics", desc: "Students, teachers & content", tone: "text-purple-600 bg-purple-50", to: "/admin" },
+  { icon: GraduationCap, label: "Academics", desc: "Students, teachers & content", tone: "text-purple-600 bg-purple-50", to: "/admin/members" },
   { icon: BarChart3, label: "Business", desc: "Subscriptions, revenue & plans", tone: "text-emerald-600 bg-emerald-50", to: "/admin/payments" },
   { icon: Server, label: "Platform", desc: "Providers, health & jobs", tone: "text-sky-600 bg-sky-50", to: "/admin" },
-  { icon: ShieldCheck, label: "Administration", desc: "Users, roles & audit log", tone: "text-slate-600 bg-slate-100", to: "/admin" },
+  { icon: ShieldCheck, label: "Administration", desc: "Users, roles & audit log", tone: "text-slate-600 bg-slate-100", to: "/admin/members" },
 ];
 
 export function AdminDashboardPage() {

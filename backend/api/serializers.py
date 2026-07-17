@@ -592,6 +592,14 @@ class InviteUserInputSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=["instructor", "admin", "student"])
 
 
+class SetUserStatusInputSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["active", "suspended"])
+
+
+class ChangeUserRoleInputSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=["student", "instructor", "admin"])
+
+
 class SetGoalInputSerializer(serializers.Serializer):
     goalId = serializers.UUIDField()
 

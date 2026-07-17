@@ -122,3 +122,5 @@ class AdminActionType(models.TextChoices):
     SUBSCRIPTION_TOPUP = "subscription_topup", "Subscription top-up"
     REFUND_NOTE = "refund_note", "Refund note"
     BOOKING_CANCEL_OVERRIDE = "booking_cancel_override", "Booking cancel override"
+    USER_STATUS_CHANGED = "user_status_changed", "User status changed"
+    USER_ROLE_CHANGED = "user_role_changed", "User role changed"

@@ -11,6 +11,47 @@ from infrastructure.container import (
 from apps.common.enums import UserRole
 
 
+class ListUsersUseCase:
+    """All users for the admin members table."""
+
+    def execute(self, *, actor, role=None):
+        from apps.accounts.models import User
+        ensure_admin(actor)
+        qs = User.objects.all().order_by("role", "email")
+        if role:
+            qs = qs.filter(role=role)
+        return [
+            {
+                "id": str(u.pk),
+                "fullName": u.full_name,
+                "email": u.email,
+                "role": u.role,
+                "status": u.status,
+            }
+            for u in qs
+        ]
+
+
+class ListAuditLogUseCase:
+    """Append-only admin audit log (most recent first)."""
+
+    def execute(self, *, actor):
+        from apps.admin_ops.models import AdminAction
+        ensure_admin(actor)
+        return [
+            {
+                "id": str(a.id),
+                "admin": a.admin.full_name if a.admin_id else "—",
+                "action": a.action_type,
+                "targetTable": a.target_table,
+                "targetId": str(a.target_id),
+                "reason": a.reason or "",
+                "when": a.created_at.isoformat(),
+            }
+            for a in AdminAction.objects.select_related("admin").order_by("-created_at")[:100]
+        ]
+
+
 class ListAdminPaymentApprovalsUseCase:
     """The admin approval queue (pending proofs)."""
 

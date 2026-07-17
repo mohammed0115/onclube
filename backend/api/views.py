@@ -130,6 +130,12 @@ from application.ai_reports.use_cases import (
 from application.admin_ops.queries import (
     GetAdminDashboardUseCase,
     ListAdminPaymentApprovalsUseCase,
+    ListAuditLogUseCase,
+    ListUsersUseCase,
+)
+from application.admin_ops.use_cases import (
+    ChangeUserRoleUseCase,
+    SetUserStatusUseCase,
 )
 from application.notifications.queries import ListNotificationsUseCase
 
@@ -212,6 +218,33 @@ class AdminInviteUserView(APIView):
             actor=request.user, full_name=data["fullName"], email=data["email"], role=data["role"]
         )
         return Response(result, status=status.HTTP_201_CREATED)
+
+
+class AdminUsersView(APIView):
+    """Members table — all users (optionally filtered by ?role=)."""
+
+    def get(self, request):
+        items = ListUsersUseCase().execute(actor=request.user, role=request.query_params.get("role"))
+        return Response(items)
+
+
+class AdminUserStatusView(APIView):
+    def post(self, request, user_id):
+        data = _validated(s.SetUserStatusInputSerializer, request)
+        result = SetUserStatusUseCase().execute(actor=request.user, user_id=user_id, status=data["status"])
+        return Response(result)
+
+
+class AdminUserRoleView(APIView):
+    def post(self, request, user_id):
+        data = _validated(s.ChangeUserRoleInputSerializer, request)
+        result = ChangeUserRoleUseCase().execute(actor=request.user, user_id=user_id, role=data["role"])
+        return Response(result)
+
+
+class AdminAuditLogView(APIView):
+    def get(self, request):
+        return Response(ListAuditLogUseCase().execute(actor=request.user))
 
 
 class InstructorProfileView(APIView):

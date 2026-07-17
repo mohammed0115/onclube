@@ -487,6 +487,24 @@ export const handlers = [
     })
   ),
 
+  http.get(`${B}/admin/users/`, () =>
+    HttpResponse.json([
+      { id: "u1", fullName: "Test Student", email: "s@x.co", role: "student", status: "active" },
+      { id: "u2", fullName: "A Teacher", email: "t@x.co", role: "instructor", status: "active" },
+    ])
+  ),
+  http.post(`${B}/admin/users/:id/status/`, async ({ request, params }) => {
+    const b = (await request.json()) as { status: string };
+    return HttpResponse.json({ userId: params.id, status: b.status });
+  }),
+  http.post(`${B}/admin/users/:id/role/`, async ({ request, params }) => {
+    const b = (await request.json()) as { role: string };
+    return HttpResponse.json({ userId: params.id, role: b.role });
+  }),
+  http.get(`${B}/admin/audit/`, () =>
+    HttpResponse.json([{ id: "a1", admin: "Admin", action: "user_status_changed", targetTable: "users", targetId: "u1", reason: "active → suspended", when: "2026-07-01T10:00:00Z" }])
+  ),
+
   http.post(`${B}/admin/payment-proofs/:id/reject/`, ({ params }) =>
     HttpResponse.json({ proofId: params.id, status: "rejected", reviewedById: "admin1" })
   ),

@@ -8,6 +8,7 @@ import {
   GraduationCap,
   CalendarClock,
   PenSquare,
+  ShieldCheck,
   User,
   Users,
   Wallet,
@@ -49,7 +50,8 @@ const NAV: Record<Role, NavItem[]> = {
   admin: [
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/admin" },
     { icon: Wallet, label: "Payment Approval", short: "Payments", to: "/admin/payments" },
-    { icon: Users, label: "Members", to: "/admin" },
+    { icon: Users, label: "Members", to: "/admin/members" },
+    { icon: ShieldCheck, label: "Audit log", short: "Audit", to: "/admin/audit" },
     // Admins can also teach (same account acts as instructor).
     { icon: GraduationCap, label: "Teaching", short: "Teach", to: "/instructor" },
     { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },

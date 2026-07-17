@@ -2,6 +2,8 @@ import { api } from "./client";
 import type {
   AdminBookingItem,
   AdminDashboard,
+  AdminUser,
+  AuditEntry,
   AvailabilityException,
   AvailabilitySlot,
   BookingListItem,
@@ -84,6 +86,18 @@ export const topicsApi = {
   // Admin.
   adminDashboard(): Promise<AdminDashboard> {
     return api.get<AdminDashboard>("/admin/dashboard/");
+  },
+  adminUsers(role?: string): Promise<AdminUser[]> {
+    return api.get<AdminUser[]>(`/admin/users/${role ? `?role=${role}` : ""}`);
+  },
+  setUserStatus(id: string, status: "active" | "suspended"): Promise<{ userId: string; status: string }> {
+    return api.post(`/admin/users/${id}/status/`, { status });
+  },
+  changeUserRole(id: string, role: string): Promise<{ userId: string; role: string }> {
+    return api.post(`/admin/users/${id}/role/`, { role });
+  },
+  auditLog(): Promise<AuditEntry[]> {
+    return api.get<AuditEntry[]>("/admin/audit/");
   },
   adminPaymentProofs(): Promise<PaymentApprovalItem[]> {
     return api.get<PaymentApprovalItem[]>("/admin/payment-proofs/");

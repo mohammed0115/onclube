@@ -355,6 +355,28 @@ export function useRemoveAvailabilityException() {
 export const useAdminDashboard = () =>
   useQuery({ queryKey: qk.adminDashboard, queryFn: topicsApi.adminDashboard });
 
+export const useAdminUsers = (role?: string) =>
+  useQuery({ queryKey: qk.adminUsers(role), queryFn: () => topicsApi.adminUsers(role) });
+
+export function useSetUserStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; status: "active" | "suspended" }) => topicsApi.setUserStatus(input.id, input.status),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "users"] }); qc.invalidateQueries({ queryKey: qk.auditLog }); },
+  });
+}
+
+export function useChangeUserRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; role: string }) => topicsApi.changeUserRole(input.id, input.role),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "users"] }); qc.invalidateQueries({ queryKey: qk.auditLog }); },
+  });
+}
+
+export const useAuditLog = () =>
+  useQuery({ queryKey: qk.auditLog, queryFn: topicsApi.auditLog });
+
 export const useAdminProofs = () =>
   useQuery({ queryKey: qk.adminProofs, queryFn: topicsApi.adminPaymentProofs });
 

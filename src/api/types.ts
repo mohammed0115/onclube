@@ -461,6 +461,24 @@ export interface AvailabilityException {
   note: string;
 }
 
+export interface AdminUser {
+  id: string;
+  fullName: string;
+  email: string;
+  role: "student" | "instructor" | "admin";
+  status: "active" | "suspended";
+}
+
+export interface AuditEntry {
+  id: string;
+  admin: string;
+  action: string;
+  targetTable: string;
+  targetId: string;
+  reason: string;
+  when: string;
+}
+
 export interface InstructorProfile {
   id: string;
   fullName: string;
