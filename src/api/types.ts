@@ -446,6 +446,9 @@ export interface InstructorDashboard {
   todaySessions: BookingListItem[];
   topics: { id: string; title: string; published: boolean; level: CEFR }[];
   weekly: Record<string, number>;
+  completedSessions: number;
+  teachingHours: number;
+  cancellationRate: number;
 }
 
 export type AvailabilityExceptionKind = "vacation" | "holiday" | "block";

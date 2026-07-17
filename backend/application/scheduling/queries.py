@@ -256,13 +256,22 @@ class GetInstructorDashboardUseCase:
         instructor = get_instructor_profile(actor)
         bookings = self.bookings.list_for_instructor(instructor)
         upcoming = [b for b in bookings if b.status == BookingStatus.UPCOMING]
+        completed = [b for b in bookings if b.status == BookingStatus.COMPLETED]
+        cancelled = [b for b in bookings if b.status == BookingStatus.CANCELLED]
         topics = self.topics.list_for_instructor(instructor)
+
+        teaching_hours = round(sum((b.duration_minutes or 45) for b in completed) / 60, 1)
+        total = len(bookings)
+        cancellation_rate = round(len(cancelled) / total * 100, 1) if total else 0.0
 
         return InstructorDashboardResult(
             upcoming_sessions=len(upcoming),
             active_students=len({b.student_id for b in bookings}),
             topics_owned=len(topics),
             average_rating=float(instructor.rating),
+            completed_sessions=len(completed),
+            teaching_hours=teaching_hours,
+            cancellation_rate=cancellation_rate,
             today_sessions=[mappers.booking_list_item(b) for b in upcoming],
             topics=[
                 {

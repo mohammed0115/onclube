@@ -462,6 +462,7 @@ export const handlers = [
   http.get(`${B}/instructor/dashboard/`, () =>
     HttpResponse.json({
       upcomingSessions: 2, activeStudents: 5, topicsOwned: 1, averageRating: 4.9,
+      completedSessions: 12, teachingHours: 9, cancellationRate: 4.2,
       todaySessions: [{ id: "b1", topicTitle: "Job Interview Practice", instructorName: "Sarah", scheduledAt: "2026-06-30T18:00:00Z", durationMinutes: 45, status: "upcoming", reportId: null }],
       topics: [{ id: "t1", title: "Job Interview Practice", published: true, level: "B1" }],
       weekly: { sessions_hosted: 14 },

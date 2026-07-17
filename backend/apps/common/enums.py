@@ -107,6 +107,8 @@ class NotificationType(models.TextChoices):
     PAYMENT_REJECTED = "payment_rejected", "Payment rejected"
     PAYMENT_INFO_REQUESTED = "payment_info_requested", "Payment info requested"
     BOOKING_CONFIRMED = "booking_confirmed", "Booking confirmed"
+    NEW_BOOKING = "new_booking", "New booking"           # → instructor
+    BOOKING_CANCELLED = "booking_cancelled", "Booking cancelled"
     SESSION_REMINDER = "session_reminder", "Session reminder"
     REPORT_READY = "report_ready", "Report ready"
 

@@ -363,6 +363,9 @@ class InstructorDashboardSerializer(serializers.Serializer):
     todaySessions = BookingListItemSerializer(source="today_sessions", many=True)
     topics = serializers.JSONField()
     weekly = serializers.JSONField()
+    completedSessions = serializers.IntegerField(source="completed_sessions")
+    teachingHours = serializers.FloatField(source="teaching_hours")
+    cancellationRate = serializers.FloatField(source="cancellation_rate")
 
 
 class AdminDashboardSerializer(serializers.Serializer):

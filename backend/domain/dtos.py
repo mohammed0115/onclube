@@ -465,6 +465,9 @@ class InstructorDashboardResult:
     today_sessions: list = field(default_factory=list)     # [BookingListItemResult]
     topics: list = field(default_factory=list)             # [{id,title,published,...}]
     weekly: dict = field(default_factory=dict)
+    completed_sessions: int = 0
+    teaching_hours: float = 0.0
+    cancellation_rate: float = 0.0     # percentage 0..100
 
 
 @dataclass(frozen=True)

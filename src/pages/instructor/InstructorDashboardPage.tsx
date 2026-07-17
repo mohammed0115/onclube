@@ -52,10 +52,12 @@ export function InstructorDashboardPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard icon="CalendarClock" value={`${d.upcomingSessions}`} label="Upcoming sessions" tone="bg-indigo-100 text-indigo-600" />
         <StatCard icon="Users" value={`${d.activeStudents}`} label="Active students" tone="bg-emerald-100 text-emerald-600" />
-        <StatCard icon="PenSquare" value={`${d.topicsOwned}`} label="Topics owned" tone="bg-purple-100 text-purple-600" />
+        <StatCard icon="CheckCircle" value={`${d.completedSessions}`} label="Completed" tone="bg-sky-100 text-sky-600" />
+        <StatCard icon="Clock" value={`${d.teachingHours}h`} label="Teaching hours" tone="bg-teal-100 text-teal-600" />
+        <StatCard icon="XCircle" value={`${d.cancellationRate}%`} label="Cancellation rate" tone="bg-rose-100 text-rose-600" />
         <StatCard icon="Star" value={`${d.averageRating}`} label="Average rating" tone="bg-amber-100 text-amber-600" />
       </div>
 

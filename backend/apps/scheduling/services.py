@@ -251,6 +251,14 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
         body=f"{topic.title} on {slot.start_at:%b %d, %H:%M}.",
         data={"booking_id": str(booking.pk)},
     )
+    # Notify the instructor of the new booking on their calendar.
+    Notification.objects.create(
+        user=booking.instructor.user,
+        type=NotificationType.NEW_BOOKING,
+        title="New booking",
+        body=f"{student.user.full_name} booked {topic.title} on {slot.start_at:%b %d, %H:%M}.",
+        data={"booking_id": str(booking.pk)},
+    )
     return booking
 
 
@@ -302,6 +310,17 @@ def cancel_booking(booking: Booking, *, now=None, admin=None, force_credit=None)
             target_id=booking.pk,
             reason="Admin override of automatic 24h credit rule.",
             metadata={"auto_refund": auto_refund, "applied_refund": refund},
+        )
+
+    # Notify both parties of the cancellation.
+    _body = f"{booking.topic_title} on {booking.scheduled_at:%b %d, %H:%M} was cancelled."
+    for recipient in (booking.student.user, booking.instructor.user):
+        Notification.objects.create(
+            user=recipient,
+            type=NotificationType.BOOKING_CANCELLED,
+            title="Booking cancelled",
+            body=_body,
+            data={"booking_id": str(booking.pk)},
         )
     return booking
 
