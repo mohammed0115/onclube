@@ -29,9 +29,18 @@ def get_instructor_profile(actor):
     if actor is None:
         raise PermissionDenied()
     profile = getattr(actor, "instructor_profile", None)
-    if profile is None:
-        raise PermissionDenied("An instructor profile is required for this action.")
-    return profile
+    if profile is not None:
+        return profile
+    # Admins can also teach: provision an instructor profile on first use so a
+    # single admin account can act as both admin and instructor.
+    if getattr(actor, "role", None) == UserRole.ADMIN:
+        from apps.accounts.models import InstructorProfile
+        initials = "".join(w[0] for w in (actor.full_name or "Admin").split()[:2]).upper() or "AD"
+        profile, _ = InstructorProfile.objects.get_or_create(
+            user=actor, defaults={"initials": initials}
+        )
+        return profile
+    raise PermissionDenied("An instructor profile is required for this action.")
 
 
 def ensure_student_owns(actor, student_profile):

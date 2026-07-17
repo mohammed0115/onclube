@@ -493,6 +493,11 @@ export interface AdminDashboard {
   currency: string;
   pendingProofs: PaymentApprovalItem[];
   recentActivity: { actor: string; action: string; when: string }[];
+  totalStudents: number;
+  sessionsToday: number;
+  reportsWaiting: number;
+  systemStatus: string;
+  alerts: { severity: "info" | "warning" | "error"; message: string; to: string | null }[];
 }
 
 export interface PaymentApprovalResult {

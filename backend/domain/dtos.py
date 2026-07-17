@@ -487,6 +487,12 @@ class AdminDashboardResult:
     currency: str
     pending_proofs: list = field(default_factory=list)     # [PaymentApprovalItemResult]
     recent_activity: list = field(default_factory=list)    # [{actor,action,when}]
+    # Operations-center "Today's overview" + alerts
+    total_students: int = 0
+    sessions_today: int = 0
+    reports_waiting: int = 0
+    system_status: str = "healthy"
+    alerts: list = field(default_factory=list)             # [{severity,message,to}]
 
 
 @dataclass(frozen=True)

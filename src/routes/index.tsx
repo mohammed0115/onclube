@@ -81,10 +81,10 @@ export function AppRoutes() {
       <Route path="/student/settings" element={<RequireRole roles={["student"]}><SettingsPage /></RequireRole>} />
 
       {/* 16–18 Instructor */}
-      <Route path="/instructor" element={<RequireRole roles={["instructor"]}><InstructorDashboardPage /></RequireRole>} />
-      <Route path="/instructor/availability" element={<RequireRole roles={["instructor"]}><AvailabilityPage /></RequireRole>} />
-      <Route path="/instructor/topics" element={<RequireRole roles={["instructor"]}><TopicQuestionBuilderPage /></RequireRole>} />
-      <Route path="/instructor/profile" element={<RequireRole roles={["instructor"]}><InstructorProfilePage /></RequireRole>} />
+      <Route path="/instructor" element={<RequireRole roles={["instructor", "admin"]}><InstructorDashboardPage /></RequireRole>} />
+      <Route path="/instructor/availability" element={<RequireRole roles={["instructor", "admin"]}><AvailabilityPage /></RequireRole>} />
+      <Route path="/instructor/topics" element={<RequireRole roles={["instructor", "admin"]}><TopicQuestionBuilderPage /></RequireRole>} />
+      <Route path="/instructor/profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorProfilePage /></RequireRole>} />
 
       {/* 19–20 Admin */}
       <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />

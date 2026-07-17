@@ -49,6 +49,10 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/admin" },
     { icon: Wallet, label: "Payment Approval", short: "Payments", to: "/admin/payments" },
     { icon: Users, label: "Members", to: "/admin" },
+    // Admins can also teach (same account acts as instructor).
+    { icon: GraduationCap, label: "Teaching", short: "Teach", to: "/instructor" },
+    { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },
+    { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
   ],
 };
 

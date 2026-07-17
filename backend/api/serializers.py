@@ -373,6 +373,11 @@ class AdminDashboardSerializer(serializers.Serializer):
     currency = serializers.CharField()
     pendingProofs = PaymentApprovalItemSerializer(source="pending_proofs", many=True)
     recentActivity = serializers.JSONField(source="recent_activity")
+    totalStudents = serializers.IntegerField(source="total_students")
+    sessionsToday = serializers.IntegerField(source="sessions_today")
+    reportsWaiting = serializers.IntegerField(source="reports_waiting")
+    systemStatus = serializers.CharField(source="system_status")
+    alerts = serializers.JSONField()
 
 
 class SuggestionSerializer(serializers.Serializer):

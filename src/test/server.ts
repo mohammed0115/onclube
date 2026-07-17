@@ -473,6 +473,8 @@ export const handlers = [
       pendingPayments: 1, activeMembers: 12, instructors: 3, revenue: 1840, currency: "SDG",
       pendingProofs: [{ id: "pp1", studentName: "Test Student", planName: "Regular", amount: 220, currency: "SDG", status: "pending_review", submittedAt: "2026-06-25T10:01:00Z" }],
       recentActivity: [{ actor: "Test Student", action: "submitted payment TRX-1", when: "2026-06-25T10:01:00Z" }],
+      totalStudents: 26, sessionsToday: 4, reportsWaiting: 2, systemStatus: "healthy",
+      alerts: [{ severity: "warning", message: "1 payment(s) awaiting review", to: "/admin/payments" }],
     })
   ),
 

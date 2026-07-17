@@ -45,6 +45,28 @@ class GetAdminDashboardUseCase:
             for p in pending[:5]
         ]
 
+        # ── Operations "Today's overview" + alerts ──────────────────────────
+        from django.utils import timezone
+        from apps.common.enums import AIReportStatus, BookingStatus
+        from apps.ai_reports.models import AIReport
+        from apps.scheduling.models import Booking
+
+        today = timezone.now().date()
+        total_students = self.users.count_by_role(UserRole.STUDENT)
+        sessions_today = Booking.objects.filter(scheduled_at__date=today).exclude(
+            status=BookingStatus.CANCELLED
+        ).count()
+        reports_waiting = AIReport.objects.filter(status=AIReportStatus.PENDING).count()
+        reports_failed = AIReport.objects.filter(status=AIReportStatus.FAILED).count()
+
+        alerts = []
+        if pending:
+            alerts.append({"severity": "warning", "message": f"{len(pending)} payment(s) awaiting review", "to": "/admin/payments"})
+        if reports_failed:
+            alerts.append({"severity": "error", "message": f"{reports_failed} AI report(s) failed", "to": None})
+        if reports_waiting:
+            alerts.append({"severity": "info", "message": f"{reports_waiting} AI report(s) pending", "to": None})
+
         return AdminDashboardResult(
             pending_payments=len(pending),
             active_members=self.subscriptions.count_active(),
@@ -53,4 +75,9 @@ class GetAdminDashboardUseCase:
             currency=currency,
             pending_proofs=[mappers.payment_approval_item(p) for p in pending[:10]],
             recent_activity=recent_activity,
+            total_students=total_students,
+            sessions_today=sessions_today,
+            reports_waiting=reports_waiting,
+            system_status="healthy",
+            alerts=alerts,
         )

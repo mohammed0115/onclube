@@ -2,7 +2,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.common.factories import make_instructor, make_student
+from apps.common.factories import make_admin, make_instructor, make_student
 
 pytestmark = pytest.mark.django_db
 
@@ -50,6 +50,23 @@ def test_student_cannot_use_instructor_profile_endpoint():
     student = make_student()
     resp = client_for(student.user).get("/api/v1/instructor/profile/")
     assert resp.status_code in (403, 404)
+
+
+def test_admin_can_act_as_instructor():
+    """An admin account can also teach: instructor endpoints auto-provision an
+    InstructorProfile for admins."""
+    from apps.accounts.models import InstructorProfile
+
+    admin = make_admin()
+    assert not InstructorProfile.objects.filter(user=admin).exists()
+    resp = client_for(admin).get("/api/v1/instructor/profile/")
+    assert resp.status_code == 200
+    assert InstructorProfile.objects.filter(user=admin).exists()  # provisioned on first use
+    # And can edit it like any instructor.
+    patched = client_for(admin).patch(
+        "/api/v1/instructor/profile/", {"headline": "Founder & coach"}, format="json"
+    )
+    assert patched.status_code == 200 and patched.data["headline"] == "Founder & coach"
 
 
 def test_change_password_success_then_new_password_works():
