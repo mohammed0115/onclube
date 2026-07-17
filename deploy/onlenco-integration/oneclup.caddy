@@ -21,16 +21,13 @@ oneclup.com, www.oneclup.com {
 		header Cache-Control "public, max-age=86400"
 	}
 
+	# API + Django admin → the OneClup gunicorn container on the shared network.
+	# No active health check: it would probe with Host: oneclup_web (not in
+	# ALLOWED_HOSTS → 400 → false "down"). Caddy forwards the real Host + X-Forwarded-*
+	# by default, so normal requests carry Host: oneclup.com and pass ALLOWED_HOSTS.
 	@backend path /api/* /admin/*
 	handle @backend {
-		reverse_proxy oneclup_web:8001 {
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Forwarded-For {remote}
-			header_up Host {host}
-			health_uri /api/v1/health/liveness/
-			health_interval 30s
-			health_timeout 5s
-		}
+		reverse_proxy oneclup_web:8001
 	}
 
 	handle {
