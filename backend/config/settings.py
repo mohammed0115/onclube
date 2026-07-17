@@ -188,6 +188,12 @@ if not DEBUG:
 # deployment, e.g. CSRF_TRUSTED_ORIGINS=https://oneclup.com,https://www.oneclup.com
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# Health probes (Caddy active healthcheck + Docker HEALTHCHECK) hit the liveness
+# endpoint over plain HTTP on the docker network. Without this exemption
+# SECURE_SSL_REDIRECT (on when DEBUG=False) would 301 them to https and the probe
+# would fail. Only the health path is exempt — everything else still redirects.
+SECURE_REDIRECT_EXEMPT = [r"^api/v1/health/"]
+
 # ── DRF / JWT (auth wiring only; full APIs are out of scope this phase) ───────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

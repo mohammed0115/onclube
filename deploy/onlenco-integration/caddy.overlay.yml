@@ -1,0 +1,30 @@
+# Compose overlay for Onlenco's Caddy — adds ONLY what OneClup needs, without
+# editing any of Onlenco's own compose files.
+#
+# Apply it as an extra `-f` when you (re)deploy Onlenco's Caddy, e.g. from the
+# Onlenco project directory:
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.deploy.yml \
+#     -f /opt/oneclup/app/deploy/onlenco-integration/caddy.overlay.yml \
+#     up -d caddy
+#
+# It: (1) joins Caddy to the shared `edge` network so it can reach
+# oneclup_web:8001, and (2) mounts OneClup's static/media/SPA dirs read-only so
+# Caddy can serve them. Compose CONCATENATES volumes/networks across overlays, so
+# Onlenco's existing Caddy mounts/networks are preserved.
+
+services:
+  caddy:
+    networks:
+      - default          # keep talking to Onlenco's own web:8000
+      - edge             # + reach oneclup_web:8001
+    volumes:
+      - /opt/oneclup/app/frontend_dist:/srv/oneclup-frontend:ro
+      - /opt/oneclup/app/staticfiles:/srv/oneclup-static:ro
+      - /opt/oneclup/app/media:/srv/oneclup-media:ro
+
+networks:
+  edge:
+    external: true

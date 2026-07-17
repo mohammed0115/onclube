@@ -1,0 +1,52 @@
+# OneClup site block for the SHARED Onlenco Caddy.
+#
+# Append this to Onlenco's Caddyfile (deploy/Caddyfile), below its existing
+# `onlenco.academy` block, then redeploy Caddy. Caddy fetches/renews the
+# oneclup.com certificate automatically (same as Onlenco) — no certbot needed.
+#
+# Requires (see README.md in this folder):
+#   - `edge` docker network shared by Caddy and oneclup_web
+#   - Caddy mounts OneClup's host dirs read-only:
+#       /opt/oneclup/app/frontend_dist → /srv/oneclup-frontend
+#       /opt/oneclup/app/staticfiles   → /srv/oneclup-static
+#       /opt/oneclup/app/media         → /srv/oneclup-media
+
+oneclup.com, www.oneclup.com {
+    encode zstd gzip
+    request_body { max_size 25MB }
+
+    # Django admin/DRF static (collectstatic output, served straight from disk).
+    handle_path /static/* {
+        root * /srv/oneclup-static
+        file_server
+        header Cache-Control "public, max-age=31536000, immutable"
+    }
+
+    # User uploads (payment proofs etc.).
+    handle_path /media/* {
+        root * /srv/oneclup-media
+        file_server
+        header Cache-Control "public, max-age=86400"
+    }
+
+    # API + Django admin → the OneClup gunicorn container on the shared network.
+    @backend path /api/* /admin/*
+    handle @backend {
+        reverse_proxy oneclup_web:8001 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-For   {remote}
+            header_up Host              {host}
+            # /api/v1/health/ is in SECURE_REDIRECT_EXEMPT → 200 over plain HTTP.
+            health_uri      /api/v1/health/liveness/
+            health_interval 30s
+            health_timeout  5s
+        }
+    }
+
+    # React SPA — everything else, with client-side routing fallback.
+    handle {
+        root * /srv/oneclup-frontend
+        try_files {path} /index.html
+        file_server
+    }
+}

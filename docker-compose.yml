@@ -43,6 +43,7 @@ services:
     # retries until it is ready, so a profiled-off DB never force-starts.
     networks:
       - oneclup
+      - edge          # shared with Onlenco's Caddy → it proxies oneclup.com here
 
   postgres:
     image: postgres:16-alpine
@@ -82,6 +83,11 @@ services:
 networks:
   oneclup:
     name: oneclup_net
+  # Shared edge network that Onlenco's Caddy also joins (create once on the host:
+  #   docker network create edge). This is how Caddy reaches `oneclup_web:8001`.
+  edge:
+    external: true
+    name: edge
 
 volumes:
   oneclup_pg_data:
