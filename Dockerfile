@@ -60,10 +60,11 @@ COPY deploy/gunicorn.conf.py ./gunicorn.conf.py
 # Built SPA from stage 1 (published to the shared volume by the entrypoint).
 COPY --from=frontend /app/dist ./spa_build
 
-# Non-root user + writable dirs.
+# Non-root user with a FIXED uid/gid (1000) so host bind-mount ownership is
+# predictable: `chown -R 1000:1000` on the mounted dirs lets the container write.
 RUN chmod +x /entrypoint.sh \
-    && addgroup --system app \
-    && adduser --system --ingroup app --home ${APP_HOME} app \
+    && groupadd --gid 1000 app \
+    && useradd --uid 1000 --gid 1000 --home-dir ${APP_HOME} --shell /usr/sbin/nologin app \
     && mkdir -p ${APP_HOME}/staticfiles ${APP_HOME}/media ${APP_HOME}/frontend \
     && chown -R app:app ${APP_HOME}
 

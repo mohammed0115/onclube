@@ -25,8 +25,13 @@ sudo usermod -aG docker $USER && newgrp docker
 
 # Deploy directory — MUST match the paths in the Nginx config (/opt/oneclup/app)
 sudo mkdir -p /opt/oneclup && sudo chown $USER:$USER /opt/oneclup
-git clone <your-repo-url> /opt/oneclup/app
+# HTTPS clone (no SSH key needed; use a Personal Access Token if the repo is private)
+git clone https://github.com/mohammed0115/onclube.git /opt/oneclup/app
 cd /opt/oneclup/app
+
+# The container runs as uid 1000; make the mounted dirs writable by it.
+mkdir -p staticfiles media frontend_dist
+sudo chown -R 1000:1000 staticfiles media frontend_dist
 
 # certbot webroot for ACME
 sudo mkdir -p /var/www/certbot
@@ -186,9 +191,10 @@ cat backup_YYYY-MM-DD.sql | docker compose --env-file .env.production exec -T po
   (`nc -z <host> 5432`).
 
 ### Permission denied
-- Volumes owned wrong: the app runs as the non-root `app` user.
-  `sudo chown -R 100:101 /opt/oneclup/app/{media,staticfiles,frontend_dist}`
-  (or `docker compose exec -u root web chown -R app:app /app/media`).
+- The container runs as **uid 1000**; bind-mounted host dirs created by Docker are
+  root-owned, so collectstatic / SPA-copy fail. Fix:
+  `sudo chown -R 1000:1000 /opt/oneclup/app/{staticfiles,media,frontend_dist}`
+  then `docker compose --env-file .env.production up -d`.
 - `entrypoint.sh not executable` → it's `chmod +x`'d in the image; if you edited
   it on the host, `git update-index --chmod=+x deploy/entrypoint.sh`.
 
