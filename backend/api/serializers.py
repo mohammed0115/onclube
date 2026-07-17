@@ -312,6 +312,10 @@ class AdminBookingUpdateInputSerializer(serializers.Serializer):
     forceCredit = serializers.BooleanField(required=False, allow_null=True, default=None)
 
 
+class RescheduleInputSerializer(serializers.Serializer):
+    newSlotId = serializers.UUIDField()
+
+
 class AvailabilityExceptionSerializer(serializers.Serializer):
     id = serializers.CharField()
     kind = serializers.CharField()

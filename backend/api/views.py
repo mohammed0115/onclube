@@ -90,6 +90,7 @@ from application.scheduling.queries import (
     GetWeeklyCalendarUseCase,
     ListAdminBookingsUseCase,
     ListCommunitySessionsUseCase,
+    ListInstructorBookingsUseCase,
     ListInstructorAvailabilityUseCase,
     ListInstructorTopicsUseCase,
     ListStudentAvailableTopicsUseCase,
@@ -102,6 +103,7 @@ from application.scheduling.use_cases import (
     LeaveGroupSessionUseCase,
     ListAvailableSlotsUseCase,
     RateSessionUseCase,
+    RescheduleBookingUseCase,
 )
 
 # Sessions
@@ -879,6 +881,29 @@ class InstructorSetAvailabilityView(APIView):
         ]
         dtos = SetAvailabilityUseCase().execute(actor=request.user, slots=slots)
         return Response(s.InstructorSlotSerializer(dtos, many=True).data)
+
+
+class InstructorBookingsView(APIView):
+    """The instructor's own bookings (for cancel/reschedule)."""
+
+    def get(self, request):
+        items = ListInstructorBookingsUseCase().execute(actor=request.user)
+        return Response(s.BookingListItemSerializer(items, many=True).data)
+
+
+class InstructorBookingCancelView(APIView):
+    def post(self, request, booking_id):
+        result = CancelBookingUseCase().execute(actor=request.user, booking_id=booking_id)
+        return Response(s.CancellationSerializer(result).data)
+
+
+class InstructorBookingRescheduleView(APIView):
+    def post(self, request, booking_id):
+        data = _validated(s.RescheduleInputSerializer, request)
+        result = RescheduleBookingUseCase().execute(
+            actor=request.user, booking_id=booking_id, new_slot_id=data["newSlotId"]
+        )
+        return Response(result)
 
 
 class InstructorAvailabilityExceptionsView(APIView):

@@ -298,6 +298,33 @@ export function useSetAvailability() {
   });
 }
 
+export const useInstructorBookings = () =>
+  useQuery({ queryKey: qk.instructorBookings, queryFn: topicsApi.instructorBookings });
+
+export function useCancelInstructorBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => topicsApi.cancelInstructorBooking(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.instructorBookings });
+      qc.invalidateQueries({ queryKey: qk.instructorDashboard });
+      qc.invalidateQueries({ queryKey: qk.instructorAvailability });
+    },
+  });
+}
+
+export function useRescheduleInstructorBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; newSlotId: string }) =>
+      topicsApi.rescheduleInstructorBooking(input.id, input.newSlotId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.instructorBookings });
+      qc.invalidateQueries({ queryKey: qk.instructorAvailability });
+    },
+  });
+}
+
 export const useAvailabilityExceptions = () =>
   useQuery({ queryKey: qk.availabilityExceptions, queryFn: topicsApi.availabilityExceptions });
 

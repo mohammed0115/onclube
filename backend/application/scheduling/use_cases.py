@@ -101,11 +101,17 @@ class CancelBookingUseCase:
     def execute(self, *, actor, booking_id, now=None, force_credit=None) -> CancellationResult:
         booking = self.bookings.get(booking_id)
         is_admin = actor is not None and getattr(actor, "role", None) == UserRole.ADMIN
+        is_instructor_owner = (
+            actor is not None
+            and getattr(actor, "role", None) == UserRole.INSTRUCTOR
+            and getattr(booking.instructor, "user_id", None) == actor.id
+        )
 
         # Overriding the automatic 24h rule is an admin-only action.
         if force_credit is not None and not is_admin:
             ensure_admin(actor)
-        if not is_admin:
+        # Admin, the booking's own instructor, or the student may cancel.
+        if not is_admin and not is_instructor_owner:
             ensure_student_owns(actor, booking.student)
 
         cancelled = scheduling_services.cancel_booking(
@@ -126,6 +132,27 @@ class CancelBookingUseCase:
             credit_refunded=cancelled.credit_refunded,
             sessions_remaining=subscription.sessions_remaining,
         )
+
+
+class RescheduleBookingUseCase:
+    """An instructor (or admin) moves one of their upcoming bookings to another
+    of their OPEN slots. Notifies the student."""
+
+    def __init__(self, *, bookings=None):
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor, booking_id, new_slot_id) -> dict:
+        from application.permissions import get_instructor_profile
+        from domain.exceptions import PermissionDenied
+
+        booking = self.bookings.get(booking_id)
+        is_admin = getattr(actor, "role", None) == UserRole.ADMIN
+        if not is_admin:
+            instructor = get_instructor_profile(actor)
+            if booking.instructor_id != instructor.id:
+                raise PermissionDenied("You can only reschedule your own bookings.")
+        b = scheduling_services.reschedule_booking(booking, new_slot_id=new_slot_id)
+        return {"bookingId": str(b.pk), "scheduledAt": b.scheduled_at.isoformat(), "slotId": str(b.slot_id)}
 
 
 class GetTopicForStudentUseCase:

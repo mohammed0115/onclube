@@ -347,6 +347,14 @@ export const handlers = [
   }),
   http.post(`${B}/me/password/`, () => HttpResponse.json({ changed: true })),
   http.get(`${B}/instructor/availability/`, () => HttpResponse.json([])),
+  http.get(`${B}/instructor/bookings/`, () =>
+    HttpResponse.json([{ id: "b1", topicTitle: "Job Interview Practice", instructorName: "Sarah", scheduledAt: "2026-09-01T18:00:00Z", durationMinutes: 45, status: "upcoming", reportId: null }])
+  ),
+  http.post(`${B}/instructor/bookings/:id/cancel/`, ({ params }) => HttpResponse.json({ bookingId: params.id, status: "cancelled" })),
+  http.post(`${B}/instructor/bookings/:id/reschedule/`, async ({ request, params }) => {
+    const b = (await request.json()) as { newSlotId: string };
+    return HttpResponse.json({ bookingId: params.id, scheduledAt: "2026-09-05T14:00:00Z", slotId: b.newSlotId });
+  }),
   http.get(`${B}/instructor/availability/exceptions/`, () => HttpResponse.json([])),
   http.post(`${B}/instructor/availability/exceptions/`, async ({ request }) => {
     const b = (await request.json()) as { kind: string; startAt: string; endAt: string; note?: string };

@@ -238,6 +238,17 @@ class ListInstructorTopicsUseCase:
         return result
 
 
+class ListInstructorBookingsUseCase:
+    """The instructor's own bookings (newest first) — for cancel/reschedule."""
+
+    def __init__(self, *, bookings=None):
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor) -> list:
+        instructor = get_instructor_profile(actor)
+        return [mappers.booking_list_item(b) for b in self.bookings.list_for_instructor(instructor)]
+
+
 class ListInstructorAvailabilityUseCase:
     def __init__(self, *, bookings=None):
         self.bookings = bookings or default_booking_repository()

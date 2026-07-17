@@ -53,6 +53,7 @@ export const qk = {
   instructorProfile: ["instructor", "profile"] as const,
   instructorTopics: ["instructor", "topics"] as const,
   instructorAvailability: ["instructor", "availability"] as const,
+  instructorBookings: ["instructor", "bookings"] as const,
   availabilityExceptions: ["instructor", "availability", "exceptions"] as const,
   adminDashboard: ["admin", "dashboard"] as const,
   adminProofs: ["admin", "proofs"] as const,

@@ -42,6 +42,7 @@ const NAV: Record<Role, NavItem[]> = {
   instructor: [
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/instructor" },
     { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },
+    { icon: Calendar, label: "My Sessions", short: "Sessions", to: "/instructor/sessions" },
     { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
     { icon: User, label: "My Profile", short: "Profile", to: "/instructor/profile" },
   ],

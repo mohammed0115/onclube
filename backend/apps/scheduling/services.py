@@ -5,6 +5,8 @@ Encodes: §2.1 no double booking, §2.3 sessions ≥ 0, §2.4 expired subscripti
 blocks booking, Business Rule 8 cancellation credit window, and §2.5 question
 visibility gate.
 """
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -322,6 +324,46 @@ def cancel_booking(booking: Booking, *, now=None, admin=None, force_credit=None)
             body=_body,
             data={"booking_id": str(booking.pk)},
         )
+    return booking
+
+
+@transaction.atomic
+def reschedule_booking(booking: Booking, *, new_slot_id, now=None) -> Booking:
+    """Move an upcoming booking to another OPEN slot of the same instructor. The
+    old slot is released, the new one booked, and the student is notified."""
+    now = now or timezone.now()
+    booking = Booking.objects.select_for_update().get(pk=booking.pk)
+    if booking.status != BookingStatus.UPCOMING:
+        raise InvalidStateTransition("Only an upcoming booking can be rescheduled.")
+
+    new_slot = AvailabilitySlot.objects.select_for_update().filter(pk=new_slot_id).first()
+    if new_slot is None:
+        raise BusinessRuleError("Slot not found.", code="slot_unavailable")
+    if new_slot.instructor_id != booking.instructor_id:
+        raise BusinessRuleError("Slot belongs to another instructor.", code="slot_instructor_mismatch")
+    if new_slot.status != SlotStatus.OPEN:
+        raise SlotAlreadyBooked()
+    if new_slot.start_at < now - timedelta(minutes=new_slot.duration_minutes or 45):
+        raise BusinessRuleError("That time has already passed.", code="slot_unavailable")
+    if is_covered_by_intervals(new_slot.start_at, exception_intervals(new_slot.instructor_id)):
+        raise BusinessRuleError("The instructor is unavailable at that time.", code="instructor_unavailable")
+
+    old = booking.slot
+    old.status = SlotStatus.OPEN
+    old.save(update_fields=["status", "updated_at"])
+    new_slot.status = SlotStatus.BOOKED
+    new_slot.save(update_fields=["status", "updated_at"])
+    booking.slot = new_slot
+    booking.scheduled_at = new_slot.start_at
+    booking.save(update_fields=["slot", "scheduled_at", "updated_at"])
+
+    Notification.objects.create(
+        user=booking.student.user,
+        type=NotificationType.BOOKING_CONFIRMED,
+        title="Session rescheduled",
+        body=f"{booking.topic_title} moved to {new_slot.start_at:%b %d, %H:%M}.",
+        data={"booking_id": str(booking.pk)},
+    )
     return booking
 
 

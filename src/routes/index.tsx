@@ -38,6 +38,7 @@ import { InstructorDashboardPage } from "@/pages/instructor/InstructorDashboardP
 import { AvailabilityPage } from "@/pages/instructor/AvailabilityPage";
 import { TopicQuestionBuilderPage } from "@/pages/instructor/TopicQuestionBuilderPage";
 import { InstructorProfilePage } from "@/pages/instructor/InstructorProfilePage";
+import { InstructorSessionsPage } from "@/pages/instructor/InstructorSessionsPage";
 
 // Admin
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
@@ -85,6 +86,7 @@ export function AppRoutes() {
       <Route path="/instructor/availability" element={<RequireRole roles={["instructor", "admin"]}><AvailabilityPage /></RequireRole>} />
       <Route path="/instructor/topics" element={<RequireRole roles={["instructor", "admin"]}><TopicQuestionBuilderPage /></RequireRole>} />
       <Route path="/instructor/profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorProfilePage /></RequireRole>} />
+      <Route path="/instructor/sessions" element={<RequireRole roles={["instructor", "admin"]}><InstructorSessionsPage /></RequireRole>} />
 
       {/* 19–20 Admin */}
       <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />

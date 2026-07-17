@@ -4,6 +4,7 @@ import type {
   AdminDashboard,
   AvailabilityException,
   AvailabilitySlot,
+  BookingListItem,
   Cancellation,
   GoalOption,
   InstructorDashboard,
@@ -60,6 +61,15 @@ export const topicsApi = {
   },
   setAvailability(slots: { startAt: string; durationMinutes?: number }[]): Promise<AvailabilitySlot[]> {
     return api.put<AvailabilitySlot[]>("/instructor/availability/set/", { slots });
+  },
+  instructorBookings(): Promise<BookingListItem[]> {
+    return api.get<BookingListItem[]>("/instructor/bookings/");
+  },
+  cancelInstructorBooking(id: string): Promise<{ bookingId: string; status: string }> {
+    return api.post(`/instructor/bookings/${id}/cancel/`, {});
+  },
+  rescheduleInstructorBooking(id: string, newSlotId: string): Promise<{ bookingId: string; scheduledAt: string }> {
+    return api.post(`/instructor/bookings/${id}/reschedule/`, { newSlotId });
   },
   availabilityExceptions(): Promise<AvailabilityException[]> {
     return api.get<AvailabilityException[]>("/instructor/availability/exceptions/");
