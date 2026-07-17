@@ -11,7 +11,9 @@
 # ./staticfiles and ./media, and proxies the API/admin to 127.0.0.1:8001.
 
 services:
-  web:
+  # Service intentionally NOT named "web": on a shared edge network that would
+  # collide with Onlenco's own "web" service alias and misroute its traffic.
+  oneclup:
     build:
       context: .
       dockerfile: Dockerfile
