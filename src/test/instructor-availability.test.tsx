@@ -45,7 +45,11 @@ describe("Instructor availability (real API)", () => {
     // The time column renders hourly slots once loaded.
     expect(await screen.findByText("09:00")).toBeInTheDocument();
 
-    // Toggle the first available switch on, then Save.
+    // Jump to next month so every hour is in the future (past slots are disabled
+    // by design — clicking one would be a no-op, which is time-of-day dependent).
+    await userEvent.click(screen.getByRole("button", { name: /Next month/i }));
+
+    // Toggle the first (now enabled) switch on, then Save.
     const switches = screen.getAllByRole("switch");
     await userEvent.click(switches[0]);
     await userEvent.click(screen.getByRole("button", { name: /Save changes/i }));
