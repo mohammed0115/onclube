@@ -505,7 +505,7 @@ export function useAcceptReport(reportId?: string) {
   });
 }
 
-export function useRegenerateReport(reportId?: string) {
+export function useReportRegen(reportId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (sessionId: string) => reportsApi.regenerateReport(sessionId),

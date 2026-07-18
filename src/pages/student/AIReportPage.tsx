@@ -17,7 +17,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AIBadge } from "@/components/ai";
-import { useReport, useRateSession, useSaveSessionNotes, useAcceptReport, useRegenerateReport } from "@/hooks";
+import { useReport, useRateSession, useSaveSessionNotes, useAcceptReport, useReportRegen } from "@/hooks";
 import { useAuth } from "@/auth/AuthProvider";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { SessionReportContent } from "@/api/types";
@@ -184,7 +184,7 @@ function InstructorReportControls({ sessionId }: { sessionId: string }) {
   const { role } = useAuth();
   const save = useSaveSessionNotes(id);
   const accept = useAcceptReport(id);
-  const regen = useRegenerateReport(id);
+  const regen = useReportRegen(id);
   const [notes, setNotes] = useState({ participation: "", strengths: "", weaknesses: "", homework: "", next_focus: "" });
   const set = (k: keyof typeof notes) => (e: { target: { value: string } }) => setNotes((n) => ({ ...n, [k]: e.target.value }));
 
