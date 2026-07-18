@@ -20,7 +20,18 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
 import { useAuth } from "@/auth/AuthProvider";
+import { useI18n } from "@/i18n";
 import { useNotifications, useMarkNotificationRead } from "@/hooks";
+
+// Map nav labels → translation keys (English stays the source/default).
+const NAV_KEY: Record<string, string> = {
+  Dashboard: "nav.dashboard", "Book Session": "nav.book", Practice: "nav.practice",
+  Community: "nav.community", "Session Reports": "nav.reports", Settings: "nav.settings",
+  Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
+  "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Payment Approval": "nav.payments",
+  Members: "nav.members", Business: "nav.business", Platform: "nav.platform",
+  "Audit log": "nav.audit", Teaching: "nav.teaching",
+};
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
 import type { UserProfile } from "@/api/types";
@@ -82,9 +93,11 @@ function activeProfile(role: Role, user: UserProfile | null) {
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, role: authRole, logout } = useAuth();
   const { pathname } = useLocation();
+  const { t } = useI18n();
   const role: Role = (authRole as Role) ?? "student";
   const items = NAV[role];
   const profile = activeProfile(role, user);
+  const label = (item: NavItem) => (NAV_KEY[item.label] ? t(NAV_KEY[item.label]) : item.label);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -107,7 +120,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 )}
               >
                 <item.icon size={17} />
-                {item.label}
+                {label(item)}
               </Link>
             );
           })}
@@ -126,7 +139,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             onClick={logout}
             className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-red-50 hover:text-red-600"
           >
-            <LogOut size={17} /> Log out
+            <LogOut size={17} /> {t("nav.logout")}
           </button>
         </div>
       </aside>
@@ -138,6 +151,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Logo to={`/${role === "student" ? "student" : role}`} />
           </div>
           <div className="flex items-center gap-3">
+            <LanguageToggle />
             <NotificationBell />
             <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-bold text-white", profile.accent)}>
               {profile.initials}
@@ -170,12 +184,27 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               )}
             >
               <item.icon size={19} />
-              <span className="max-w-full truncate px-0.5">{item.short ?? item.label}</span>
+              <span className="max-w-full truncate px-0.5">{item.short ?? label(item)}</span>
             </Link>
           );
         })}
       </nav>
     </div>
+  );
+}
+
+/** English ⟷ Arabic toggle. Flips the document direction (RTL) app-wide. */
+function LanguageToggle() {
+  const { lang, toggle } = useI18n();
+  return (
+    <button
+      onClick={toggle}
+      className="flex h-9 items-center justify-center rounded-xl bg-muted/60 px-3 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted"
+      aria-label="Toggle language"
+      title={lang === "ar" ? "English" : "العربية"}
+    >
+      {lang === "ar" ? "EN" : "ع"}
+    </button>
   );
 }
 

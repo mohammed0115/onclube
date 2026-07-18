@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/query/queryClient";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { AppStateProvider } from "@/app/AppState";
+import { LanguageProvider } from "@/i18n";
 import { AppRoutes } from "@/routes";
 import { ScreenNavigator } from "@/components/navigation/ScreenNavigator";
 import { LiveSessionProviders } from "@/app/LiveSessionProviders";
@@ -15,6 +16,7 @@ export default function App() {
       <BrowserRouter>
         {/* AuthProvider needs the router (navigation on logout). */}
         <AuthProvider>
+          <LanguageProvider>
           <AppStateProvider>
             {/* Composition root selects real vs stub live-session providers by env. */}
             <LiveSessionProviders>
@@ -23,6 +25,7 @@ export default function App() {
               <ScreenNavigator />
             </LiveSessionProviders>
           </AppStateProvider>
+          </LanguageProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
