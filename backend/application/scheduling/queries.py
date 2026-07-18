@@ -249,6 +249,82 @@ class ListInstructorBookingsUseCase:
         return [mappers.booking_list_item(b) for b in self.bookings.list_for_instructor(instructor)]
 
 
+def _report_of(booking):
+    try:
+        return booking.report
+    except Exception:
+        return None
+
+
+class ListInstructorStudentsUseCase:
+    """Distinct students the instructor has taught, with a quick summary."""
+
+    def __init__(self, *, bookings=None):
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor) -> list:
+        instructor = get_instructor_profile(actor)
+        bookings = self.bookings.list_for_instructor(instructor)  # newest first
+        grouped = {}
+        for b in bookings:
+            g = grouped.setdefault(b.student_id, {"student": b.student, "sessions": 0, "completed": 0, "last_score": None})
+            g["sessions"] += 1
+            if b.status == BookingStatus.COMPLETED:
+                g["completed"] += 1
+            if g["last_score"] is None:
+                rep = _report_of(b)
+                if rep is not None and getattr(rep, "overall_score", None) is not None:
+                    g["last_score"] = rep.overall_score
+        return [
+            {
+                "id": str(g["student"].id),
+                "fullName": g["student"].user.full_name,
+                "level": g["student"].level,
+                "sessions": g["sessions"],
+                "completed": g["completed"],
+                "lastScore": g["last_score"],
+            }
+            for g in grouped.values()
+        ]
+
+
+class GetInstructorStudentUseCase:
+    """Per-student prep view for the instructor: level, goal, sessions, reports."""
+
+    def __init__(self, *, bookings=None):
+        self.bookings = bookings or default_booking_repository()
+
+    def execute(self, *, actor, student_id) -> dict:
+        from domain.exceptions import PermissionDenied
+
+        instructor = get_instructor_profile(actor)
+        mine = [b for b in self.bookings.list_for_instructor(instructor) if str(b.student_id) == str(student_id)]
+        if not mine:
+            raise PermissionDenied("Not one of your students.")
+        s = mine[0].student
+        sessions = []
+        for b in mine:
+            rep = _report_of(b)
+            sessions.append({
+                "id": str(b.id),
+                "topicTitle": b.topic_title,
+                "scheduledAt": b.scheduled_at.isoformat(),
+                "status": b.status,
+                "reportId": str(rep.id) if rep is not None else None,
+                "score": getattr(rep, "overall_score", None) if rep is not None else None,
+            })
+        goal = getattr(s, "goal", None)
+        return {
+            "id": str(s.id),
+            "fullName": s.user.full_name,
+            "level": s.level,
+            "goalTitle": getattr(goal, "title", None) if goal else None,
+            "sessionsRemaining": s.sessions_remaining,
+            "paymentStatus": s.payment_status,
+            "sessions": sessions,
+        }
+
+
 class ListInstructorAvailabilityUseCase:
     def __init__(self, *, bookings=None):
         self.bookings = bookings or default_booking_repository()

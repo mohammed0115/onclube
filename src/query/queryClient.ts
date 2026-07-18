@@ -54,6 +54,8 @@ export const qk = {
   instructorTopics: ["instructor", "topics"] as const,
   instructorAvailability: ["instructor", "availability"] as const,
   instructorBookings: ["instructor", "bookings"] as const,
+  instructorStudents: ["instructor", "students"] as const,
+  instructorStudent: (id: string) => ["instructor", "student", id] as const,
   availabilityExceptions: ["instructor", "availability", "exceptions"] as const,
   adminDashboard: ["admin", "dashboard"] as const,
   adminUsers: (role?: string) => ["admin", "users", role ?? "all"] as const,

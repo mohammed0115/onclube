@@ -11,6 +11,8 @@ import type {
   GoalOption,
   InstructorDashboard,
   InstructorProfile,
+  InstructorStudentDetail,
+  InstructorStudentSummary,
   PaymentApprovalItem,
   PaymentApprovalResult,
   PaymentDecision,
@@ -66,6 +68,12 @@ export const topicsApi = {
   },
   instructorBookings(): Promise<BookingListItem[]> {
     return api.get<BookingListItem[]>("/instructor/bookings/");
+  },
+  instructorStudents(): Promise<InstructorStudentSummary[]> {
+    return api.get<InstructorStudentSummary[]>("/instructor/students/");
+  },
+  instructorStudent(id: string): Promise<InstructorStudentDetail> {
+    return api.get<InstructorStudentDetail>(`/instructor/students/${id}/`);
   },
   cancelInstructorBooking(id: string): Promise<{ bookingId: string; status: string }> {
     return api.post(`/instructor/bookings/${id}/cancel/`, {});

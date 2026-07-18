@@ -301,6 +301,12 @@ export function useSetAvailability() {
 export const useInstructorBookings = () =>
   useQuery({ queryKey: qk.instructorBookings, queryFn: topicsApi.instructorBookings });
 
+export const useInstructorStudents = () =>
+  useQuery({ queryKey: qk.instructorStudents, queryFn: topicsApi.instructorStudents });
+
+export const useInstructorStudent = (id: string) =>
+  useQuery({ queryKey: qk.instructorStudent(id), queryFn: () => topicsApi.instructorStudent(id), enabled: !!id });
+
 export function useCancelInstructorBooking() {
   const qc = useQueryClient();
   return useMutation({

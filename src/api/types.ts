@@ -461,6 +461,25 @@ export interface AvailabilityException {
   note: string;
 }
 
+export interface InstructorStudentSummary {
+  id: string;
+  fullName: string;
+  level: string | null;
+  sessions: number;
+  completed: number;
+  lastScore: number | null;
+}
+
+export interface InstructorStudentDetail {
+  id: string;
+  fullName: string;
+  level: string | null;
+  goalTitle: string | null;
+  sessionsRemaining: number;
+  paymentStatus: string;
+  sessions: { id: string; topicTitle: string; scheduledAt: string; status: string; reportId: string | null; score: number | null }[];
+}
+
 export interface AdminUser {
   id: string;
   fullName: string;

@@ -347,6 +347,12 @@ export const handlers = [
   }),
   http.post(`${B}/me/password/`, () => HttpResponse.json({ changed: true })),
   http.get(`${B}/instructor/availability/`, () => HttpResponse.json([])),
+  http.get(`${B}/instructor/students/`, () =>
+    HttpResponse.json([{ id: "st1", fullName: "Sami Student", level: "B1", sessions: 3, completed: 2, lastScore: 78 }])
+  ),
+  http.get(`${B}/instructor/students/:id/`, ({ params }) =>
+    HttpResponse.json({ id: params.id, fullName: "Sami Student", level: "B1", goalTitle: "Travel", sessionsRemaining: 5, paymentStatus: "approved", sessions: [{ id: "b1", topicTitle: "Job Interview", scheduledAt: "2026-08-01T18:00:00Z", status: "completed", reportId: "r1", score: 78 }] })
+  ),
   http.get(`${B}/instructor/bookings/`, () =>
     HttpResponse.json([{ id: "b1", topicTitle: "Job Interview Practice", instructorName: "Sarah", scheduledAt: "2026-09-01T18:00:00Z", durationMinutes: 45, status: "upcoming", reportId: null }])
   ),

@@ -86,6 +86,8 @@ urlpatterns = [
     path("instructor/topics/<uuid:topic_id>/publish/", v.InstructorTopicPublishView.as_view()),
     path("instructor/topics/<uuid:topic_id>/questions/", v.InstructorAddQuestionView.as_view()),
     path("instructor/topics/<uuid:topic_id>/questions/<uuid:question_id>/approve/", v.InstructorApproveQuestionView.as_view()),
+    path("instructor/students/", v.InstructorStudentsView.as_view()),
+    path("instructor/students/<uuid:student_id>/", v.InstructorStudentDetailView.as_view()),
     path("instructor/bookings/", v.InstructorBookingsView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/cancel/", v.InstructorBookingCancelView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/reschedule/", v.InstructorBookingRescheduleView.as_view()),

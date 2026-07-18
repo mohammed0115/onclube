@@ -89,8 +89,10 @@ from application.scheduling.queries import (
     GetTopicPreviewOrFullUseCase,
     GetWeeklyCalendarUseCase,
     ListAdminBookingsUseCase,
+    GetInstructorStudentUseCase,
     ListCommunitySessionsUseCase,
     ListInstructorBookingsUseCase,
+    ListInstructorStudentsUseCase,
     ListInstructorAvailabilityUseCase,
     ListInstructorTopicsUseCase,
     ListStudentAvailableTopicsUseCase,
@@ -953,6 +955,20 @@ class InstructorBookingsView(APIView):
     def get(self, request):
         items = ListInstructorBookingsUseCase().execute(actor=request.user)
         return Response(s.BookingListItemSerializer(items, many=True).data)
+
+
+class InstructorStudentsView(APIView):
+    """Distinct students the instructor has taught."""
+
+    def get(self, request):
+        return Response(ListInstructorStudentsUseCase().execute(actor=request.user))
+
+
+class InstructorStudentDetailView(APIView):
+    """Per-student prep view (level, goal, sessions, reports)."""
+
+    def get(self, request, student_id):
+        return Response(GetInstructorStudentUseCase().execute(actor=request.user, student_id=student_id))
 
 
 class InstructorBookingCancelView(APIView):
