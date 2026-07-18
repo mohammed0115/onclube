@@ -16,6 +16,7 @@ from apps.common.enums import (
     SessionStatus,
     SubscriptionStatus,
     TranscriptSource,
+    UserRole,
 )
 from apps.sessions.models import Session, SessionTranscript
 from application import mappers
@@ -262,6 +263,56 @@ class EndSessionUseCase:
             session_id=str(session.id), status=session.status,
             started_at=session.started_at, ended_at=session.ended_at,
         )
+
+
+def _ensure_session_instructor(actor, session):
+    """The session's own instructor (or an admin) — for writing notes/reviewing."""
+    from domain.exceptions import PermissionDenied
+    is_admin = getattr(actor, "role", None) == UserRole.ADMIN
+    is_instructor = (
+        getattr(actor, "role", None) == UserRole.INSTRUCTOR
+        and getattr(session.booking.instructor, "user_id", None) == getattr(actor, "id", None)
+    )
+    if not (is_admin or is_instructor):
+        raise PermissionDenied("Only the session's instructor may do this.")
+
+
+class SaveSessionNotesUseCase:
+    """Instructor writes structured post-session notes
+    (participation / strengths / weaknesses / homework / next_focus)."""
+
+    _FIELDS = ("participation", "strengths", "weaknesses", "homework", "next_focus")
+
+    def __init__(self, *, sessions=None):
+        self.sessions = sessions or default_session_repository()
+
+    def execute(self, *, actor, session_id, notes) -> dict:
+        session = self.sessions.get(session_id)
+        _ensure_session_instructor(actor, session)
+        cleaned = {k: (notes.get(k) or "") for k in self._FIELDS}
+        session.instructor_notes = cleaned
+        session.save(update_fields=["instructor_notes", "updated_at"])
+        return {"sessionId": str(session.id), "notes": cleaned}
+
+
+class AcceptReportUseCase:
+    """Instructor accepts the AI report as reviewed (optionally leaving a note)."""
+
+    def __init__(self, *, sessions=None):
+        self.sessions = sessions or default_session_repository()
+
+    def execute(self, *, actor, session_id, note="") -> dict:
+        session = self.sessions.get(session_id)
+        _ensure_session_instructor(actor, session)
+        report = AIReport.objects.filter(session=session).first()
+        if report is None:
+            from apps.common.exceptions import BusinessRuleError
+            raise BusinessRuleError("No report to accept yet.", code="report_not_ready")
+        report.instructor_reviewed = True
+        if note:
+            report.instructor_note = note
+        report.save(update_fields=["instructor_reviewed", "instructor_note", "updated_at"])
+        return {"sessionId": str(session.id), "reviewed": True}
 
 
 class CompleteSessionUseCase:

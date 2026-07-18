@@ -473,6 +473,31 @@ export function useEndSession() {
 export const useReport = (reportId: string) =>
   useQuery({ queryKey: qk.reportById(reportId), queryFn: () => reportsApi.byId(reportId), enabled: !!reportId });
 
+export function useSaveSessionNotes(reportId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { sessionId: string; notes: import("@/api/reports").SessionNotes }) =>
+      reportsApi.saveNotes(input.sessionId, input.notes),
+    onSuccess: () => { if (reportId) qc.invalidateQueries({ queryKey: qk.reportById(reportId) }); },
+  });
+}
+
+export function useAcceptReport(reportId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { sessionId: string; note?: string }) => reportsApi.acceptReport(input.sessionId, input.note),
+    onSuccess: () => { if (reportId) qc.invalidateQueries({ queryKey: qk.reportById(reportId) }); },
+  });
+}
+
+export function useRegenerateReport(reportId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => reportsApi.regenerateReport(sessionId),
+    onSuccess: () => { if (reportId) qc.invalidateQueries({ queryKey: qk.reportById(reportId) }); },
+  });
+}
+
 // ── notifications ─────────────────────────────────────────────────────────────
 export const useNotifications = () =>
   useQuery({ queryKey: qk.notifications, queryFn: notificationsApi.list });

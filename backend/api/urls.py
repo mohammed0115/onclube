@@ -129,6 +129,9 @@ urlpatterns = [
     path("reports/<uuid:report_id>/", v.AIReportDetailView.as_view()),
     path("sessions/<uuid:session_id>/report/", v.SessionReportView.as_view()),
     path("sessions/<uuid:session_id>/report/generate/", v.SessionReportGenerateView.as_view()),
+    path("sessions/<uuid:session_id>/report/regenerate/", v.SessionReportRegenerateView.as_view()),
+    path("sessions/<uuid:session_id>/report/accept/", v.SessionReportAcceptView.as_view()),
+    path("sessions/<uuid:session_id>/notes/", v.SessionNotesView.as_view()),
     path("admin/sessions/<uuid:session_id>/report/regenerate/", v.AdminSessionReportRegenerateView.as_view()),
 
     # ── Notifications ──

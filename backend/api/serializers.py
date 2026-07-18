@@ -316,6 +316,14 @@ class RescheduleInputSerializer(serializers.Serializer):
     newSlotId = serializers.UUIDField()
 
 
+class SessionNotesInputSerializer(serializers.Serializer):
+    participation = serializers.CharField(required=False, allow_blank=True)
+    strengths = serializers.CharField(required=False, allow_blank=True)
+    weaknesses = serializers.CharField(required=False, allow_blank=True)
+    homework = serializers.CharField(required=False, allow_blank=True)
+    next_focus = serializers.CharField(required=False, allow_blank=True)
+
+
 class AvailabilityExceptionSerializer(serializers.Serializer):
     id = serializers.CharField()
     kind = serializers.CharField()

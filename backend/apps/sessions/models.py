@@ -28,6 +28,9 @@ class Session(BaseModel, SoftDeleteModel):
         max_length=64, null=True, blank=True, unique=True
     )
     student_notes = models.TextField(null=True, blank=True)
+    # Structured post-session notes written by the instructor:
+    # {participation, strengths, weaknesses, homework, next_focus}
+    instructor_notes = models.JSONField(null=True, blank=True)
 
     class Meta:
         db_table = "sessions"

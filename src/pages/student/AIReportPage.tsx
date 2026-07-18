@@ -17,7 +17,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AIBadge } from "@/components/ai";
-import { useReport, useRateSession } from "@/hooks";
+import { useReport, useRateSession, useSaveSessionNotes, useAcceptReport, useRegenerateReport } from "@/hooks";
+import { useAuth } from "@/auth/AuthProvider";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { SessionReportContent } from "@/api/types";
 import { useState } from "react";
@@ -164,6 +165,8 @@ export function AIReportPage() {
         </p>
       </Card>
 
+      <InstructorReportControls sessionId={r.sessionId} />
+
       {r.bookingId && <RateSessionCard bookingId={r.bookingId} instructorName={r.instructorName} />}
 
       <Button asChild className="mt-6 w-full sm:w-auto">
@@ -172,6 +175,55 @@ export function AIReportPage() {
         </Link>
       </Button>
     </DashboardLayout>
+  );
+}
+
+/** Instructor/admin post-session tools: structured notes + accept / regenerate. */
+function InstructorReportControls({ sessionId }: { sessionId: string }) {
+  const { id = "" } = useParams();
+  const { role } = useAuth();
+  const save = useSaveSessionNotes(id);
+  const accept = useAcceptReport(id);
+  const regen = useRegenerateReport(id);
+  const [notes, setNotes] = useState({ participation: "", strengths: "", weaknesses: "", homework: "", next_focus: "" });
+  const set = (k: keyof typeof notes) => (e: { target: { value: string } }) => setNotes((n) => ({ ...n, [k]: e.target.value }));
+
+  if (role !== "instructor" && role !== "admin") return null;
+
+  const FIELDS: [keyof typeof notes, string][] = [
+    ["participation", "Participation"], ["strengths", "Strengths"], ["weaknesses", "Weaknesses"],
+    ["homework", "Homework"], ["next_focus", "Next focus"],
+  ];
+
+  return (
+    <Card className="mt-6 p-6">
+      <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <GraduationCap size={16} className="text-indigo-600" /> Instructor tools
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">Your post-session notes and AI-report review.</p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {FIELDS.map(([k, label]) => (
+          <label key={k} className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            {label}
+            <Textarea rows={2} value={notes[k]} onChange={set(k)} />
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => save.mutate({ sessionId, notes })} disabled={save.isPending}>
+          {save.isPending ? "Saving…" : "Save notes"}
+        </Button>
+        <Button size="sm" variant="soft" onClick={() => accept.mutate({ sessionId })} disabled={accept.isPending}>
+          {accept.isSuccess ? "Accepted ✓" : "Accept report"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => regen.mutate(sessionId)} disabled={regen.isPending}>
+          {regen.isPending ? "Regenerating…" : "Regenerate"}
+        </Button>
+      </div>
+      {save.isSuccess && <p className="mt-2 text-xs text-emerald-600">Notes saved ✓</p>}
+    </Card>
   );
 }
 

@@ -31,6 +31,7 @@ class AIReport(UUIDModel, TimeStampedModel, SoftDeleteModel):
     mistakes = models.JSONField(default=list)  # [{label, example}]
     recommendations = models.JSONField(default=list)  # string[]
     instructor_note = models.TextField(null=True, blank=True)
+    instructor_reviewed = models.BooleanField(default=False)  # instructor accepted the AI report
     # Sprint 9 — validated AI session report (11 feedback fields, camelCase) + the
     # server-side-only generation meta (never serialized to the client).
     content = models.JSONField(null=True, blank=True)

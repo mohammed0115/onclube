@@ -463,6 +463,12 @@ export const handlers = [
     })
   ),
 
+  http.post(`${B}/sessions/:id/notes/`, async ({ request, params }) => {
+    const notes = (await request.json()) as Record<string, string>;
+    return HttpResponse.json({ sessionId: params.id, notes });
+  }),
+  http.post(`${B}/sessions/:id/report/accept/`, ({ params }) => HttpResponse.json({ sessionId: params.id, reviewed: true })),
+  http.post(`${B}/sessions/:id/report/regenerate/`, ({ params }) => HttpResponse.json({ reportId: `r-${params.id}`, status: "ready" })),
   http.post(`${B}/sessions/:id/end/`, ({ params }) =>
     HttpResponse.json({ sessionId: params.id, status: "completed", startedAt: null, endedAt: "x", reportPending: true })
   ),

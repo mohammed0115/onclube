@@ -109,11 +109,13 @@ from application.scheduling.use_cases import (
 # Sessions
 from application.sessions.queries import GetSessionDetailUseCase
 from application.sessions.use_cases import (
+    AcceptReportUseCase,
     AttachTranscriptUseCase,
     CompleteSessionUseCase,
     GetSessionUseCase,
     JoinSessionUseCase,
     LeaveSessionUseCase,
+    SaveSessionNotesUseCase,
     StartSessionUseCase,
 )
 
@@ -797,6 +799,35 @@ class SessionReportGenerateView(APIView):
 
     def post(self, request, session_id):
         dto = GenerateAISessionReportUseCase().execute(actor=request.user, session_id=session_id)
+        return Response(s.AIReportAckSerializer(dto).data, status=status.HTTP_201_CREATED)
+
+
+class SessionNotesView(APIView):
+    """Instructor saves structured post-session notes."""
+
+    def post(self, request, session_id):
+        data = _validated(s.SessionNotesInputSerializer, request)
+        result = SaveSessionNotesUseCase().execute(actor=request.user, session_id=session_id, notes=data)
+        return Response(result)
+
+
+class SessionReportAcceptView(APIView):
+    """Instructor accepts the AI report as reviewed."""
+
+    def post(self, request, session_id):
+        result = AcceptReportUseCase().execute(
+            actor=request.user, session_id=session_id, note=request.data.get("note", "")
+        )
+        return Response(result)
+
+
+class SessionReportRegenerateView(APIView):
+    """The session's instructor (or admin) regenerates the AI report."""
+
+    def post(self, request, session_id):
+        dto = GenerateAISessionReportUseCase().execute(
+            actor=request.user, session_id=session_id, regenerate=True
+        )
         return Response(s.AIReportAckSerializer(dto).data, status=status.HTTP_201_CREATED)
 
 

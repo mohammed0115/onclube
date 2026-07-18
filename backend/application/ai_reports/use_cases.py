@@ -171,9 +171,14 @@ class GenerateAISessionReportUseCase:
         if already_generated and not regenerate:
             # Idempotent: return the existing report without re-calling the provider.
             return self._result(report)
-        if regenerate and getattr(actor, "role", None) != UserRole.ADMIN:
-            # Regeneration is an explicit ADMIN action only.
-            raise PermissionDenied("Only an administrator may regenerate a report.")
+        if regenerate:
+            is_admin = getattr(actor, "role", None) == UserRole.ADMIN
+            is_instructor = (
+                getattr(actor, "role", None) == UserRole.INSTRUCTOR
+                and getattr(booking.instructor, "user_id", None) == getattr(actor, "id", None)
+            )
+            if not (is_admin or is_instructor):
+                raise PermissionDenied("Only an admin or the session's instructor may regenerate a report.")
 
         student = booking.student
         goal_obj = getattr(student, "goal", None)

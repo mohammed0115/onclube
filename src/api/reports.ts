@@ -15,4 +15,23 @@ export const reportsApi = {
   generate(sessionId: string, transcript?: unknown[]): Promise<{ reportId: string; status: string }> {
     return api.post(`/sessions/${sessionId}/report/generate/`, { transcript });
   },
+
+  // ── instructor post-session actions (Part 5) ──
+  saveNotes(sessionId: string, notes: SessionNotes): Promise<{ sessionId: string; notes: SessionNotes }> {
+    return api.post(`/sessions/${sessionId}/notes/`, notes);
+  },
+  acceptReport(sessionId: string, note = ""): Promise<{ sessionId: string; reviewed: boolean }> {
+    return api.post(`/sessions/${sessionId}/report/accept/`, { note });
+  },
+  regenerateReport(sessionId: string): Promise<{ reportId: string; status: string }> {
+    return api.post(`/sessions/${sessionId}/report/regenerate/`, {});
+  },
 };
+
+export interface SessionNotes {
+  participation?: string;
+  strengths?: string;
+  weaknesses?: string;
+  homework?: string;
+  next_focus?: string;
+}
