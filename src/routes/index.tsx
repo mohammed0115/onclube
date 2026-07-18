@@ -48,6 +48,8 @@ import { PaymentApprovalPage } from "@/pages/admin/PaymentApprovalPage";
 import { AdminMembersPage } from "@/pages/admin/AdminMembersPage";
 import { AdminAuditPage } from "@/pages/admin/AdminAuditPage";
 import { AdminSessionsPage } from "@/pages/admin/AdminSessionsPage";
+import { AdminBusinessPage } from "@/pages/admin/AdminBusinessPage";
+import { AdminPlatformPage } from "@/pages/admin/AdminPlatformPage";
 
 export function AppRoutes() {
   return (
@@ -100,6 +102,8 @@ export function AppRoutes() {
       <Route path="/admin/payments" element={<RequireRole roles={["admin"]}><PaymentApprovalPage /></RequireRole>} />
       <Route path="/admin/members" element={<RequireRole roles={["admin"]}><AdminMembersPage /></RequireRole>} />
       <Route path="/admin/sessions" element={<RequireRole roles={["admin"]}><AdminSessionsPage /></RequireRole>} />
+      <Route path="/admin/business" element={<RequireRole roles={["admin"]}><AdminBusinessPage /></RequireRole>} />
+      <Route path="/admin/platform" element={<RequireRole roles={["admin"]}><AdminPlatformPage /></RequireRole>} />
       <Route path="/admin/audit" element={<RequireRole roles={["admin"]}><AdminAuditPage /></RequireRole>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

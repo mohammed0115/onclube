@@ -488,6 +488,21 @@ export interface AdminUser {
   status: "active" | "suspended";
 }
 
+export interface BusinessOverview {
+  totalRevenue: number;
+  currency: string;
+  activeSubscriptions: number;
+  completedSessions: number;
+  teacherHours: number;
+  plans: { name: string; revenue: number }[];
+  trend: { month: string; revenue: number }[];
+}
+
+export interface PlatformStatus {
+  providers: { name: string; status: string }[];
+  aiQueue: { pending: number; ready: number; failed: number };
+}
+
 export interface AdminSession {
   id: string;
   topicTitle: string;

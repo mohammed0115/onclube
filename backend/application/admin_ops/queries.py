@@ -11,6 +11,70 @@ from infrastructure.container import (
 from apps.common.enums import UserRole
 
 
+class GetBusinessOverviewUseCase:
+    """Business KPIs: revenue, subscriptions, teaching output, plan mix."""
+
+    def execute(self, *, actor):
+        from apps.billing.models import PaymentProof, Subscription
+        from apps.scheduling.models import Booking
+        from apps.common.enums import BookingStatus, PaymentProofStatus, SubscriptionStatus
+
+        ensure_admin(actor)
+        approved = list(PaymentProof.objects.filter(status=PaymentProofStatus.APPROVED))
+        total_revenue = float(sum((p.amount for p in approved), 0))
+        currency = approved[0].currency if approved else "SDG"
+        active_subs = Subscription.objects.filter(status=SubscriptionStatus.ACTIVE).count()
+        completed = list(Booking.objects.filter(status=BookingStatus.COMPLETED))
+        teacher_hours = round(sum((b.duration_minutes or 45) for b in completed) / 60, 1)
+
+        plan_rev = {}
+        for p in approved:
+            plan_rev[p.plan_name] = plan_rev.get(p.plan_name, 0.0) + float(p.amount)
+        plans = [{"name": k, "revenue": v} for k, v in sorted(plan_rev.items(), key=lambda x: -x[1])]
+
+        monthly = {}
+        for p in approved:
+            key = p.submitted_at.strftime("%Y-%m")
+            monthly[key] = monthly.get(key, 0.0) + float(p.amount)
+        trend = [{"month": k, "revenue": v} for k, v in sorted(monthly.items())][-6:]
+
+        return {
+            "totalRevenue": total_revenue,
+            "currency": currency,
+            "activeSubscriptions": active_subs,
+            "completedSessions": len(completed),
+            "teacherHours": teacher_hours,
+            "plans": plans,
+            "trend": trend,
+        }
+
+
+class GetPlatformStatusUseCase:
+    """Provider health + AI report queue for the platform monitor."""
+
+    def execute(self, *, actor):
+        from django.conf import settings
+        from apps.ai_reports.models import AIReport
+        from apps.common.enums import AIReportStatus
+
+        ensure_admin(actor)
+        prod = getattr(settings, "PROVIDER_MODE", "development") in ("staging", "production")
+        video_ok = prod and bool(getattr(settings, "AGORA_APP_ID", "")) and bool(getattr(settings, "AGORA_APP_CERTIFICATE", ""))
+        providers = [
+            {"name": "Video (Agora)", "status": "live" if video_ok else "stub"},
+            {"name": "AI reports", "status": "live" if getattr(settings, "OPENAI_API_KEY", "") else "heuristic"},
+            {"name": "Email", "status": "live" if getattr(settings, "NOTIFICATION_EMAILS_ENABLED", False) and getattr(settings, "EMAIL_HOST", "") else "console"},
+            {"name": "Error monitoring", "status": "live" if getattr(settings, "SENTRY_DSN", "") else "off"},
+            {"name": "Cache", "status": "redis" if getattr(settings, "_REDIS_URL", None) or "redis" in str(getattr(settings, "CACHES", {})) else "in-memory"},
+        ]
+        ai_queue = {
+            "pending": AIReport.objects.filter(status=AIReportStatus.PENDING).count(),
+            "ready": AIReport.objects.filter(status=AIReportStatus.READY).count(),
+            "failed": AIReport.objects.filter(status=AIReportStatus.FAILED).count(),
+        }
+        return {"providers": providers, "aiQueue": ai_queue}
+
+
 class ListAdminSessionsUseCase:
     """All live sessions across the platform for the operations monitor."""
 

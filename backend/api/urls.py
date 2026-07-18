@@ -106,6 +106,8 @@ urlpatterns = [
     path("admin/users/<uuid:user_id>/role/", v.AdminUserRoleView.as_view()),
     path("admin/audit/", v.AdminAuditLogView.as_view()),
     path("admin/sessions/", v.AdminSessionsView.as_view()),
+    path("admin/business/", v.AdminBusinessView.as_view()),
+    path("admin/platform/", v.AdminPlatformView.as_view()),
     path("admin/payment-proofs/", v.AdminPaymentProofListView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/", v.AdminPaymentProofDetailView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/approve/", v.AdminApprovePaymentView.as_view()),

@@ -5,6 +5,8 @@ import type {
   AdminSession,
   AdminUser,
   AuditEntry,
+  BusinessOverview,
+  PlatformStatus,
   AvailabilityException,
   AvailabilitySlot,
   BookingListItem,
@@ -110,6 +112,12 @@ export const topicsApi = {
   },
   adminSessions(): Promise<AdminSession[]> {
     return api.get<AdminSession[]>("/admin/sessions/");
+  },
+  adminBusiness(): Promise<BusinessOverview> {
+    return api.get<BusinessOverview>("/admin/business/");
+  },
+  adminPlatform(): Promise<PlatformStatus> {
+    return api.get<PlatformStatus>("/admin/platform/");
   },
   adminPaymentProofs(): Promise<PaymentApprovalItem[]> {
     return api.get<PaymentApprovalItem[]>("/admin/payment-proofs/");

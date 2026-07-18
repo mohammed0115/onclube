@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import {
   LayoutDashboard,
+  BarChart3,
+  Server,
   Calendar,
   FileBarChart,
   Settings,
@@ -53,6 +55,8 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: Wallet, label: "Payment Approval", short: "Payments", to: "/admin/payments" },
     { icon: CalendarClock, label: "Sessions", to: "/admin/sessions" },
     { icon: Users, label: "Members", to: "/admin/members" },
+    { icon: BarChart3, label: "Business", short: "Business", to: "/admin/business" },
+    { icon: Server, label: "Platform", short: "Platform", to: "/admin/platform" },
     { icon: ShieldCheck, label: "Audit log", short: "Audit", to: "/admin/audit" },
     // Admins can also teach (same account acts as instructor).
     { icon: GraduationCap, label: "Teaching", short: "Teach", to: "/instructor" },

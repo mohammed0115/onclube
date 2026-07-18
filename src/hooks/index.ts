@@ -386,6 +386,12 @@ export const useAuditLog = () =>
 export const useAdminSessions = () =>
   useQuery({ queryKey: qk.adminSessions, queryFn: topicsApi.adminSessions });
 
+export const useAdminBusiness = () =>
+  useQuery({ queryKey: qk.adminBusiness, queryFn: topicsApi.adminBusiness });
+
+export const useAdminPlatform = () =>
+  useQuery({ queryKey: qk.adminPlatform, queryFn: topicsApi.adminPlatform });
+
 export const useAdminProofs = () =>
   useQuery({ queryKey: qk.adminProofs, queryFn: topicsApi.adminPaymentProofs });
 

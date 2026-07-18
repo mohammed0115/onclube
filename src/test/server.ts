@@ -513,6 +513,12 @@ export const handlers = [
     const b = (await request.json()) as { role: string };
     return HttpResponse.json({ userId: params.id, role: b.role });
   }),
+  http.get(`${B}/admin/business/`, () =>
+    HttpResponse.json({ totalRevenue: 1840, currency: "SDG", activeSubscriptions: 12, completedSessions: 34, teacherHours: 25.5, plans: [{ name: "Regular", revenue: 1840 }], trend: [{ month: "2026-06", revenue: 900 }, { month: "2026-07", revenue: 940 }] })
+  ),
+  http.get(`${B}/admin/platform/`, () =>
+    HttpResponse.json({ providers: [{ name: "Video (Agora)", status: "live" }, { name: "AI reports", status: "heuristic" }], aiQueue: { pending: 2, ready: 30, failed: 1 } })
+  ),
   http.get(`${B}/admin/sessions/`, () =>
     HttpResponse.json([{ id: "s1", topicTitle: "Job Interview", instructorName: "A Teacher", studentName: "Sami", scheduledAt: "2026-08-01T18:00:00Z", durationMinutes: 45, status: "completed" }])
   ),

@@ -133,6 +133,8 @@ from application.ai_reports.use_cases import (
 # Admin / notifications
 from application.admin_ops.queries import (
     GetAdminDashboardUseCase,
+    GetBusinessOverviewUseCase,
+    GetPlatformStatusUseCase,
     ListAdminPaymentApprovalsUseCase,
     ListAdminSessionsUseCase,
     ListAuditLogUseCase,
@@ -257,6 +259,20 @@ class AdminSessionsView(APIView):
 
     def get(self, request):
         return Response(ListAdminSessionsUseCase().execute(actor=request.user))
+
+
+class AdminBusinessView(APIView):
+    """Business KPIs — revenue, subscriptions, plan mix, teaching output."""
+
+    def get(self, request):
+        return Response(GetBusinessOverviewUseCase().execute(actor=request.user))
+
+
+class AdminPlatformView(APIView):
+    """Platform monitor — provider health + AI report queue."""
+
+    def get(self, request):
+        return Response(GetPlatformStatusUseCase().execute(actor=request.user))
 
 
 class InstructorProfileView(APIView):
