@@ -11,6 +11,33 @@ from infrastructure.container import (
 from apps.common.enums import UserRole
 
 
+class ListAdminSessionsUseCase:
+    """All live sessions across the platform for the operations monitor."""
+
+    def execute(self, *, actor):
+        from apps.sessions.models import Session
+        ensure_admin(actor)
+        sessions = (
+            Session.objects.select_related(
+                "booking__student__user", "booking__instructor__user"
+            )
+            .order_by("-booking__scheduled_at")[:150]
+        )
+        rows = []
+        for s in sessions:
+            b = s.booking
+            rows.append({
+                "id": str(s.id),
+                "topicTitle": b.topic_title,
+                "instructorName": b.instructor_name,
+                "studentName": b.student.user.full_name,
+                "scheduledAt": b.scheduled_at.isoformat(),
+                "durationMinutes": b.duration_minutes,
+                "status": s.status,
+            })
+        return rows
+
+
 class ListUsersUseCase:
     """All users for the admin members table."""
 

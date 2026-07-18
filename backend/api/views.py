@@ -134,6 +134,7 @@ from application.ai_reports.use_cases import (
 from application.admin_ops.queries import (
     GetAdminDashboardUseCase,
     ListAdminPaymentApprovalsUseCase,
+    ListAdminSessionsUseCase,
     ListAuditLogUseCase,
     ListUsersUseCase,
 )
@@ -249,6 +250,13 @@ class AdminUserRoleView(APIView):
 class AdminAuditLogView(APIView):
     def get(self, request):
         return Response(ListAuditLogUseCase().execute(actor=request.user))
+
+
+class AdminSessionsView(APIView):
+    """Operations monitor — all sessions across the platform."""
+
+    def get(self, request):
+        return Response(ListAdminSessionsUseCase().execute(actor=request.user))
 
 
 class InstructorProfileView(APIView):

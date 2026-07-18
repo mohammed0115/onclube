@@ -383,6 +383,9 @@ export function useChangeUserRole() {
 export const useAuditLog = () =>
   useQuery({ queryKey: qk.auditLog, queryFn: topicsApi.auditLog });
 
+export const useAdminSessions = () =>
+  useQuery({ queryKey: qk.adminSessions, queryFn: topicsApi.adminSessions });
+
 export const useAdminProofs = () =>
   useQuery({ queryKey: qk.adminProofs, queryFn: topicsApi.adminPaymentProofs });
 

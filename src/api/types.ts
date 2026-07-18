@@ -488,6 +488,16 @@ export interface AdminUser {
   status: "active" | "suspended";
 }
 
+export interface AdminSession {
+  id: string;
+  topicTitle: string;
+  instructorName: string;
+  studentName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+}
+
 export interface AuditEntry {
   id: string;
   admin: string;

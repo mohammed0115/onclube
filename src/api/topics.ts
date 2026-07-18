@@ -2,6 +2,7 @@ import { api } from "./client";
 import type {
   AdminBookingItem,
   AdminDashboard,
+  AdminSession,
   AdminUser,
   AuditEntry,
   AvailabilityException,
@@ -106,6 +107,9 @@ export const topicsApi = {
   },
   auditLog(): Promise<AuditEntry[]> {
     return api.get<AuditEntry[]>("/admin/audit/");
+  },
+  adminSessions(): Promise<AdminSession[]> {
+    return api.get<AdminSession[]>("/admin/sessions/");
   },
   adminPaymentProofs(): Promise<PaymentApprovalItem[]> {
     return api.get<PaymentApprovalItem[]>("/admin/payment-proofs/");

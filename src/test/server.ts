@@ -513,6 +513,9 @@ export const handlers = [
     const b = (await request.json()) as { role: string };
     return HttpResponse.json({ userId: params.id, role: b.role });
   }),
+  http.get(`${B}/admin/sessions/`, () =>
+    HttpResponse.json([{ id: "s1", topicTitle: "Job Interview", instructorName: "A Teacher", studentName: "Sami", scheduledAt: "2026-08-01T18:00:00Z", durationMinutes: 45, status: "completed" }])
+  ),
   http.get(`${B}/admin/audit/`, () =>
     HttpResponse.json([{ id: "a1", admin: "Admin", action: "user_status_changed", targetTable: "users", targetId: "u1", reason: "active → suspended", when: "2026-07-01T10:00:00Z" }])
   ),

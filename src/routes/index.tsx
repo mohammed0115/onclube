@@ -47,6 +47,7 @@ import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { PaymentApprovalPage } from "@/pages/admin/PaymentApprovalPage";
 import { AdminMembersPage } from "@/pages/admin/AdminMembersPage";
 import { AdminAuditPage } from "@/pages/admin/AdminAuditPage";
+import { AdminSessionsPage } from "@/pages/admin/AdminSessionsPage";
 
 export function AppRoutes() {
   return (
@@ -98,6 +99,7 @@ export function AppRoutes() {
       <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />
       <Route path="/admin/payments" element={<RequireRole roles={["admin"]}><PaymentApprovalPage /></RequireRole>} />
       <Route path="/admin/members" element={<RequireRole roles={["admin"]}><AdminMembersPage /></RequireRole>} />
+      <Route path="/admin/sessions" element={<RequireRole roles={["admin"]}><AdminSessionsPage /></RequireRole>} />
       <Route path="/admin/audit" element={<RequireRole roles={["admin"]}><AdminAuditPage /></RequireRole>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

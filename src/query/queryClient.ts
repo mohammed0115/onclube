@@ -60,6 +60,7 @@ export const qk = {
   adminDashboard: ["admin", "dashboard"] as const,
   adminUsers: (role?: string) => ["admin", "users", role ?? "all"] as const,
   auditLog: ["admin", "audit"] as const,
+  adminSessions: ["admin", "sessions"] as const,
   adminProofs: ["admin", "proofs"] as const,
   adminProofDetail: (id: string) => ["admin", "proofs", id] as const,
   session: (id: string) => ["session", id] as const,
