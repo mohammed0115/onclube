@@ -6,6 +6,7 @@ import { AppStateProvider } from "@/app/AppState";
 import { LanguageProvider } from "@/i18n";
 import { AppRoutes } from "@/routes";
 import { ScreenNavigator } from "@/components/navigation/ScreenNavigator";
+import { FloatingLanguageToggle } from "@/components/i18n/LanguageToggle";
 import { LiveSessionProviders } from "@/app/LiveSessionProviders";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 
@@ -21,6 +22,8 @@ export default function App() {
             {/* Composition root selects real vs stub live-session providers by env. */}
             <LiveSessionProviders>
               <AppRoutes />
+              {/* Language switch on pages without the dashboard header (auth, onboarding…). */}
+              <FloatingLanguageToggle />
               {/* Demo-only floating navigator to jump between screens. */}
               <ScreenNavigator />
             </LiveSessionProviders>

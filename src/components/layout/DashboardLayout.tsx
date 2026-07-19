@@ -21,6 +21,7 @@ import {
 import { Logo } from "@/components/navigation/Logo";
 import { useAuth } from "@/auth/AuthProvider";
 import { useI18n } from "@/i18n";
+import { LanguageToggle } from "@/components/i18n/LanguageToggle";
 import { useNotifications, useMarkNotificationRead } from "@/hooks";
 
 // Map nav labels → translation keys (English stays the source/default).
@@ -190,21 +191,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
     </div>
-  );
-}
-
-/** English ⟷ Arabic toggle. Flips the document direction (RTL) app-wide. */
-function LanguageToggle() {
-  const { lang, toggle } = useI18n();
-  return (
-    <button
-      onClick={toggle}
-      className="flex h-9 items-center justify-center rounded-xl bg-muted/60 px-3 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted"
-      aria-label="Toggle language"
-      title={lang === "ar" ? "English" : "العربية"}
-    >
-      {lang === "ar" ? "EN" : "ع"}
-    </button>
   );
 }
 
