@@ -19,8 +19,6 @@ import {
   type VideoRoomProvider,
 } from "./types";
 
-const AGORA_SDK = "agora-rtc-sdk-ng"; // runtime specifier — not resolved at build time
-
 // The SDK is loaded dynamically and typed loosely (its TS types aren't pulled into
 // the build graph); we only depend on the small, stable v4 surface used below.
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -258,11 +256,18 @@ export class AgoraVideoRoomProvider implements VideoRoomProvider {
 
   async join(opts: JoinOptions): Promise<void> {
     try {
-      const mod: any = await import(/* @vite-ignore */ AGORA_SDK);
+      // STATIC specifier so Vite bundles the SDK into a lazy chunk that actually
+      // resolves in the browser. (A variable specifier + @vite-ignore left a bare
+      // `import("agora-rtc-sdk-ng")` in the output which the browser can't resolve,
+      // silently dropping every call to the local stub → participants isolated.)
+      const mod: any = await import("agora-rtc-sdk-ng");
       const AgoraRTC = mod?.default ?? mod;
       if (AgoraRTC?.createClient) this.impl = new AgoraEngine(AgoraRTC);
-    } catch {
-      /* SDK unavailable → keep the stub engine */
+      else console.error("[video] agora-rtc-sdk-ng loaded but createClient is missing — using local stub (participants will be isolated).");
+    } catch (err) {
+      // The stub is correct for dev/jsdom, but in a real browser a failed SDK load
+      // previously masqueraded as a working (yet isolated) call. Make it observable.
+      console.error("[video] Agora SDK failed to load — falling back to the local stub room (participants will be isolated).", err);
     }
     return this.impl.join(opts);
   }
