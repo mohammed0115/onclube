@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import { useMyBookings } from "@/hooks";
+import { useI18n } from "@/i18n";
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -15,6 +16,7 @@ function fmt(iso: string): string {
 
 /** Lists every session that has a generated AI report, linking to each real report. */
 export function SessionReportsPage() {
+  const { tx } = useI18n();
   const query = useMyBookings();
 
   return (
@@ -34,7 +36,7 @@ export function SessionReportsPage() {
               description="After you complete a live session, your AI session report will appear here."
               action={
                 <Button asChild>
-                  <Link to="/student/book">Book a session <ArrowRight size={16} /></Link>
+                  <Link to="/student/book">{tx("Book a session")} <ArrowRight size={16} /></Link>
                 </Button>
               }
             />
@@ -46,14 +48,14 @@ export function SessionReportsPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-semibold text-foreground">{b.topicTitle}</span>
-                    <Badge tone="emerald">Report ready</Badge>
+                    <Badge tone="emerald">{tx("Report ready")}</Badge>
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CalendarDays size={13} /> {fmt(b.scheduledAt)} · {b.instructorName}
                   </div>
                 </div>
                 <Button asChild size="sm" className="flex-shrink-0">
-                  <Link to={`/student/report/${b.reportId}`}>View report <ArrowRight size={15} /></Link>
+                  <Link to={`/student/report/${b.reportId}`}>{tx("View report")} <ArrowRight size={15} /></Link>
                 </Button>
               </Card>
             ))}

@@ -11,6 +11,7 @@ import { AIBadge } from "@/components/ai";
 import { useAuth } from "@/auth/AuthProvider";
 import { useStudentDashboard } from "@/hooks";
 import { Loading, ErrorState } from "@/components/states";
+import { useI18n } from "@/i18n";
 import type { BookingListItem, Gamification } from "@/api/types";
 import type { Booking, BookingStatus, PaymentStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ function toBookingRow(b: BookingListItem): Booking {
 }
 
 export function StudentDashboardPage() {
+  const { tx } = useI18n();
   const { user } = useAuth();
   const query = useStudentDashboard();
 
@@ -75,14 +77,14 @@ export function StudentDashboardPage() {
                 <Lock size={18} className="text-amber-600" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-foreground">Booking is locked</div>
+                <div className="text-sm font-semibold text-foreground">{tx("Booking is locked")}</div>
                 <p className="text-xs text-muted-foreground">
-                  Your payment is being reviewed by an admin. Booking unlocks once it&apos;s approved.
+                  {tx("Your payment is being reviewed by an admin. Booking unlocks once it's approved.")}
                 </p>
               </div>
             </div>
             <Button asChild variant="ghost" size="sm" className="flex-shrink-0">
-              <Link to="/billing/under-review">Check status</Link>
+              <Link to="/billing/under-review">{tx("Check status")}</Link>
             </Button>
           </div>
         </Card>
@@ -92,7 +94,7 @@ export function StudentDashboardPage() {
         <StatCard icon="Calendar" value={`${d.sessionsRemaining}`} label="Sessions remaining" tone="bg-indigo-100 text-indigo-600" />
         <StatCard icon="CheckCircle" value={`${d.sessionsCompleted}`} label="Sessions completed" tone="bg-emerald-100 text-emerald-600" />
         <StatCard icon="TrendingUp" value={d.latestScore != null ? `${d.latestScore}%` : "—"} label="Latest session score" tone="bg-purple-100 text-purple-600" />
-        <Link to="/onboarding/placement-result" className="block rounded-2xl transition-transform hover:-translate-y-0.5" title="View your placement result">
+        <Link to="/onboarding/placement-result" className="block rounded-2xl transition-transform hover:-translate-y-0.5" title={tx("View your placement result")}>
           <StatCard icon="Award" value={d.level ?? "—"} label="Current level · view result" tone="bg-amber-100 text-amber-600" />
         </Link>
       </div>
@@ -103,13 +105,13 @@ export function StudentDashboardPage() {
         <div className="space-y-6 lg:col-span-2">
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">Progress over sessions</h3>
+              <h3 className="font-display font-bold text-foreground">{tx("Progress over sessions")}</h3>
               {d.progressTrend.length > 1 && <span className="text-xs text-muted-foreground">Last {d.progressTrend.length} sessions</span>}
             </div>
             {d.progressTrend.length < 2 ? (
               <div className="flex h-[220px] flex-col items-center justify-center gap-2 rounded-2xl bg-muted/30 text-center">
                 <TrendingUp size={26} className="text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Complete a few sessions to see your progress trend here.</p>
+                <p className="text-sm text-muted-foreground">{tx("Complete a few sessions to see your progress trend here.")}</p>
               </div>
             ) : (
               <div style={{ width: "100%", height: 220 }}>
@@ -133,7 +135,7 @@ export function StudentDashboardPage() {
 
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">Recent sessions</h3>
+              <h3 className="font-display font-bold text-foreground">{tx("Recent sessions")}</h3>
             </div>
             <div className="space-y-3">
               {d.recentSessions.map((b) => (
@@ -148,7 +150,7 @@ export function StudentDashboardPage() {
             <Card className="overflow-hidden p-0">
               <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-5 text-white">
                 <div className="mb-1 flex items-center gap-2 text-xs font-medium text-indigo-100">
-                  <Clock size={13} /> Next session
+                  <Clock size={13} /> {tx("Next session")}
                 </div>
                 <div className="font-display text-lg font-bold">{d.nextSession.topicTitle}</div>
                 <div className="text-sm text-indigo-100">
@@ -158,14 +160,14 @@ export function StudentDashboardPage() {
               <div className="space-y-4 p-5">
                 <div className="text-sm font-semibold text-foreground">{d.nextSession.instructorName}</div>
                 <div className="flex items-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs text-purple-700">
-                  <Sparkles size={13} /> Your discussion questions are ready to preview.
+                  <Sparkles size={13} /> {tx("Your discussion questions are ready to preview.")}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button asChild variant="ghost" size="sm">
-                    <Link to={`/student/book`}>Book again</Link>
+                    <Link to={`/student/book`}>{tx("Book again")}</Link>
                   </Button>
                   <Button asChild size="sm">
-                    <Link to={`/student/session/${d.nextSession.id}`}>Join room</Link>
+                    <Link to={`/student/session/${d.nextSession.id}`}>{tx("Join room")}</Link>
                   </Button>
                 </div>
               </div>
@@ -173,19 +175,19 @@ export function StudentDashboardPage() {
           ) : null}
 
           <Card className="p-5">
-            <h3 className="mb-1 font-display font-bold text-foreground">Book your next session</h3>
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Book your next session")}</h3>
             <p className="mb-4 text-xs text-muted-foreground">
-              Pick a topic, preview the questions, then choose a time with an instructor.
+              {tx("Pick a topic, preview the questions, then choose a time with an instructor.")}
             </p>
             {canBook ? (
               <Button asChild className="w-full">
                 <Link to="/student/book">
-                  Browse topics <ArrowRight size={16} />
+                  {tx("Browse topics")} <ArrowRight size={16} />
                 </Link>
               </Button>
             ) : (
               <Button disabled className="w-full" variant="soft">
-                <Lock size={15} /> Locked until approval
+                <Lock size={15} /> {tx("Locked until approval")}
               </Button>
             )}
           </Card>
@@ -197,17 +199,17 @@ export function StudentDashboardPage() {
             {latestReportId ? (
               <>
                 <p className="mb-4 text-sm leading-relaxed text-foreground">
-                  Your most recent session report is ready — review the feedback and recommended drills before your next session.
+                  {tx("Your most recent session report is ready — review the feedback and recommended drills before your next session.")}
                 </p>
                 <Button asChild variant="soft" size="sm" className="w-full">
                   <Link to={`/student/report/${latestReportId}`}>
-                    View my latest report <ArrowRight size={15} />
+                    {tx("View my latest report")} <ArrowRight size={15} />
                   </Link>
                 </Button>
               </>
             ) : (
               <p className="text-sm leading-relaxed text-muted-foreground">
-                After your first session, your AI report will appear here with feedback and recommended drills.
+                {tx("After your first session, your AI report will appear here with feedback and recommended drills.")}
               </p>
             )}
           </Card>
@@ -223,10 +225,11 @@ const MILESTONE_ICONS: Record<string, LucideIcon> = {
 
 /** Streak + XP + milestone board (gamification). */
 function Achievements({ g }: { g: Gamification }) {
+  const { tx } = useI18n();
   return (
     <Card className="mb-6 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-display font-bold text-foreground">Your achievements</h3>
+        <h3 className="font-display font-bold text-foreground">{tx("Your achievements")}</h3>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-600">
             <Flame size={15} /> {g.streakWeeks} week{g.streakWeeks === 1 ? "" : "s"} streak

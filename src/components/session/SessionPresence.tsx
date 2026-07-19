@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { ParticipantRole } from "@/lib/presence";
 import { useSessionPresence } from "@/hooks";
 import { PresenceList } from "./PresenceList";
@@ -21,6 +22,7 @@ export function SessionPresence({
   participantName: string;
   role: ParticipantRole;
 }) {
+  const { tx } = useI18n();
   const presence = useSessionPresence({ sessionId, participantId, participantName, role });
   const [open, setOpen] = useState(false);
   const reconnecting = presence.connectionState === "reconnecting";
@@ -39,12 +41,12 @@ export function SessionPresence({
       >
         <Users size={14} />
         <span data-testid="present-count">{presence.presentCount}</span>
-        {reconnecting && <span className="text-amber-300">reconnecting…</span>}
+        {reconnecting && <span className="text-amber-300">{tx("reconnecting…")}</span>}
       </button>
 
       {open && (
         <div className="absolute right-0 top-11 z-30 w-72 rounded-2xl bg-white p-3 text-slate-900 shadow-xl">
-          <div className="mb-2 text-xs font-semibold text-slate-700">Attendance</div>
+          <div className="mb-2 text-xs font-semibold text-slate-700">{tx("Attendance")}</div>
           <AttendanceSummary participants={presence.participants} finalized={presence.attendance.finalized} />
           <div className="my-2 h-px bg-slate-100" />
           <PresenceList participants={presence.participants} myId={participantId} />

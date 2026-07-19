@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/forms";
 import { AIBadge, AISuggestionRow } from "@/components/ai";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 // AI suggestions the instructor can choose to pull in. Nothing is added automatically.
 const AI_SUBTOPICS = [
@@ -22,6 +23,7 @@ const AI_QUESTIONS = [
 ];
 
 export function TopicQuestionBuilderPage() {
+  const { tx } = useI18n();
   const [acceptedSubtopics, setAcceptedSubtopics] = useState<string[]>([]);
   const [acceptedQuestions, setAcceptedQuestions] = useState<string[]>([]);
   const [generated, setGenerated] = useState(false);
@@ -42,22 +44,22 @@ export function TopicQuestionBuilderPage() {
         title="Build a topic"
         subtitle="You create the topic. AI suggests subtopics and questions — you decide what to keep."
         back="/instructor"
-        action={<Button size="sm">Publish topic</Button>}
+        action={<Button size="sm">{tx("Publish topic")}</Button>}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* LEFT — the instructor's own topic */}
         <div className="space-y-6">
           <Card className="p-6">
-            <h3 className="mb-4 font-display font-bold text-foreground">Topic details</h3>
+            <h3 className="mb-4 font-display font-bold text-foreground">{tx("Topic details")}</h3>
             <div className="space-y-4">
-              <Field label="Topic title" htmlFor="title" defaultValue="Job Interview Practice" />
+              <Field label={tx("Topic title")} htmlFor="title" defaultValue="Job Interview Practice" />
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Category" htmlFor="cat" defaultValue="Career" />
-                <Field label="Level" htmlFor="level" defaultValue="B1" />
+                <Field label={tx("Category")} htmlFor="cat" defaultValue="Career" />
+                <Field label={tx("Level")} htmlFor="level" defaultValue="B1" />
               </div>
               <Field
-                label="Short description"
+                label={tx("Short description")}
                 htmlFor="desc"
                 defaultValue="Rehearse common interview questions and tell your story clearly."
               />
@@ -65,11 +67,11 @@ export function TopicQuestionBuilderPage() {
           </Card>
 
           <Card className="p-6">
-            <h3 className="mb-1 font-display font-bold text-foreground">Subtopics</h3>
-            <p className="mb-3 text-xs text-muted-foreground">Your accepted subtopics for this topic.</p>
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Subtopics")}</h3>
+            <p className="mb-3 text-xs text-muted-foreground">{tx("Your accepted subtopics for this topic.")}</p>
             {acceptedSubtopics.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-                Nothing yet — add your own or accept an AI suggestion.
+                {tx("Nothing yet — add your own or accept an AI suggestion.")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -88,11 +90,11 @@ export function TopicQuestionBuilderPage() {
           </Card>
 
           <Card className="p-6">
-            <h3 className="mb-1 font-display font-bold text-foreground">Discussion questions</h3>
-            <p className="mb-3 text-xs text-muted-foreground">Students see these before the session.</p>
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Discussion questions")}</h3>
+            <p className="mb-3 text-xs text-muted-foreground">{tx("Students see these before the session.")}</p>
             {acceptedQuestions.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-                Accept AI questions on the right, or write your own.
+                {tx("Accept AI questions on the right, or write your own.")}
               </p>
             ) : (
               <ol className="space-y-2">
@@ -112,7 +114,7 @@ export function TopicQuestionBuilderPage() {
               </ol>
             )}
             <button className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:underline">
-              <Plus size={14} /> Add your own question
+              <Plus size={14} /> {tx("Add your own question")}
             </button>
           </Card>
         </div>
@@ -123,17 +125,16 @@ export function TopicQuestionBuilderPage() {
             <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 text-white">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} />
-                <span className="font-semibold">AI assistant</span>
+                <span className="font-semibold">{tx("AI assistant")}</span>
               </div>
-              <AIBadge label="Assists, doesn't replace you" className="bg-white/20 text-white" />
+              <AIBadge label={tx("Assists, doesn't replace you")} className="bg-white/20 text-white" />
             </div>
             <div className="p-5">
               <p className="mb-4 text-sm text-muted-foreground">
-                Generate subtopic and question ideas from your topic title and level. Review each one and add only what
-                you like.
+                {tx("Generate subtopic and question ideas from your topic title and level. Review each one and add only what you like.")}
               </p>
               <Button onClick={() => setGenerated(true)} className="w-full">
-                <Wand2 size={15} /> {generated ? "Regenerate suggestions" : "Generate suggestions"}
+                <Wand2 size={15} /> {generated ? tx("Regenerate suggestions") : tx("Generate suggestions")}
               </Button>
             </div>
           </Card>
@@ -143,7 +144,7 @@ export function TopicQuestionBuilderPage() {
               <Card className="p-6">
                 <div className="mb-3 flex items-center gap-2">
                   <Sparkles size={15} className="text-purple-600" />
-                  <h3 className="font-display font-bold text-foreground">Suggested subtopics</h3>
+                  <h3 className="font-display font-bold text-foreground">{tx("Suggested subtopics")}</h3>
                 </div>
                 <div className="space-y-2">
                   {AI_SUBTOPICS.map((s) => (
@@ -160,7 +161,7 @@ export function TopicQuestionBuilderPage() {
               <Card className="p-6">
                 <div className="mb-3 flex items-center gap-2">
                   <Sparkles size={15} className="text-purple-600" />
-                  <h3 className="font-display font-bold text-foreground">Suggested questions</h3>
+                  <h3 className="font-display font-bold text-foreground">{tx("Suggested questions")}</h3>
                 </div>
                 <div className="space-y-2">
                   {AI_QUESTIONS.map((q) => (

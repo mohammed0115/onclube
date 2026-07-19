@@ -9,9 +9,11 @@ import { useAppState } from "@/app/AppState";
 import { useAuth, roleHome } from "@/auth/AuthProvider";
 import { ApiError } from "@/api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { Role } from "@/types";
 
 export function LoginPage() {
+  const { tx } = useI18n();
   const navigate = useNavigate();
   const { role, setRole } = useAppState();
   const { login } = useAuth();
@@ -42,9 +44,9 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <BrandPanel
-        badge={<><Mic size={13} /> Welcome back</>}
-        title="Your next conversation is one click away."
-        footnote="Sign in to continue."
+        badge={<><Mic size={13} /> {tx("Welcome back")}</>}
+        title={tx("Your next conversation is one click away.")}
+        footnote={tx("Sign in to continue.")}
       />
 
       <div className="flex items-center justify-center bg-background px-6 py-12">
@@ -52,8 +54,8 @@ export function LoginPage() {
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
-          <h1 className="font-display text-2xl font-extrabold text-foreground">Sign in</h1>
-          <p className="mb-7 mt-1 text-sm text-muted-foreground">Welcome back — let’s get you talking.</p>
+          <h1 className="font-display text-2xl font-extrabold text-foreground">{tx("Sign in")}</h1>
+          <p className="mb-7 mt-1 text-sm text-muted-foreground">{tx("Welcome back — let’s get you talking.")}</p>
 
           <div className="mb-6 grid grid-cols-3 gap-2">
             {(["student", "instructor", "admin"] as Role[]).map((r) => (
@@ -66,23 +68,23 @@ export function LoginPage() {
                   role === r ? "border-primary bg-blue-50 text-blue-700" : "border-border text-muted-foreground hover:border-blue-200"
                 )}
               >
-                {r}
+                {tx(r)}
               </button>
             ))}
           </div>
 
           <div className="space-y-4">
             <Field
-              label="Email"
+              label={tx("Email")}
               htmlFor="email"
               type="email"
-              placeholder="you@email.com"
+              placeholder={tx("you@email.com")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
             />
             <Field
-              label="Password"
+              label={tx("Password")}
               htmlFor="password"
               type="password"
               placeholder="••••••••"
@@ -92,29 +94,29 @@ export function LoginPage() {
             />
             <div className="text-right">
               <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
-                Forgot password?
+                {tx("Forgot password?")}
               </Link>
             </div>
           </div>
 
           {error && (
             <p role="alert" className="mt-4 text-sm font-medium text-red-600">
-              {error}
+              {tx(error)}
             </p>
           )}
 
           <Button type="submit" disabled={submitting} className="mt-7 w-full" size="lg">
-            {submitting ? "Signing in…" : (
+            {submitting ? tx("Signing in…") : (
               <>
-                Sign in <ArrowRight size={17} />
+                {tx("Sign in")} <ArrowRight size={17} />
               </>
             )}
           </Button>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            New here?{" "}
+            {tx("New here?")}{" "}
             <Link to="/register" className="font-semibold text-primary hover:underline">
-              Create an account
+              {tx("Create an account")}
             </Link>
           </p>
         </form>

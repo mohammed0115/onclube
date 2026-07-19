@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loading, EmptyState } from "@/components/states";
 import { useInstructorStudents } from "@/hooks";
+import { useI18n } from "@/i18n";
 
 export function InstructorStudentsPage() {
   const { data, isLoading } = useInstructorStudents();
+  const { tx } = useI18n();
   const students = data ?? [];
 
   return (
@@ -31,7 +33,7 @@ export function InstructorStudentsPage() {
                     <div>
                       <div className="text-sm font-semibold text-foreground">{s.fullName}</div>
                       <div className="text-xs text-muted-foreground">
-                        {s.completed}/{s.sessions} sessions{s.lastScore != null ? ` · last score ${s.lastScore}` : ""}
+                        {s.completed}/{s.sessions} {tx("sessions")}{s.lastScore != null ? ` · last score ${s.lastScore}` : ""}
                       </div>
                     </div>
                   </div>

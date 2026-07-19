@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loading, ErrorState } from "@/components/states";
 import { useStudentTopic, useCreateBooking } from "@/hooks";
 import { ApiError } from "@/api";
+import { useI18n } from "@/i18n";
 
 function messageForBookingError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -35,6 +36,7 @@ function fmtDateTime(iso: string | null): string {
 }
 
 export function BookingSummaryPage() {
+  const { tx } = useI18n();
   const { topicId = "", slotId = "" } = useParams();
   const [params] = useSearchParams();
   const startAt = params.get("at");
@@ -71,14 +73,14 @@ export function BookingSummaryPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-lg">
-        <h1 className="mb-1 font-display text-2xl font-extrabold text-foreground">Review your booking</h1>
-        <p className="mb-5 text-sm text-muted-foreground">Confirm the details before you book.</p>
+        <h1 className="mb-1 font-display text-2xl font-extrabold text-foreground">{tx("Review your booking")}</h1>
+        <p className="mb-5 text-sm text-muted-foreground">{tx("Confirm the details before you book.")}</p>
 
         <Card className="mb-5 rounded-3xl p-6">
           <h2 className="mb-4 font-display text-lg font-bold text-foreground">{topic.title}</h2>
           <Row icon={<User size={16} className="text-indigo-600" />} label="Instructor" value={topic.instructorName} />
           <Row icon={<CalendarClock size={16} className="text-indigo-600" />} label="Time" value={fmtDateTime(startAt)} />
-          <Row icon={<Coins size={16} className="text-indigo-600" />} label="Cost" value="1 session credit" />
+          <Row icon={<Coins size={16} className="text-indigo-600" />} label="Cost" value={tx("1 session credit") as string} />
         </Card>
 
         {error && (
@@ -87,7 +89,7 @@ export function BookingSummaryPage() {
             {createBooking.error instanceof ApiError && createBooking.error.code === "slot_unavailable" && (
               <div className="mt-2">
                 <Link to={`/student/book/${topicId}`} className="font-semibold underline">
-                  Back to calendar
+                  {tx("Back to calendar")}
                 </Link>
               </div>
             )}
@@ -96,10 +98,10 @@ export function BookingSummaryPage() {
 
         <div className="flex gap-3">
           <Button asChild variant="ghost" size="lg" className="flex-1">
-            <Link to={`/student/book/${topicId}`}>Back</Link>
+            <Link to={`/student/book/${topicId}`}>{tx("Back")}</Link>
           </Button>
           <Button size="lg" className="flex-1" onClick={confirm} disabled={createBooking.isPending}>
-            {createBooking.isPending ? "Confirming…" : "Confirm booking"} <ArrowRight size={18} />
+            {createBooking.isPending ? tx("Confirming…") : tx("Confirm booking")} <ArrowRight size={18} />
           </Button>
         </div>
       </div>
@@ -108,11 +110,12 @@ export function BookingSummaryPage() {
 }
 
 function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  const { tx } = useI18n();
   return (
     <div className="flex items-center gap-3 border-t border-border py-3 first:border-t-0 first:pt-0">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50">{icon}</div>
       <div>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{tx(label)}</div>
         <div className="font-semibold text-foreground">{value}</div>
       </div>
     </div>

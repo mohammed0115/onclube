@@ -9,6 +9,7 @@ import { PaymentStatusBadge } from "@/components/payment";
 import { useAdminDashboard } from "@/hooks";
 import { Loading, ErrorState } from "@/components/states";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { PaymentStatus } from "@/types";
 
 function badgeStatus(status: string): PaymentStatus {
@@ -39,6 +40,7 @@ const AREAS = [
 
 export function AdminDashboardPage() {
   const query = useAdminDashboard();
+  const { tx } = useI18n();
 
   if (query.isLoading) {
     return <DashboardLayout><Loading label="Loading operations center…" /></DashboardLayout>;
@@ -57,7 +59,7 @@ export function AdminDashboardPage() {
         subtitle="Run the platform: approvals, sessions, and today's activity at a glance."
         action={
           <Button asChild size="sm">
-            <Link to="/admin/payments">Review payments <ArrowRight size={15} /></Link>
+            <Link to="/admin/payments">{tx("Review payments")} <ArrowRight size={15} /></Link>
           </Button>
         }
       />
@@ -76,10 +78,10 @@ export function AdminDashboardPage() {
       <Card className="mb-6 p-6">
         <div className="mb-3 flex items-center gap-2">
           <AlertTriangle size={18} className="text-amber-500" />
-          <h3 className="font-display font-bold text-foreground">Critical alerts</h3>
+          <h3 className="font-display font-bold text-foreground">{tx("Critical alerts")}</h3>
         </div>
         {d.alerts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">All clear — no issues need your attention. 🎉</p>
+          <p className="text-sm text-muted-foreground">{tx("All clear — no issues need your attention. 🎉")}</p>
         ) : (
           <div className="space-y-2">
             {d.alerts.map((a, i) => {
@@ -102,8 +104,8 @@ export function AdminDashboardPage() {
             <div className={cn("mb-2 flex h-9 w-9 items-center justify-center rounded-xl", a.tone)}>
               <a.icon size={18} />
             </div>
-            <div className="text-sm font-semibold text-foreground">{a.label}</div>
-            <div className="text-xs text-muted-foreground">{a.desc}</div>
+            <div className="text-sm font-semibold text-foreground">{tx(a.label)}</div>
+            <div className="text-xs text-muted-foreground">{tx(a.desc)}</div>
           </Link>
         ))}
       </div>
@@ -114,9 +116,9 @@ export function AdminDashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wallet size={18} className="text-indigo-600" />
-              <h3 className="font-display font-bold text-foreground">Payments awaiting approval</h3>
+              <h3 className="font-display font-bold text-foreground">{tx("Payments awaiting approval")}</h3>
             </div>
-            <Link to="/admin/payments" className="text-xs font-semibold text-indigo-600 hover:underline">Open queue</Link>
+            <Link to="/admin/payments" className="text-xs font-semibold text-indigo-600 hover:underline">{tx("Open queue")}</Link>
           </div>
           <div className="space-y-3">
             {d.pendingProofs.map((p) => (
@@ -133,7 +135,7 @@ export function AdminDashboardPage() {
                 <PaymentStatusBadge status={badgeStatus(p.status)} />
               </div>
             ))}
-            {d.pendingProofs.length === 0 && <p className="text-sm text-muted-foreground">Queue is clear 🎉</p>}
+            {d.pendingProofs.length === 0 && <p className="text-sm text-muted-foreground">{tx("Queue is clear 🎉")}</p>}
           </div>
         </Card>
 
@@ -141,10 +143,10 @@ export function AdminDashboardPage() {
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-2">
             <Clock size={18} className="text-indigo-600" />
-            <h3 className="font-display font-bold text-foreground">Recent activity</h3>
+            <h3 className="font-display font-bold text-foreground">{tx("Recent activity")}</h3>
           </div>
           <div className="space-y-4">
-            {d.recentActivity.length === 0 && <p className="text-sm text-muted-foreground">Nothing recent.</p>}
+            {d.recentActivity.length === 0 && <p className="text-sm text-muted-foreground">{tx("Nothing recent.")}</p>}
             {d.recentActivity.map((a, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500" />

@@ -15,10 +15,12 @@ import { Button } from "@/components/ui/button";
 import { PaymentStatusBadge } from "@/components/payment";
 import { Loading, ErrorState } from "@/components/states";
 import { useSubscription, useLatestPaymentProof } from "@/hooks";
+import { useI18n } from "@/i18n";
 
 type View = "loading" | "error" | "approved" | "rejected" | "needs_info" | "pending";
 
 export function PaymentUnderReviewPage() {
+  const { tx } = useI18n();
   const navigate = useNavigate();
   // Poll BOTH the subscription (activation is the source of truth) and the latest
   // proof (for the rejected / needs-info states + the admin's review note).
@@ -63,15 +65,15 @@ export function PaymentUnderReviewPage() {
         {view === "approved" && (
           <>
             <Hero tone="emerald" icon={<CheckCircle2 size={34} className="text-emerald-600" />} />
-            <h1 className="font-display text-3xl font-extrabold text-foreground">You’re approved!</h1>
+            <h1 className="font-display text-3xl font-extrabold text-foreground">{tx("You’re approved!")}</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Your <span className="font-semibold text-foreground">{subQuery.data?.planName}</span> plan is active
-              {subQuery.data ? ` with ${subQuery.data.sessionsRemaining} sessions ready` : ""}. You can start booking now.
+              {tx("Your")} <span className="font-semibold text-foreground">{subQuery.data?.planName}</span> {tx("plan is active")}
+              {subQuery.data ? ` with ${subQuery.data.sessionsRemaining} sessions ready` : ""}. {tx("You can start booking now.")}
             </p>
             <div className="mt-8">
               <Button asChild size="lg" className="w-full">
                 <Link to="/student/book">
-                  Continue to booking <ArrowRight size={18} />
+                  {tx("Continue to booking")} <ArrowRight size={18} />
                 </Link>
               </Button>
             </div>
@@ -103,10 +105,9 @@ export function PaymentUnderReviewPage() {
         {view === "pending" && (
           <>
             <Hero tone="amber" icon={<Clock size={34} className="text-amber-600" />} />
-            <h1 className="font-display text-3xl font-extrabold text-foreground">Payment under review</h1>
+            <h1 className="font-display text-3xl font-extrabold text-foreground">{tx("Payment under review")}</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Thanks! We received your transfer proof. An admin will verify it and activate your account. You
-              can&apos;t book sessions until it&apos;s approved.
+              {tx("Thanks! We received your transfer proof. An admin will verify it and activate your account. You can't book sessions until it's approved.")}
             </p>
 
             <Card className="mt-8 p-6 text-left">
@@ -133,7 +134,7 @@ export function PaymentUnderReviewPage() {
                 disabled={proofQuery.isFetching}
               >
                 <RefreshCw size={16} className={proofQuery.isFetching ? "animate-spin" : ""} />
-                {proofQuery.isFetching ? "Checking…" : "Check status now"}
+                {proofQuery.isFetching ? tx("Checking…") : tx("Check status now")}
               </Button>
             </div>
           </>
@@ -163,21 +164,22 @@ function ReviewOutcome({
   fallback: string;
   onResubmit: () => void;
 }) {
+  const { tx } = useI18n();
   return (
     <>
       <Hero tone={tone} icon={icon} />
-      <h1 className="font-display text-3xl font-extrabold text-foreground">{title}</h1>
+      <h1 className="font-display text-3xl font-extrabold text-foreground">{tx(title)}</h1>
       <div
         role="alert"
         className={`mx-auto mt-4 max-w-md rounded-2xl border px-4 py-3 text-left text-sm ${
           tone === "red" ? "border-red-100 bg-red-50/60 text-red-800" : "border-amber-100 bg-amber-50/60 text-amber-800"
         }`}
       >
-        {note || fallback}
+        {note || tx(fallback)}
       </div>
       <div className="mt-8">
         <Button onClick={onResubmit} size="lg" className="w-full">
-          Re-submit payment proof <ArrowRight size={18} />
+          {tx("Re-submit payment proof")} <ArrowRight size={18} />
         </Button>
       </div>
     </>
@@ -185,12 +187,13 @@ function ReviewOutcome({
 }
 
 function InfoRow({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  const { tx } = useI18n();
   return (
     <div className="flex items-start gap-3">
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100">{icon}</div>
       <div>
-        <div className="text-sm font-semibold text-foreground">{title}</div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
+        <div className="text-sm font-semibold text-foreground">{tx(title)}</div>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{tx(body)}</p>
       </div>
     </div>
   );

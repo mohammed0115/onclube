@@ -13,6 +13,7 @@ import {
   useRescheduleInstructorBooking,
 } from "@/hooks";
 import type { BookingListItem } from "@/api/types";
+import { useI18n } from "@/i18n";
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -49,6 +50,7 @@ function SessionRow({ b }: { b: BookingListItem }) {
   const cancel = useCancelInstructorBooking();
   const reschedule = useRescheduleInstructorBooking();
   const { data: slots } = useInstructorAvailability();
+  const { tx } = useI18n();
   const [picking, setPicking] = useState(false);
   const [slotId, setSlotId] = useState("");
 
@@ -67,10 +69,10 @@ function SessionRow({ b }: { b: BookingListItem }) {
           {isUpcoming && (
             <>
               <Button variant="ghost" size="sm" onClick={() => setPicking((v) => !v)} disabled={reschedule.isPending}>
-                <RefreshCw size={14} /> Reschedule
+                <RefreshCw size={14} /> {tx("Reschedule")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => cancel.mutate(b.id)} disabled={cancel.isPending} className="text-red-600 hover:bg-red-50">
-                {cancel.isPending ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} Cancel
+                {cancel.isPending ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />} {tx("Cancel")}
               </Button>
             </>
           )}
@@ -80,15 +82,15 @@ function SessionRow({ b }: { b: BookingListItem }) {
       {picking && isUpcoming && (
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3">
           <select value={slotId} onChange={(e) => setSlotId(e.target.value)} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground">
-            <option value="">Pick a new open slot…</option>
+            <option value="">{tx("Pick a new open slot…")}</option>
             {openSlots.map((s) => <option key={s.id} value={s.id}>{fmt(s.startAt)}</option>)}
           </select>
           <Button size="sm" disabled={!slotId || reschedule.isPending} onClick={() => reschedule.mutate({ id: b.id, newSlotId: slotId }, { onSuccess: () => setPicking(false) })}>
-            {reschedule.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Move
+            {reschedule.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {tx("Move")}
           </Button>
         </div>
       )}
-      {openSlots.length === 0 && picking && <p className="mt-2 text-xs text-muted-foreground">No open slots — add availability first.</p>}
+      {openSlots.length === 0 && picking && <p className="mt-2 text-xs text-muted-foreground">{tx("No open slots — add availability first.")}</p>}
     </Card>
   );
 }

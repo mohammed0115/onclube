@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { usePlans } from "@/hooks";
 import { Loading, ErrorState } from "@/components/states";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 /** Remembers the chosen plan for the payment-proof step (no redesign needed). */
 export const SELECTED_PLAN_KEY = "ec_selected_plan";
 
 export function PricingPage() {
+  const { tx } = useI18n();
   const navigate = useNavigate();
   const { data: plans, isLoading, isError, error, refetch } = usePlans();
   const [selected, setSelected] = useState<string>("");
@@ -34,11 +36,10 @@ export function PricingPage() {
       <section className="px-6 pb-24 pt-32 md:px-8">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12 text-center">
-            <span className="text-sm font-bold uppercase tracking-widest text-primary">Pricing</span>
-            <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground">Pay for sessions, nothing else</h2>
+            <span className="text-sm font-bold uppercase tracking-widest text-primary">{tx("Pricing")}</span>
+            <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground">{tx("Pay for sessions, nothing else")}</h2>
             <p className="mx-auto mt-4 max-w-md text-lg text-muted-foreground">
-              Every plan includes prep questions and an AI report. Pay by local bank transfer — we activate your
-              account once an admin confirms.
+              {tx("Every plan includes prep questions and an AI report. Pay by local bank transfer — we activate your account once an admin confirms.")}
             </p>
           </div>
 
@@ -64,7 +65,7 @@ export function PricingPage() {
                     >
                       {plan.recommended && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-orange-500 px-5 py-1.5 text-xs font-bold text-white shadow-sm shadow-orange-500/30">
-                          ✦ Most popular
+                          {tx("✦ Most popular")}
                         </div>
                       )}
                       <div className="mb-3 text-3xl">{plan.emoji}</div>
@@ -88,7 +89,7 @@ export function PricingPage() {
                           active ? "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-600/25" : "border border-border bg-card text-foreground"
                         )}
                       >
-                        {active ? "Selected" : "Select plan"}
+                        {active ? tx("Selected") : tx("Select plan")}
                       </div>
                     </button>
                   );
@@ -97,7 +98,7 @@ export function PricingPage() {
 
               <div className="mt-10 flex justify-center">
                 <Button onClick={handleContinue} disabled={!selected} size="lg">
-                  Continue to payment <ArrowRight size={18} />
+                  {tx("Continue to payment")} <ArrowRight size={18} />
                 </Button>
               </div>
             </>

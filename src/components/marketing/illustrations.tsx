@@ -7,6 +7,7 @@
  * reads consistently across light surfaces.
  */
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 const BLUE = "#3B82F6";
 const BLUE_DARK = "#2563EB";
@@ -74,8 +75,9 @@ export function ChatBubble({
  * with floating chat bubbles and a microphone. The "people talking" centrepiece.
  */
 export function ConversationScene({ className }: { className?: string }) {
+  const { tx } = useI18n();
   return (
-    <svg viewBox="0 0 460 380" className={cn("h-auto w-full", className)} role="img" aria-label="Two people having a conversation">
+    <svg viewBox="0 0 460 380" className={cn("h-auto w-full", className)} role="img" aria-label={tx("Two people having a conversation")}>
       <defs>
         <linearGradient id="cs-card" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" />

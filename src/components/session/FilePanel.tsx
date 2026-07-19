@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Download, FileText, Trash2, Upload, UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { DropzoneProps, FileConnectionState, FileShareError, SharedFile } from "@/lib/files";
 import { ALLOWED_EXTENSIONS } from "@/lib/files";
 
@@ -49,6 +50,7 @@ function FileRow({
   onRemove: (id: string) => void;
   canManage: boolean;
 }) {
+  const { tx } = useI18n();
   return (
     <li className="flex items-center gap-3 rounded-xl border border-slate-200 p-2.5">
       <FileText size={20} className="flex-shrink-0 text-slate-400" />
@@ -62,7 +64,7 @@ function FileRow({
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${file.progress}%` }} aria-label={`${file.progress}%`} />
           </div>
         )}
-        {file.status === "failed" && <div className="mt-0.5 text-[11px] text-red-500">Failed</div>}
+        {file.status === "failed" && <div className="mt-0.5 text-[11px] text-red-500">{tx("Failed")}</div>}
       </div>
       {file.status === "uploading" ? (
         <button type="button" aria-label={`Cancel upload ${file.name}`} onClick={() => onCancel(file.id)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100">
@@ -113,19 +115,20 @@ export function FilePanel({
   onRemove,
   onClose,
 }: FilePanelProps) {
+  const { tx } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const conn = CONNECTION_COPY[connectionState] ?? CONNECTION_COPY.idle;
 
   return (
-    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label="Shared files">
+    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label={tx("Shared files")}>
       <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Files</span>
+          <span className="text-sm font-semibold">{tx("Files")}</span>
           <span className={cn("text-[11px] font-medium", conn.tone, conn.pulse && "animate-pulse")} role="status" aria-live="polite">
-            {conn.label}
+            {tx(conn.label)}
           </span>
         </div>
-        <button type="button" aria-label="Close files" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
+        <button type="button" aria-label={tx("Close files")} onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
           <X size={16} />
         </button>
       </header>
@@ -141,22 +144,22 @@ export function FilePanel({
           data-testid="file-dropzone"
         >
           <UploadCloud size={22} className="text-slate-400" />
-          <p className="text-xs text-slate-500">Drag &amp; drop a file here, or</p>
+          <p className="text-xs text-slate-500">{tx("Drag & drop a file here, or")}</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90"
           >
-            <Upload size={14} /> Upload file
+            <Upload size={14} /> {tx("Upload file")}
           </button>
-          <p className="text-[10px] text-slate-400">PDF, DOCX, PPTX, TXT, PNG, JPG · max 25 MB</p>
+          <p className="text-[10px] text-slate-400">{tx("PDF, DOCX, PPTX, TXT, PNG, JPG · max 25 MB")}</p>
           <input ref={inputRef} type="file" accept={ACCEPT} onChange={onInputChange} data-testid="file-input" className="hidden" />
         </div>
       </div>
 
       {error && (
         <div className="mx-3 mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600" role="alert">
-          {ERROR_COPY[error.code] ?? ERROR_COPY.unknown}
+          {tx(ERROR_COPY[error.code] ?? ERROR_COPY.unknown)}
           {error.fileName ? ` (${error.fileName})` : ""}
         </div>
       )}
@@ -166,11 +169,11 @@ export function FilePanel({
           <div className="flex h-full items-center justify-center" role="status" aria-live="polite">
             <div className="flex flex-col items-center gap-2 text-slate-400">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
-              <span className="text-xs">Loading files…</span>
+              <span className="text-xs">{tx("Loading files…")}</span>
             </div>
           </div>
         ) : files.length === 0 ? (
-          <p className="py-8 text-center text-xs text-slate-400">No files shared yet.</p>
+          <p className="py-8 text-center text-xs text-slate-400">{tx("No files shared yet.")}</p>
         ) : (
           <ul className="space-y-2">
             {files.map((f) => (

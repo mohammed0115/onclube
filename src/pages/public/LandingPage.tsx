@@ -31,6 +31,7 @@ import {
 } from "@/components/marketing";
 import { instructors } from "@/data/mockData";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 const WHY = [
   {
@@ -94,6 +95,7 @@ const FAQ = [
 ];
 
 export function LandingPage() {
+  const { tx } = useI18n();
   return (
     <div className="min-h-screen bg-white font-sans text-foreground">
       <MarketingNav />
@@ -107,28 +109,27 @@ export function LandingPage() {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-16 md:px-8 lg:grid-cols-2">
           <div className="relative z-10">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm">
-              <Mic size={14} /> Live conversation practice with real instructors
+              <Mic size={14} /> {tx("Live conversation practice with real instructors")}
             </div>
             <h1 className="font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Practice English.
+              {tx("Practice English.")}
               <br />
-              Build confidence.
+              {tx("Build confidence.")}
               <br />
-              <span className="text-primary">Speak naturally.</span>
+              <span className="text-primary">{tx("Speak naturally.")}</span>
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
-              OneClub pairs you with friendly instructors for focused conversation sessions. You get the
-              questions ahead of time, and AI gives you a clear report afterward.
+              {tx("OneClub pairs you with friendly instructors for focused conversation sessions. You get the questions ahead of time, and AI gives you a clear report afterward.")}
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
                 <Link to="/register">
-                  Start free placement test <ArrowRight size={18} />
+                  {tx("Start free placement test")} <ArrowRight size={18} />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="ghost">
-                <Link to="/billing/pricing">See plans</Link>
+                <Link to="/billing/pricing">{tx("See plans")}</Link>
               </Button>
             </div>
 
@@ -148,7 +149,7 @@ export function LandingPage() {
                   ))}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Real instructors</span> · vetted & rated
+                  <span className="font-semibold text-foreground">{tx("Real instructors")}</span> {tx("· vetted & rated")}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -162,9 +163,9 @@ export function LandingPage() {
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> Free placement test</span>
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> Pay by bank transfer</span>
-              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> Questions in advance</span>
+              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> {tx("Free placement test")}</span>
+              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> {tx("Pay by bank transfer")}</span>
+              <span className="flex items-center gap-1.5"><CheckCircle size={13} className="text-success" /> {tx("Questions in advance")}</span>
             </div>
           </div>
 
@@ -174,14 +175,14 @@ export function LandingPage() {
               <ConversationScene />
               <div className="mt-2 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-blue-50 p-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-blue-700">Before the session</div>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">5 discussion questions, sent in advance.</p>
+                  <div className="text-xs font-bold uppercase tracking-wide text-blue-700">{tx("Before the session")}</div>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">{tx("5 discussion questions, sent in advance.")}</p>
                 </div>
                 <div className="rounded-2xl bg-indigo-50 p-4">
                   <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700">
-                    <Sparkles size={12} /> After
+                    <Sparkles size={12} /> {tx("After")}
                   </div>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">An AI report with scores and next steps.</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">{tx("An AI report with scores and next steps.")}</p>
                 </div>
               </div>
             </div>
@@ -192,9 +193,9 @@ export function LandingPage() {
       {/* ── 2. Why OneClub ────────────────────────────────────── */}
       <Section id="why">
         <SectionHeading
-          eyebrow="Why OneClub"
-          title="A warmer way to learn to speak"
-          subtitle="OneClub isn't another course to finish. It's a place to talk — and to feel a little braver every time."
+          eyebrow={tx("Why OneClub")}
+          title={tx("A warmer way to learn to speak")}
+          subtitle={tx("OneClub isn't another course to finish. It's a place to talk — and to feel a little braver every time.")}
         />
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {WHY.map((w) => (
@@ -205,8 +206,8 @@ export function LandingPage() {
               <div className={cn("mb-4 flex h-12 w-12 items-center justify-center rounded-2xl", w.tint)}>
                 <w.icon size={22} />
               </div>
-              <h3 className="font-display text-lg font-bold text-foreground">{w.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{w.desc}</p>
+              <h3 className="font-display text-lg font-bold text-foreground">{tx(w.title)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tx(w.desc)}</p>
             </div>
           ))}
         </div>
@@ -214,7 +215,7 @@ export function LandingPage() {
 
       {/* ── 3. How It Works ───────────────────────────────────── */}
       <Section id="how" className="bg-surface-2">
-        <SectionHeading eyebrow="How it works" title="Four steps, then you're speaking" />
+        <SectionHeading eyebrow={tx("How it works")} title={tx("Four steps, then you're speaking")} />
         <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
             <div key={s.title} className="relative rounded-3xl border border-border bg-card p-6 shadow-sm">
@@ -222,8 +223,8 @@ export function LandingPage() {
                 <s.icon size={22} />
               </div>
               <div className="mb-2 font-display text-sm font-bold text-blue-300">0{i + 1}</div>
-              <h3 className="font-display font-bold text-foreground">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
+              <h3 className="font-display font-bold text-foreground">{tx(s.title)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tx(s.desc)}</p>
             </div>
           ))}
         </div>
@@ -233,12 +234,12 @@ export function LandingPage() {
       <Section id="journey">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
           <div>
-            <Eyebrow>Your practice journey</Eyebrow>
+            <Eyebrow>{tx("Your practice journey")}</Eyebrow>
             <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              From nervous to natural
+              {tx("From nervous to natural")}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              Confidence isn't a switch — it's a path. Here's how it usually unfolds for OneClub members.
+              {tx("Confidence isn't a switch — it's a path. Here's how it usually unfolds for OneClub members.")}
             </p>
             <div className="mt-8 space-y-1">
               {JOURNEY.map((j, i) => (
@@ -250,8 +251,8 @@ export function LandingPage() {
                     {i < JOURNEY.length - 1 && <div className="my-1 w-0.5 flex-1 bg-blue-100" />}
                   </div>
                   <div className="pb-6">
-                    <div className="font-display font-bold text-foreground">{j.label}</div>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{j.desc}</p>
+                    <div className="font-display font-bold text-foreground">{tx(j.label)}</div>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{tx(j.desc)}</p>
                   </div>
                 </div>
               ))}
@@ -261,8 +262,8 @@ export function LandingPage() {
             <div className="relative w-full max-w-sm rounded-[2rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-10 shadow-lg shadow-blue-100/50">
               <GrowthMark className="mx-auto h-48 w-48" />
               <div className="mt-4 text-center">
-                <div className="font-display text-2xl font-extrabold text-foreground">Confidence, week by week</div>
-                <p className="mt-2 text-sm text-muted-foreground">Measured by your AI reports over time.</p>
+                <div className="font-display text-2xl font-extrabold text-foreground">{tx("Confidence, week by week")}</div>
+                <p className="mt-2 text-sm text-muted-foreground">{tx("Measured by your AI reports over time.")}</p>
               </div>
             </div>
           </div>
@@ -275,9 +276,9 @@ export function LandingPage() {
           <div className="order-2 lg:order-1">
             <div className="rounded-[2rem] border border-indigo-100 bg-white p-8 shadow-lg shadow-indigo-100/50">
               <div className="flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-indigo-700" style={{ width: "fit-content" }}>
-                <Sparkles size={12} /> AI-assisted
+                <Sparkles size={12} /> {tx("AI-assisted")}
               </div>
-              <h3 className="mt-4 font-display text-xl font-bold text-foreground">Your session report</h3>
+              <h3 className="mt-4 font-display text-xl font-bold text-foreground">{tx("Your session report")}</h3>
               <div className="mt-5 space-y-4">
                 {[
                   { label: "Fluency", value: 82, color: "bg-blue-500" },
@@ -286,7 +287,7 @@ export function LandingPage() {
                 ].map((m) => (
                   <div key={m.label}>
                     <div className="mb-1 flex justify-between text-sm">
-                      <span className="font-medium text-foreground">{m.label}</span>
+                      <span className="font-medium text-foreground">{tx(m.label)}</span>
                       <span className="text-muted-foreground">{m.value}%</span>
                     </div>
                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
@@ -298,18 +299,18 @@ export function LandingPage() {
             </div>
           </div>
           <div className="order-1 lg:order-2">
-            <Eyebrow>AI helps you</Eyebrow>
+            <Eyebrow>{tx("AI helps you")}</Eyebrow>
             <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              Smart support around a human conversation
+              {tx("Smart support around a human conversation")}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              AI does the prep and the analysis. Your instructor does the talking. You get the best of both.
+              {tx("AI does the prep and the analysis. Your instructor does the talking. You get the best of both.")}
             </p>
             <ul className="mt-6 space-y-3">
               {AI_POINTS.map((p) => (
                 <li key={p} className="flex items-start gap-3 text-sm text-slate-700">
                   <CheckCircle size={18} className="mt-0.5 flex-shrink-0 text-indigo-500" />
-                  {p}
+                  {tx(p)}
                 </li>
               ))}
             </ul>
@@ -320,9 +321,9 @@ export function LandingPage() {
       {/* ── 6. Meet Your Instructor ───────────────────────────── */}
       <Section id="instructors">
         <SectionHeading
-          eyebrow="Meet your instructor"
-          title="Real people lead every session"
-          subtitle="AI prepares and analyses — but the conversation is always with a friendly, vetted human."
+          eyebrow={tx("Meet your instructor")}
+          title={tx("Real people lead every session")}
+          subtitle={tx("AI prepares and analyses — but the conversation is always with a friendly, vetted human.")}
         />
         <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {instructors.map((i) => (
@@ -337,7 +338,7 @@ export function LandingPage() {
               <div className="text-sm text-muted-foreground">{i.flag} {i.country}</div>
               <p className="mt-2 text-sm text-slate-600">{i.headline}</p>
               <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                <Star size={12} className="fill-amber-500 text-amber-500" /> {i.rating} · {i.sessionsHosted} sessions
+                <Star size={12} className="fill-amber-500 text-amber-500" /> {i.rating} · {i.sessionsHosted} {tx("sessions")}
               </div>
             </div>
           ))}
@@ -346,19 +347,19 @@ export function LandingPage() {
 
       {/* ── 7. Student Results ────────────────────────────────── */}
       <Section id="results" className="bg-surface-2">
-        <SectionHeading eyebrow="Student results" title="“I finally found someone to practise with”" />
+        <SectionHeading eyebrow={tx("Student results")} title={tx("“I finally found someone to practise with”")} />
         <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {RESULTS.map((r) => (
             <div key={r.name} className="flex flex-col rounded-3xl border border-border bg-card p-7 shadow-sm">
               <Quote size={28} className="text-blue-200" />
-              <p className="mt-3 flex-1 text-base leading-relaxed text-slate-700">{r.quote}</p>
+              <p className="mt-3 flex-1 text-base leading-relaxed text-slate-700">{tx(r.quote)}</p>
               <div className="mt-6 flex items-center gap-3">
                 <div className={cn("flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white", r.accent)}>
                   {r.name[0]}
                 </div>
                 <div>
                   <div className="font-display text-sm font-bold text-foreground">{r.name}</div>
-                  <div className="text-xs text-muted-foreground">{r.country}</div>
+                  <div className="text-xs text-muted-foreground">{tx(r.country)}</div>
                 </div>
               </div>
             </div>
@@ -371,18 +372,17 @@ export function LandingPage() {
         <div className="overflow-hidden rounded-[2.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-10 md:p-14">
           <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
             <div>
-              <Eyebrow>Simple pricing</Eyebrow>
+              <Eyebrow>{tx("Simple pricing")}</Eyebrow>
               <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                Pay for sessions, nothing else
+                {tx("Pay for sessions, nothing else")}
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                Every plan includes prep questions and an AI report. Pay by local bank transfer — your
-                account activates once an admin confirms.
+                {tx("Every plan includes prep questions and an AI report. Pay by local bank transfer — your account activates once an admin confirms.")}
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
                   <Link to="/billing/pricing">
-                    See all plans <ArrowRight size={18} />
+                    {tx("See all plans")} <ArrowRight size={18} />
                   </Link>
                 </Button>
               </div>
@@ -396,8 +396,8 @@ export function LandingPage() {
               ].map((f) => (
                 <div key={f.label} className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
                   <f.icon size={20} className="text-primary" />
-                  <div className="mt-3 font-display text-sm font-bold text-foreground">{f.label}</div>
-                  <div className="text-xs text-muted-foreground">{f.desc}</div>
+                  <div className="mt-3 font-display text-sm font-bold text-foreground">{tx(f.label)}</div>
+                  <div className="text-xs text-muted-foreground">{tx(f.desc)}</div>
                 </div>
               ))}
             </div>
@@ -407,7 +407,7 @@ export function LandingPage() {
 
       {/* ── 9. FAQ ────────────────────────────────────────────── */}
       <Section id="faq">
-        <SectionHeading eyebrow="FAQ" title="Questions, answered" />
+        <SectionHeading eyebrow={tx("FAQ")} title={tx("Questions, answered")} />
         <div className="mx-auto mt-12 max-w-3xl space-y-3">
           {FAQ.map((f) => (
             <FAQItem key={f.q} q={f.q} a={f.a} />
@@ -421,19 +421,19 @@ export function LandingPage() {
           <BlobShape className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 opacity-20" from="#ffffff" to="#ffffff" />
           <div className="relative z-10 mx-auto max-w-2xl">
             <h2 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-              Your next conversation is one click away
+              {tx("Your next conversation is one click away")}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-blue-100">
-              Take the free placement test and book your first session with a real instructor today.
+              {tx("Take the free placement test and book your first session with a real instructor today.")}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
                 <Link to="/register">
-                  Start free placement test <ArrowRight size={18} />
+                  {tx("Start free placement test")} <ArrowRight size={18} />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="glass">
-                <Link to="/login">I already have an account</Link>
+                <Link to="/login">{tx("I already have an account")}</Link>
               </Button>
             </div>
           </div>
@@ -450,9 +450,9 @@ export function LandingPage() {
             One<span className="text-primary">Club</span>
           </div>
           <p className="max-w-md text-sm text-muted-foreground">
-            Conversation practice with real instructors — practice English, build confidence, speak naturally.
+            {tx("Conversation practice with real instructors — practice English, build confidence, speak naturally.")}
           </p>
-          <p className="text-xs text-slate-400">A prototype. No real payments are processed.</p>
+          <p className="text-xs text-slate-400">{tx("A prototype. No real payments are processed.")}</p>
         </div>
       </footer>
     </div>
@@ -460,6 +460,7 @@ export function LandingPage() {
 }
 
 function FAQItem({ q, a }: { q: string; a: string }) {
+  const { tx } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -467,12 +468,12 @@ function FAQItem({ q, a }: { q: string; a: string }) {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
       >
-        <span className="font-display font-semibold text-foreground">{q}</span>
+        <span className="font-display font-semibold text-foreground">{tx(q)}</span>
         <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
           {open ? <Minus size={15} /> : <Plus size={15} />}
         </span>
       </button>
-      {open && <p className="px-6 pb-5 text-sm leading-relaxed text-muted-foreground">{a}</p>}
+      {open && <p className="px-6 pb-5 text-sm leading-relaxed text-muted-foreground">{tx(a)}</p>}
     </div>
   );
 }

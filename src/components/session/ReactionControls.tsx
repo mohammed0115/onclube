@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Hand, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { Reaction, SignalConnectionState } from "@/lib/signals";
 import { REACTIONS } from "@/lib/signals";
 
@@ -16,6 +17,7 @@ export function ReactionControls({
   onToggleHand: () => void;
   onSendReaction: (reaction: Reaction) => void;
 }) {
+  const { tx } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
   const disabled = connectionState !== "connected" && connectionState !== "reconnecting";
   const signaling = connectionState === "connecting";
@@ -25,7 +27,7 @@ export function ReactionControls({
       <button
         type="button"
         aria-pressed={handRaised}
-        aria-label={handRaised ? "Lower hand" : "Raise hand"}
+        aria-label={handRaised ? tx("Lower hand") : tx("Raise hand")}
         onClick={onToggleHand}
         disabled={disabled}
         className={cn(
@@ -39,7 +41,7 @@ export function ReactionControls({
       <div className="relative">
         <button
           type="button"
-          aria-label="React"
+          aria-label={tx("React")}
           aria-expanded={pickerOpen}
           onClick={() => setPickerOpen((v) => !v)}
           disabled={disabled}
@@ -48,7 +50,7 @@ export function ReactionControls({
           <Smile size={18} />
         </button>
         {pickerOpen && (
-          <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-slate-900 px-2 py-1.5 shadow-xl" role="menu" aria-label="Reactions">
+          <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-slate-900 px-2 py-1.5 shadow-xl" role="menu" aria-label={tx("Reactions")}>
             {REACTIONS.map((r) => (
               <button
                 key={r}
@@ -70,12 +72,12 @@ export function ReactionControls({
 
       {signaling && (
         <span className="px-1 text-[11px] text-white/70" role="status" aria-live="polite">
-          Connecting signals…
+          {tx("Connecting signals…")}
         </span>
       )}
       {connectionState === "reconnecting" && (
         <span className="px-1 text-[11px] text-amber-300" role="status" aria-live="polite">
-          Reconnecting signals…
+          {tx("Reconnecting signals…")}
         </span>
       )}
     </div>

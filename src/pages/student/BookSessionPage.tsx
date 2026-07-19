@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { TopicCard } from "@/components/cards";
 import { useSubscription, useStudentTopics } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
+import { useI18n } from "@/i18n";
 import type { TopicPreview } from "@/api/types";
 import type { Topic } from "@/types";
 
@@ -37,6 +38,7 @@ function toTopicCard(p: TopicPreview): Topic {
 }
 
 function LockedScreen() {
+  const { tx } = useI18n();
   return (
     <DashboardLayout>
       <PageHeader title="Book a session" subtitle="Choose a topic to practise with an instructor." />
@@ -44,14 +46,13 @@ function LockedScreen() {
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
           <Lock size={26} className="text-amber-600" />
         </div>
-        <h2 className="font-display text-xl font-bold text-foreground">Booking is locked</h2>
+        <h2 className="font-display text-xl font-bold text-foreground">{tx("Booking is locked")}</h2>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-          You can book live sessions once an admin approves your payment. We&apos;ll email you the moment it&apos;s
-          ready.
+          {tx("You can book live sessions once an admin approves your payment. We'll email you the moment it's ready.")}
         </p>
         <Button asChild className="mt-6">
           <Link to="/billing/under-review">
-            Check payment status <ArrowRight size={16} />
+            {tx("Check payment status")} <ArrowRight size={16} />
           </Link>
         </Button>
       </Card>
@@ -60,6 +61,7 @@ function LockedScreen() {
 }
 
 export function BookSessionPage() {
+  const { tx } = useI18n();
   const sub = useSubscription();
   const topicsQuery = useStudentTopics();
 
@@ -82,7 +84,7 @@ export function BookSessionPage() {
       <PageHeader
         title="Book a session"
         subtitle="Pick a topic — you'll preview the discussion questions before choosing a time."
-        action={<Badge tone="emerald">Payment approved</Badge>}
+        action={<Badge tone="emerald">{tx("Payment approved")}</Badge>}
       />
 
       {topicsQuery.isLoading && <Loading label="Loading topics…" />}

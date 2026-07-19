@@ -15,6 +15,7 @@ import {
 } from "@/hooks";
 import type { AvailabilityException, AvailabilityExceptionKind } from "@/api/types";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 const KIND_META: Record<AvailabilityExceptionKind, { label: string; icon: typeof Plane; tone: string }> = {
   vacation: { label: "Vacation", icon: Plane, tone: "bg-indigo-100 text-indigo-700" },
@@ -44,6 +45,7 @@ const isoFromKey = (k: string) => {
 export function AvailabilityPage() {
   const { data: slots, isLoading } = useInstructorAvailability();
   const save = useSetAvailability();
+  const { tx } = useI18n();
 
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -113,16 +115,16 @@ export function AvailabilityPage() {
         subtitle="Open the times when students can book live sessions with you."
         action={
           <Button size="sm" onClick={onSave} disabled={save.isPending || open === null}>
-            {save.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save changes
+            {save.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} {tx("Save changes")}
           </Button>
         }
       />
 
       {savedAt && !save.isPending && (
-        <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">Availability published ✓</p>
+        <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">{tx("Availability published ✓")}</p>
       )}
       {save.isError && (
-        <p className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600">Could not save. Please try again.</p>
+        <p className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600">{tx("Could not save. Please try again.")}</p>
       )}
 
       {isLoading || open === null ? (
@@ -133,15 +135,15 @@ export function AvailabilityPage() {
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <button onClick={() => changeMonth(-1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label="Previous month">
+                <button onClick={() => changeMonth(-1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label={tx("Previous month")}>
                   <ChevronLeft size={16} />
                 </button>
                 <h3 className="min-w-[9rem] text-center font-display font-bold text-foreground">{monthLabel}</h3>
-                <button onClick={() => changeMonth(1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label="Next month">
+                <button onClick={() => changeMonth(1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label={tx("Next month")}>
                   <ChevronRight size={16} />
                 </button>
               </div>
-              <span className="text-xs text-muted-foreground">Green = open slots</span>
+              <span className="text-xs text-muted-foreground">{tx("Green = open slots")}</span>
             </div>
             <div className="mb-2 grid grid-cols-7 gap-1.5 text-center text-[11px] font-semibold uppercase text-muted-foreground">
               {WEEKDAYS.map((d) => <div key={d}>{d}</div>)}
@@ -180,7 +182,7 @@ export function AvailabilityPage() {
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display font-bold text-foreground">{selectedLabel}</h3>
-              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{openCountForDay} open</span>
+              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{openCountForDay} {tx("open")}</span>
             </div>
             <div className="max-h-[28rem] space-y-1.5 overflow-y-auto">
               {HOURS.map((h) => {
@@ -201,10 +203,10 @@ export function AvailabilityPage() {
                     <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                       {isBooked ? <Lock size={13} className="text-amber-600" /> : on && <Check size={14} className="text-indigo-600" />}
                       {time}
-                      {isBooked && <span className="ml-1 text-xs font-semibold text-amber-700">Booked</span>}
+                      {isBooked && <span className="ml-1 text-xs font-semibold text-amber-700">{tx("Booked")}</span>}
                     </div>
                     {isBooked ? (
-                      <span className="text-xs text-muted-foreground">locked</span>
+                      <span className="text-xs text-muted-foreground">{tx("locked")}</span>
                     ) : (
                       <Switch checked={on} disabled={isPast} onCheckedChange={() => toggle(k)} />
                     )}
@@ -228,6 +230,7 @@ function TimeOffCard() {
   const { data, isLoading } = useAvailabilityExceptions();
   const add = useAddAvailabilityException();
   const remove = useRemoveAvailabilityException();
+  const { tx } = useI18n();
   const [kind, setKind] = useState<AvailabilityExceptionKind>("vacation");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -252,37 +255,37 @@ function TimeOffCard() {
   return (
     <Card className="p-6">
       <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <Plane size={16} className="text-indigo-600" /> Time off
+        <Plane size={16} className="text-indigo-600" /> {tx("Time off")}
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">Block vacations, holidays, or specific hours — students can't book during these.</p>
+      <p className="mb-4 text-xs text-muted-foreground">{tx("Block vacations, holidays, or specific hours — students can't book during these.")}</p>
 
       {/* Add form */}
       <div className="mb-5 grid gap-3 rounded-2xl border border-border p-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Type
+          {tx("Type")}
           <select value={kind} onChange={(e) => setKind(e.target.value as AvailabilityExceptionKind)} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
-            <option value="vacation">Vacation</option>
-            <option value="holiday">Holiday</option>
-            <option value="block">Block time</option>
+            <option value="vacation">{tx("Vacation")}</option>
+            <option value="holiday">{tx("Holiday")}</option>
+            <option value="block">{tx("Block time")}</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Note (optional)
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Eid holiday" className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
+          {tx("Note (optional)")}
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tx("e.g. Eid holiday")} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Starts
+          {tx("Starts")}
           <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Ends
+          {tx("Ends")}
           <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </label>
         <div className="sm:col-span-2">
           <Button size="sm" onClick={submit} disabled={!canAdd || add.isPending}>
-            {add.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Add time off
+            {add.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} {tx("Add time off")}
           </Button>
-          {add.isError && <span className="ml-3 text-xs text-red-600">Could not add. Check the dates.</span>}
+          {add.isError && <span className="ml-3 text-xs text-red-600">{tx("Could not add. Check the dates.")}</span>}
         </div>
       </div>
 
@@ -290,7 +293,7 @@ function TimeOffCard() {
       {isLoading ? (
         <Loading label="Loading time off…" />
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No time off scheduled.</p>
+        <p className="text-sm text-muted-foreground">{tx("No time off scheduled.")}</p>
       ) : (
         <div className="space-y-2">
           {items.map((x: AvailabilityException) => {
@@ -310,7 +313,7 @@ function TimeOffCard() {
                 <button
                   onClick={() => remove.mutate(x.id)}
                   disabled={remove.isPending}
-                  aria-label="Remove time off"
+                  aria-label={tx("Remove time off")}
                   className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
                 >
                   <Trash2 size={15} />

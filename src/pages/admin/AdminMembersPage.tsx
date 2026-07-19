@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
 import { useAdminUsers, useSetUserStatus, useChangeUserRole } from "@/hooks";
+import { useI18n } from "@/i18n";
 import type { AdminUser } from "@/api/types";
 import { cn } from "@/lib/utils";
 
 const ROLES = ["", "student", "instructor", "admin"] as const;
 
 export function AdminMembersPage() {
+  const { tx } = useI18n();
   const [role, setRole] = useState("");
   const { data, isLoading } = useAdminUsers(role || undefined);
   const users = data ?? [];
@@ -23,7 +25,7 @@ export function AdminMembersPage() {
       <PageHeader
         title="Members"
         subtitle="Manage students, teachers and admins."
-        action={<Link to="/admin/audit" className="text-sm font-semibold text-indigo-600 hover:underline">Audit log →</Link>}
+        action={<Link to="/admin/audit" className="text-sm font-semibold text-indigo-600 hover:underline">{tx("Audit log →")}</Link>}
       />
 
       <div className="mb-4 flex gap-2">
@@ -34,7 +36,7 @@ export function AdminMembersPage() {
             className={cn("rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
               role === r ? "border-primary bg-blue-50 text-blue-700" : "border-border text-muted-foreground hover:bg-muted")}
           >
-            {r || "All"}
+            {r ? tx(r) : tx("All")}
           </button>
         ))}
       </div>
@@ -42,7 +44,7 @@ export function AdminMembersPage() {
       {isLoading ? (
         <Loading label="Loading members…" />
       ) : users.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground"><Users size={26} className="mx-auto mb-2 text-muted-foreground" />No members yet.</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground"><Users size={26} className="mx-auto mb-2 text-muted-foreground" />{tx("No members yet.")}</Card>
       ) : (
         <Card className="overflow-hidden p-0">
           <div className="divide-y divide-border">
@@ -55,6 +57,7 @@ export function AdminMembersPage() {
 }
 
 function MemberRow({ u }: { u: AdminUser }) {
+  const { tx } = useI18n();
   const setStatus = useSetUserStatus();
   const changeRole = useChangeUserRole();
   const suspended = u.status === "suspended";
@@ -71,16 +74,16 @@ function MemberRow({ u }: { u: AdminUser }) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {suspended && <Badge tone="red">Suspended</Badge>}
+        {suspended && <Badge tone="red">{tx("Suspended")}</Badge>}
         <select
           value={u.role}
           onChange={(e) => changeRole.mutate({ id: u.id, role: e.target.value })}
           disabled={changeRole.isPending}
           className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-medium capitalize text-foreground"
         >
-          <option value="student">student</option>
-          <option value="instructor">instructor</option>
-          <option value="admin">admin</option>
+          <option value="student">{tx("student")}</option>
+          <option value="instructor">{tx("instructor")}</option>
+          <option value="admin">{tx("admin")}</option>
         </select>
         <Button
           variant="ghost" size="sm"
@@ -89,7 +92,7 @@ function MemberRow({ u }: { u: AdminUser }) {
           className={suspended ? "text-emerald-600 hover:bg-emerald-50" : "text-red-600 hover:bg-red-50"}
         >
           {setStatus.isPending ? <Loader2 size={14} className="animate-spin" /> : suspended ? <CheckCircle size={14} /> : <Ban size={14} />}
-          {suspended ? "Activate" : "Suspend"}
+          {suspended ? tx("Activate") : tx("Suspend")}
         </Button>
       </div>
     </div>

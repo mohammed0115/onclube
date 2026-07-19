@@ -10,6 +10,7 @@ import { Loading } from "@/components/states";
 import { useInstructorProfile, useUpdateInstructorProfile, useChangePassword } from "@/hooks";
 import type { InstructorProfile } from "@/api/types";
 import { ApiError } from "@/api";
+import { useI18n } from "@/i18n";
 
 /** Instructor's own teaching profile — the public identity students see, plus a
  * password change. Covers scenarios 2 & 3 (profile + edit profile). */
@@ -28,6 +29,7 @@ export function InstructorProfilePage() {
 
 function ProfileForm({ profile }: { profile: InstructorProfile }) {
   const update = useUpdateInstructorProfile();
+  const { tx } = useI18n();
   const [form, setForm] = useState({
     fullName: profile.fullName,
     headline: profile.headline,
@@ -78,7 +80,7 @@ function ProfileForm({ profile }: { profile: InstructorProfile }) {
           </div>
         )}
         <div>
-          <div className="text-sm font-semibold text-foreground">{form.fullName || "Your name"}</div>
+          <div className="text-sm font-semibold text-foreground">{form.fullName || tx("Your name")}</div>
           <div className="text-xs text-muted-foreground">
             ⭐ {profile.rating.toFixed(1)} · {profile.sessionsHosted} sessions hosted
           </div>
@@ -86,33 +88,33 @@ function ProfileForm({ profile }: { profile: InstructorProfile }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Full name" htmlFor="fullName" value={form.fullName} onChange={set("fullName")} />
-        <Field label="Email" htmlFor="email" value={profile.email} readOnly />
-        <Field label="Headline" htmlFor="headline" value={form.headline} onChange={set("headline")} hint="e.g. IELTS & Business English coach" />
-        <Field label="Specialty" htmlFor="specialty" value={form.specialty} onChange={set("specialty")} />
-        <Field label="Country" htmlFor="country" value={form.country} onChange={set("country")} />
-        <Field label="Years of experience" htmlFor="years" type="number" min={0} value={form.yearsExperience} onChange={set("yearsExperience")} />
-        <Field label="Languages" htmlFor="languages" value={form.languages} onChange={set("languages")} hint="Comma-separated, e.g. English, Arabic" />
-        <Field label="Interests" htmlFor="interests" value={form.interests} onChange={set("interests")} hint="Comma-separated" />
+        <Field label={tx("Full name")} htmlFor="fullName" value={form.fullName} onChange={set("fullName")} />
+        <Field label={tx("Email")} htmlFor="email" value={profile.email} readOnly />
+        <Field label={tx("Headline")} htmlFor="headline" value={form.headline} onChange={set("headline")} hint={tx("e.g. IELTS & Business English coach")} />
+        <Field label={tx("Specialty")} htmlFor="specialty" value={form.specialty} onChange={set("specialty")} />
+        <Field label={tx("Country")} htmlFor="country" value={form.country} onChange={set("country")} />
+        <Field label={tx("Years of experience")} htmlFor="years" type="number" min={0} value={form.yearsExperience} onChange={set("yearsExperience")} />
+        <Field label={tx("Languages")} htmlFor="languages" value={form.languages} onChange={set("languages")} hint={tx("Comma-separated, e.g. English, Arabic")} />
+        <Field label={tx("Interests")} htmlFor="interests" value={form.interests} onChange={set("interests")} hint={tx("Comma-separated")} />
         <div className="sm:col-span-2">
-          <Field label="Bio" htmlFor="bio">
-            <Textarea id="bio" rows={4} value={form.bio} onChange={set("bio")} placeholder="Tell students about your teaching style…" />
+          <Field label={tx("Bio")} htmlFor="bio">
+            <Textarea id="bio" rows={4} value={form.bio} onChange={set("bio")} placeholder={tx("Tell students about your teaching style…")} />
           </Field>
         </div>
-        <Field label="Avatar image URL" htmlFor="avatarUrl" value={form.avatarUrl} onChange={set("avatarUrl")} />
-        <Field label="Intro video URL (optional)" htmlFor="introVideoUrl" value={form.introVideoUrl} onChange={set("introVideoUrl")} />
+        <Field label={tx("Avatar image URL")} htmlFor="avatarUrl" value={form.avatarUrl} onChange={set("avatarUrl")} />
+        <Field label={tx("Intro video URL (optional)")} htmlFor="introVideoUrl" value={form.introVideoUrl} onChange={set("introVideoUrl")} />
       </div>
 
       {update.isError && (
         <p className="mt-4 text-sm text-red-600">
-          {update.error instanceof ApiError ? String(update.error.detail ?? update.error.message) : "Could not save."}
+          {update.error instanceof ApiError ? String(update.error.detail ?? update.error.message) : tx("Could not save.")}
         </p>
       )}
       <div className="mt-5 flex items-center gap-3">
         <Button onClick={onSave} disabled={update.isPending}>
-          {update.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Save profile
+          {update.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} {tx("Save profile")}
         </Button>
-        {saved && !update.isPending && <span className="text-sm text-emerald-600">Saved ✓</span>}
+        {saved && !update.isPending && <span className="text-sm text-emerald-600">{tx("Saved ✓")}</span>}
       </div>
     </Card>
   );
@@ -120,6 +122,7 @@ function ProfileForm({ profile }: { profile: InstructorProfile }) {
 
 function PasswordCard() {
   const change = useChangePassword();
+  const { tx } = useI18n();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [done, setDone] = useState(false);
@@ -135,22 +138,22 @@ function PasswordCard() {
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-        <Lock size={16} className="text-indigo-600" /> Change password
+        <Lock size={16} className="text-indigo-600" /> {tx("Change password")}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Current password" htmlFor="current" type="password" value={current} onChange={(e) => { setCurrent(e.target.value); setDone(false); }} />
-        <Field label="New password" htmlFor="next" type="password" value={next} onChange={(e) => { setNext(e.target.value); setDone(false); }} hint="At least 8 characters" />
+        <Field label={tx("Current password")} htmlFor="current" type="password" value={current} onChange={(e) => { setCurrent(e.target.value); setDone(false); }} />
+        <Field label={tx("New password")} htmlFor="next" type="password" value={next} onChange={(e) => { setNext(e.target.value); setDone(false); }} hint={tx("At least 8 characters")} />
       </div>
       {change.isError && (
         <p className="mt-3 text-sm text-red-600">
-          {change.error instanceof ApiError ? String(change.error.detail ?? change.error.message) : "Could not change password."}
+          {change.error instanceof ApiError ? String(change.error.detail ?? change.error.message) : tx("Could not change password.")}
         </p>
       )}
       <div className="mt-4 flex items-center gap-3">
         <Button variant="soft" onClick={() => change.mutate({ currentPassword: current, newPassword: next })} disabled={change.isPending || !current || next.length < 8}>
-          {change.isPending ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />} Update password
+          {change.isPending ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />} {tx("Update password")}
         </Button>
-        {done && <span className="text-sm text-emerald-600">Password updated ✓</span>}
+        {done && <span className="text-sm text-emerald-600">{tx("Password updated ✓")}</span>}
       </div>
     </Card>
   );

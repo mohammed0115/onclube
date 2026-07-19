@@ -10,6 +10,7 @@ import { AIBadge } from "@/components/ai";
 import { useAuth } from "@/auth/AuthProvider";
 import { useInstructorDashboard } from "@/hooks";
 import { Loading, ErrorState } from "@/components/states";
+import { useI18n } from "@/i18n";
 
 function when(iso: string): string {
   const d = new Date(iso);
@@ -19,6 +20,7 @@ function when(iso: string): string {
 export function InstructorDashboardPage() {
   const { user } = useAuth();
   const query = useInstructorDashboard();
+  const { tx } = useI18n();
 
   if (query.isLoading) {
     return (
@@ -46,7 +48,7 @@ export function InstructorDashboardPage() {
         action={
           <Button asChild size="sm">
             <Link to="/instructor/topics">
-              New topic <ArrowRight size={15} />
+              {tx("New topic")} <ArrowRight size={15} />
             </Link>
           </Button>
         }
@@ -65,13 +67,13 @@ export function InstructorDashboardPage() {
         <div className="space-y-6 lg:col-span-2">
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">Today&apos;s sessions</h3>
+              <h3 className="font-display font-bold text-foreground">{tx("Today's sessions")}</h3>
               <Link to="/instructor/availability" className="text-xs font-semibold text-indigo-600 hover:underline">
-                Manage availability
+                {tx("Manage availability")}
               </Link>
             </div>
             <div className="space-y-3">
-              {d.todaySessions.length === 0 && <p className="text-sm text-muted-foreground">No sessions scheduled.</p>}
+              {d.todaySessions.length === 0 && <p className="text-sm text-muted-foreground">{tx("No sessions scheduled.")}</p>}
               {d.todaySessions.map((b) => (
                 <div key={b.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-center gap-3">
@@ -84,7 +86,7 @@ export function InstructorDashboardPage() {
                     </div>
                   </div>
                   <Button asChild variant="ghost" size="sm">
-                    <Link to={`/student/session/${b.id}`}>Open room</Link>
+                    <Link to={`/student/session/${b.id}`}>{tx("Open room")}</Link>
                   </Button>
                 </div>
               ))}
@@ -93,21 +95,21 @@ export function InstructorDashboardPage() {
 
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">Your topics</h3>
+              <h3 className="font-display font-bold text-foreground">{tx("Your topics")}</h3>
               <Button asChild variant="link" size="sm">
-                <Link to="/instructor/topics">Edit topics</Link>
+                <Link to="/instructor/topics">{tx("Edit topics")}</Link>
               </Button>
             </div>
             <div className="space-y-3">
-              {d.topics.length === 0 && <p className="text-sm text-muted-foreground">No topics yet — create your first.</p>}
+              {d.topics.length === 0 && <p className="text-sm text-muted-foreground">{tx("No topics yet — create your first.")}</p>}
               {d.topics.map((t) => (
                 <div key={t.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-semibold text-foreground">{t.title}</span>
-                      {t.published ? <Badge tone="emerald">Published</Badge> : <Badge tone="amber">Draft</Badge>}
+                      {t.published ? <Badge tone="emerald">{tx("Published")}</Badge> : <Badge tone="amber">{tx("Draft")}</Badge>}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">Level {t.level}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{tx("Level")} {t.level}</div>
                   </div>
                   <Users size={16} className="flex-shrink-0 text-muted-foreground" />
                 </div>
@@ -119,25 +121,24 @@ export function InstructorDashboardPage() {
         <div className="space-y-6">
           <Card className="p-5">
             <div className="mb-3 flex items-center gap-2">
-              <AIBadge label="AI assist" />
+              <AIBadge label={tx("AI assist")} />
             </div>
-            <h3 className="mb-1 font-display font-bold text-foreground">Prep faster with AI</h3>
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Prep faster with AI")}</h3>
             <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-              When you create a topic, AI suggests subtopics and discussion questions. You stay in control — nothing
-              is added until you accept it.
+              {tx("When you create a topic, AI suggests subtopics and discussion questions. You stay in control — nothing is added until you accept it.")}
             </p>
             <Button asChild className="w-full">
               <Link to="/instructor/topics">
-                <Sparkles size={15} /> Build a topic
+                <Sparkles size={15} /> {tx("Build a topic")}
               </Link>
             </Button>
           </Card>
 
           <Card className="p-5">
-            <h3 className="mb-3 font-display font-bold text-foreground">This week</h3>
+            <h3 className="mb-3 font-display font-bold text-foreground">{tx("This week")}</h3>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Sessions hosted</span>
+                <span className="text-muted-foreground">{tx("Sessions hosted")}</span>
                 <span className="font-bold text-foreground">{d.weekly.sessions_hosted ?? 0}</span>
               </div>
             </div>

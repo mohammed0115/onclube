@@ -3,8 +3,10 @@ import { CheckCircle2, ArrowRight, Unlock } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n";
 
 export function BookingSuccessPage() {
+  const { tx } = useI18n();
   const { bookingId = "" } = useParams();
   const [params] = useSearchParams();
   const topicId = params.get("topicId");
@@ -15,9 +17,9 @@ export function BookingSuccessPage() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
           <CheckCircle2 size={32} className="text-emerald-600" />
         </div>
-        <h1 className="mb-2 font-display text-2xl font-extrabold text-foreground">Booking confirmed!</h1>
+        <h1 className="mb-2 font-display text-2xl font-extrabold text-foreground">{tx("Booking confirmed!")}</h1>
         <p className="mb-6 text-sm text-muted-foreground">
-          Your session is booked and one credit has been reserved.
+          {tx("Your session is booked and one credit has been reserved.")}
         </p>
 
         <Card className="mb-6 rounded-3xl p-6 text-left">
@@ -26,9 +28,9 @@ export function BookingSuccessPage() {
               <Unlock size={16} className="text-indigo-600" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-foreground">Your questions are unlocked</div>
+              <div className="text-sm font-semibold text-foreground">{tx("Your questions are unlocked")}</div>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                The full discussion questions and vocabulary for this topic are now available to help you prepare.
+                {tx("The full discussion questions and vocabulary for this topic are now available to help you prepare.")}
               </p>
             </div>
           </div>
@@ -38,12 +40,12 @@ export function BookingSuccessPage() {
           {topicId && (
             <Button asChild size="lg" className="w-full">
               <Link to={`/student/questions/${topicId}`}>
-                View your questions <ArrowRight size={18} />
+                {tx("View your questions")} <ArrowRight size={18} />
               </Link>
             </Button>
           )}
           <Button asChild variant="ghost" size="lg" className="w-full">
-            <Link to="/student">Go to dashboard</Link>
+            <Link to="/student">{tx("Go to dashboard")}</Link>
           </Button>
         </div>
       </div>

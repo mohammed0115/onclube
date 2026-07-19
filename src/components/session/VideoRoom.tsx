@@ -3,6 +3,7 @@ import { Camera, CameraOff, MessageSquare, Mic, MicOff, MonitorUp, MonitorX, Pap
 import { Logo } from "@/components/navigation/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import { useVideoRoom } from "@/hooks";
 import type { RoomCredential, ScreenShareState, VideoRoomErrorCode } from "@/lib/video";
 import { SessionChat } from "./SessionChat";
@@ -83,6 +84,7 @@ function ParticipantTile({
 
 /** The active shared-screen surface (local or remote). Provider owns the pixels. */
 function SharedScreen({ share, attach }: { share: ScreenShareState; attach: (el: HTMLElement | null) => void }) {
+  const { tx } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     attach(ref.current);
@@ -91,7 +93,7 @@ function SharedScreen({ share, attach }: { share: ScreenShareState; attach: (el:
 
   const label =
     share.sharer === "local"
-      ? "You are sharing your screen."
+      ? tx("You are sharing your screen.")
       : `${share.participantName ?? "A participant"} is sharing.`;
 
   return (
@@ -121,6 +123,7 @@ export function VideoRoom({
   onLeave: () => void;
   viewerRole?: "student" | "instructor" | "admin";
 }) {
+  const { tx } = useI18n();
   const room = useVideoRoom({ credential, displayName });
   const [panel, setPanel] = useState<"none" | "chat" | "whiteboard" | "files">("none");
   const chatOpen = panel === "chat";
@@ -153,7 +156,7 @@ export function VideoRoom({
           ) : (
             <WifiOff size={14} className={conn.tone} />
           )}
-          <span className={cn(conn.tone, conn.pulse && "animate-pulse")}>{conn.label}</span>
+          <span className={cn(conn.tone, conn.pulse && "animate-pulse")}>{tx(conn.label)}</span>
         </div>
       </header>
 
@@ -162,14 +165,14 @@ export function VideoRoom({
         {/* Non-blocking device hint (e.g. camera/mic denied) */}
         {room.error && !blockingError && (
           <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-amber-500/90 px-4 py-2 text-sm text-white shadow-lg" role="alert">
-            {ERROR_COPY[room.error.code]}
+            {tx(ERROR_COPY[room.error.code])}
           </div>
         )}
 
         {/* Reconnecting overlay banner */}
         {reconnecting && (
           <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-slate-800/95 px-4 py-2 text-sm text-amber-300 shadow-lg" role="status">
-            Reconnecting…
+            {tx("Reconnecting…")}
           </div>
         )}
 
@@ -177,11 +180,11 @@ export function VideoRoom({
         {blockingError ? (
           <div className="flex h-full items-center justify-center" role="alert">
             <div className="max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-8 text-center">
-              <div className="mb-3 text-lg font-semibold">Couldn’t join the room</div>
-              <p className="mb-5 text-sm text-slate-300">{ERROR_COPY[blockingError.code]}</p>
+              <div className="mb-3 text-lg font-semibold">{tx("Couldn’t join the room")}</div>
+              <p className="mb-5 text-sm text-slate-300">{tx(ERROR_COPY[blockingError.code])}</p>
               <div className="flex justify-center gap-3">
-                <Button variant="soft" onClick={handleLeave}>Leave</Button>
-                <Button onClick={room.retry}>Try again</Button>
+                <Button variant="soft" onClick={handleLeave}>{tx("Leave")}</Button>
+                <Button onClick={room.retry}>{tx("Try again")}</Button>
               </div>
             </div>
           </div>
@@ -189,7 +192,7 @@ export function VideoRoom({
           <div className="flex h-full items-center justify-center" role="status" aria-live="polite">
             <div className="flex flex-col items-center gap-3 text-slate-300">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-white" />
-              <span className="text-sm">Joining the room…</span>
+              <span className="text-sm">{tx("Joining the room…")}</span>
             </div>
           </div>
         ) : share.active ? (
@@ -306,7 +309,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={room.micOn}
-          aria-label={room.micOn ? "Mute microphone" : "Unmute microphone"}
+          aria-label={room.micOn ? tx("Mute microphone") : tx("Unmute microphone")}
           onClick={room.toggleMicrophone}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full transition-all",
@@ -318,7 +321,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={room.cameraOn}
-          aria-label={room.cameraOn ? "Turn camera off" : "Turn camera on"}
+          aria-label={room.cameraOn ? tx("Turn camera off") : tx("Turn camera on")}
           onClick={room.toggleCamera}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full transition-all",
@@ -330,7 +333,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={sharingLocally}
-          aria-label={sharingLocally ? "Stop sharing your screen" : "Share your screen"}
+          aria-label={sharingLocally ? tx("Stop sharing your screen") : tx("Share your screen")}
           onClick={sharingLocally ? room.stopScreenShare : room.startScreenShare}
           disabled={room.screenShareBusy || room.connectionState !== "connected"}
           className={cn(
@@ -349,7 +352,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={chatOpen}
-          aria-label={chatOpen ? "Close chat" : "Open chat"}
+          aria-label={chatOpen ? tx("Close chat") : tx("Open chat")}
           onClick={() => setPanel((p) => (p === "chat" ? "none" : "chat"))}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full transition-all",
@@ -361,7 +364,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={boardOpen}
-          aria-label={boardOpen ? "Close whiteboard" : "Open whiteboard"}
+          aria-label={boardOpen ? tx("Close whiteboard") : tx("Open whiteboard")}
           onClick={() => setPanel((p) => (p === "whiteboard" ? "none" : "whiteboard"))}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full transition-all",
@@ -373,7 +376,7 @@ export function VideoRoom({
         <button
           type="button"
           aria-pressed={filesOpen}
-          aria-label={filesOpen ? "Close files" : "Open files"}
+          aria-label={filesOpen ? tx("Close files") : tx("Open files")}
           onClick={() => setPanel((p) => (p === "files" ? "none" : "files"))}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full transition-all",
@@ -384,7 +387,7 @@ export function VideoRoom({
         </button>
         <button
           type="button"
-          aria-label="Leave meeting"
+          aria-label={tx("Leave meeting")}
           onClick={handleLeave}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white transition-all hover:bg-red-600"
         >
@@ -393,7 +396,7 @@ export function VideoRoom({
       </footer>
       {room.screenShareBusy && (
         <div className="sr-only" role="status" aria-live="polite">
-          Requesting permission to share your screen…
+          {tx("Requesting permission to share your screen…")}
         </div>
       )}
     </div>

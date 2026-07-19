@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eraser, MousePointer2, Pencil, Redo2, Trash2, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { WhiteboardConnectionState, WhiteboardError, WhiteboardTool } from "@/lib/whiteboard";
 
 const CONNECTION_COPY: Record<string, { label: string; tone: string; pulse?: boolean }> = {
@@ -65,31 +66,32 @@ export function WhiteboardPanel({
   onClose,
   attachCanvas,
 }: WhiteboardPanelProps) {
+  const { tx } = useI18n();
   const [confirmClear, setConfirmClear] = useState(false);
   const conn = CONNECTION_COPY[connectionState] ?? CONNECTION_COPY.idle;
 
   return (
-    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label="Whiteboard">
+    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label={tx("Whiteboard")}>
       <header className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Whiteboard</span>
+          <span className="text-sm font-semibold">{tx("Whiteboard")}</span>
           <span className={cn("text-[11px] font-medium", conn.tone, conn.pulse && "animate-pulse")} role="status" aria-live="polite">
-            {conn.label}
+            {tx(conn.label)}
           </span>
         </div>
-        <button type="button" aria-label="Close whiteboard" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
+        <button type="button" aria-label={tx("Close whiteboard")} onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
           <X size={16} />
         </button>
       </header>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2" role="toolbar" aria-label="Drawing tools">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2" role="toolbar" aria-label={tx("Drawing tools")}>
         <div className="flex items-center gap-1">
           {TOOLS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               type="button"
-              aria-label={label}
+              aria-label={tx(label)}
               aria-pressed={tool === key}
               onClick={() => onSetTool(key)}
               className={cn(
@@ -104,20 +106,20 @@ export function WhiteboardPanel({
 
         <span className="mx-1 h-5 w-px bg-slate-200" />
 
-        <button type="button" aria-label="Undo" onClick={onUndo} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+        <button type="button" aria-label={tx("Undo")} onClick={onUndo} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
           <Undo2 size={16} />
         </button>
-        <button type="button" aria-label="Redo" onClick={onRedo} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+        <button type="button" aria-label={tx("Redo")} onClick={onRedo} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
           <Redo2 size={16} />
         </button>
-        <button type="button" aria-label="Clear board" onClick={() => setConfirmClear(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50">
+        <button type="button" aria-label={tx("Clear board")} onClick={() => setConfirmClear(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50">
           <Trash2 size={16} />
         </button>
 
         <span className="mx-1 h-5 w-px bg-slate-200" />
 
         {/* Colour */}
-        <div className="flex items-center gap-1" aria-label="Colour">
+        <div className="flex items-center gap-1" aria-label={tx("Colour")}>
           {PALETTE.map((c) => (
             <button
               key={c}
@@ -137,7 +139,7 @@ export function WhiteboardPanel({
         <span className="mx-1 h-5 w-px bg-slate-200" />
 
         {/* Stroke width */}
-        <div className="flex items-center gap-1" aria-label="Stroke width">
+        <div className="flex items-center gap-1" aria-label={tx("Stroke width")}>
           {WIDTHS.map((w) => (
             <button
               key={w}
@@ -169,36 +171,36 @@ export function WhiteboardPanel({
           <div className="absolute inset-0 flex items-center justify-center bg-white/70" role="status" aria-live="polite">
             <div className="flex flex-col items-center gap-2 text-slate-500">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
-              <span className="text-xs">Synchronizing board…</span>
+              <span className="text-xs">{tx("Synchronizing board…")}</span>
             </div>
           </div>
         )}
         {connectionState === "reconnecting" && !syncing && (
           <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-lg bg-amber-500/90 px-3 py-1.5 text-xs text-white shadow" role="status">
-            Reconnecting…
+            {tx("Reconnecting…")}
           </div>
         )}
       </div>
 
       {error && (
         <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600" role="alert">
-          {ERROR_COPY[error.code] ?? ERROR_COPY.unknown}
+          {tx(ERROR_COPY[error.code] ?? ERROR_COPY.unknown)}
         </div>
       )}
 
       {/* Clear confirmation */}
       {confirmClear && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-modal="true" aria-label="Clear board?">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-modal="true" aria-label={tx("Clear board?")}>
           <div className="w-full max-w-xs rounded-2xl bg-white p-5 text-center shadow-xl">
-            <div className="mb-1 text-sm font-semibold text-slate-900">Clear the whiteboard?</div>
-            <p className="mb-4 text-xs text-slate-500">This removes everything on the board for everyone.</p>
+            <div className="mb-1 text-sm font-semibold text-slate-900">{tx("Clear the whiteboard?")}</div>
+            <p className="mb-4 text-xs text-slate-500">{tx("This removes everything on the board for everyone.")}</p>
             <div className="flex justify-center gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmClear(false)}
                 className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
               >
-                Cancel
+                {tx("Cancel")}
               </button>
               <button
                 type="button"
@@ -208,7 +210,7 @@ export function WhiteboardPanel({
                 }}
                 className="rounded-lg bg-red-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-600"
               >
-                Clear board
+                {tx("Clear board")}
               </button>
             </div>
           </div>

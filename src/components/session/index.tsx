@@ -1,5 +1,6 @@
 import { Mic, MicOff, Camera, CameraOff, ScreenShare, MessageSquare, PhoneOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 export function VideoTile({
   initials,
@@ -18,6 +19,7 @@ export function VideoTile({
   self?: boolean;
   muted?: boolean;
 }) {
+  const { tx } = useI18n();
   return (
     <div className="relative flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 ring-1 ring-white/5">
       <div className="text-center">
@@ -30,10 +32,10 @@ export function VideoTile({
       {speaking && (
         <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5">
           <Mic size={11} className="text-emerald-400" />
-          <span className="text-xs font-medium text-white">Speaking</span>
+          <span className="text-xs font-medium text-white">{tx("Speaking")}</span>
         </div>
       )}
-      {self && <div className="absolute left-3 top-3 text-xs text-white/50">You</div>}
+      {self && <div className="absolute left-3 top-3 text-xs text-white/50">{tx("You")}</div>}
       {muted && (
         <div className="absolute right-3 top-3 rounded-full bg-red-500/90 p-1.5">
           <MicOff size={12} className="text-white" />

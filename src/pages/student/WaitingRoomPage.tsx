@@ -9,6 +9,7 @@ import { VideoRoom } from "@/components/session/VideoRoom";
 import { mapRoomCredential } from "@/lib/video";
 import type { RoomCredential } from "@/lib/video";
 import { useWaitingRoom, useJoinSession, useLeaveSession } from "@/hooks";
+import { useI18n } from "@/i18n";
 import type { SessionPhase } from "@/api/types";
 
 // ── countdown helpers ─────────────────────────────────────────────────────────
@@ -52,6 +53,7 @@ const PHASE_COPY: Record<SessionPhase, { badge: string; tone: string }> = {
 };
 
 export function WaitingRoomPage() {
+  const { tx } = useI18n();
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -147,28 +149,28 @@ export function WaitingRoomPage() {
 
       <main className="mx-auto grid w-full max-w-4xl flex-1 gap-6 p-6 lg:grid-cols-[1.1fr_1fr]">
         {/* Device-check preview (placeholder) */}
-        <section aria-label="Device check" className="flex flex-col gap-3">
+        <section aria-label={tx("Device check")} className="flex flex-col gap-3">
           <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl border border-border bg-slate-900 text-slate-300">
             {camOn ? (
               <div className="flex flex-col items-center gap-2 text-slate-400">
                 <Video size={34} />
-                <span className="text-xs">Camera preview coming soon</span>
+                <span className="text-xs">{tx("Camera preview coming soon")}</span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 text-slate-500">
                 <CameraOff size={34} />
-                <span className="text-xs">Camera is off</span>
+                <span className="text-xs">{tx("Camera is off")}</span>
               </div>
             )}
             <span className="absolute bottom-3 left-3 rounded-md bg-black/40 px-2 py-1 text-xs text-white">
-              Device check
+              {tx("Device check")}
             </span>
           </div>
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
               aria-pressed={camOn}
-              aria-label={camOn ? "Turn camera off" : "Turn camera on"}
+              aria-label={camOn ? tx("Turn camera off") : tx("Turn camera on")}
               onClick={() => setCamOn((v) => !v)}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-surface"
             >
@@ -177,7 +179,7 @@ export function WaitingRoomPage() {
             <button
               type="button"
               aria-pressed={micOn}
-              aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
+              aria-label={micOn ? tx("Mute microphone") : tx("Unmute microphone")}
               onClick={() => setMicOn((v) => !v)}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-surface"
             >
@@ -185,12 +187,12 @@ export function WaitingRoomPage() {
             </button>
           </div>
           <p className="text-center text-xs text-muted-foreground">
-            Camera and microphone are placeholders — live video arrives in a later update.
+            {tx("Camera and microphone are placeholders — live video arrives in a later update.")}
           </p>
         </section>
 
         {/* Session info + join */}
-        <section aria-label="Session details" className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <section aria-label={tx("Session details")} className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div>
             <h1 className="text-xl font-bold text-foreground">{room.topicTitle}</h1>
             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -200,11 +202,11 @@ export function WaitingRoomPage() {
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl bg-surface p-3">
-              <dt className="text-xs text-muted-foreground">Scheduled</dt>
+              <dt className="text-xs text-muted-foreground">{tx("Scheduled")}</dt>
               <dd className="mt-0.5 font-medium text-foreground">{formatWhen(room.scheduledAt)}</dd>
             </div>
             <div className="rounded-xl bg-surface p-3">
-              <dt className="text-xs text-muted-foreground">Duration</dt>
+              <dt className="text-xs text-muted-foreground">{tx("Duration")}</dt>
               <dd className="mt-0.5 font-medium text-foreground">{room.durationMinutes} min</dd>
             </div>
           </dl>
@@ -222,15 +224,15 @@ export function WaitingRoomPage() {
 
           <div className="flex flex-col gap-2">
             <Button onClick={onJoin} disabled={!room.canJoin || join.isPending} className="w-full">
-              {join.isPending ? "Joining…" : "Join session"}
+              {join.isPending ? tx("Joining…") : tx("Join session")}
             </Button>
             {join.isError && (
               <p className="text-sm text-red-600" role="alert">
-                Couldn’t join right now. Please try again in a moment.
+                {tx("Couldn’t join right now. Please try again in a moment.")}
               </p>
             )}
             {!room.canJoin && room.viewerRole === "admin" && (
-              <p className="text-xs text-muted-foreground">Admins can view this room but cannot join.</p>
+              <p className="text-xs text-muted-foreground">{tx("Admins can view this room but cannot join.")}</p>
             )}
           </div>
         </section>

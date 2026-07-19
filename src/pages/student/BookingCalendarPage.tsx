@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loading, ErrorState } from "@/components/states";
 import { useWeeklyCalendar } from "@/hooks";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { CalendarSlot } from "@/api/types";
 
 function fmtTime(iso: string): string {
@@ -25,6 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function BookingCalendarPage() {
+  const { tx } = useI18n();
   const { topicId = "" } = useParams();
   const navigate = useNavigate();
   const [weekStart, setWeekStart] = useState<string | undefined>(undefined);
@@ -51,17 +53,17 @@ export function BookingCalendarPage() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold text-foreground">
-                <CalendarDays size={22} className="text-indigo-600" /> Choose a time
+                <CalendarDays size={22} className="text-indigo-600" /> {tx("Choose a time")}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 With {calendar.data!.instructorName} · week of {fmtDate(calendar.data!.weekStart)}
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" aria-label="Previous week" onClick={() => shiftWeek(-7)}>
+              <Button variant="ghost" size="sm" aria-label={tx("Previous week")} onClick={() => shiftWeek(-7)}>
                 <ChevronLeft size={16} />
               </Button>
-              <Button variant="ghost" size="sm" aria-label="Next week" onClick={() => shiftWeek(7)}>
+              <Button variant="ghost" size="sm" aria-label={tx("Next week")} onClick={() => shiftWeek(7)}>
                 <ChevronRight size={16} />
               </Button>
             </div>
@@ -69,7 +71,7 @@ export function BookingCalendarPage() {
 
           {calendar.data!.days.every((d) => d.slots.length === 0) && (
             <Card className="mb-4 rounded-2xl p-6 text-center text-sm text-muted-foreground">
-              No slots this week. Try the next week.
+              {tx("No slots this week. Try the next week.")}
             </Card>
           )}
 

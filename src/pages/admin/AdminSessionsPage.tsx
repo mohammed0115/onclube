@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loading, EmptyState } from "@/components/states";
 import { useAdminSessions } from "@/hooks";
+import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 const STATUSES = ["all", "scheduled", "live", "completed", "cancelled", "expired"] as const;
@@ -19,6 +20,7 @@ function fmt(iso: string): string {
 }
 
 export function AdminSessionsPage() {
+  const { tx } = useI18n();
   const { data, isLoading } = useAdminSessions();
   const [filter, setFilter] = useState<string>("all");
   const all = data ?? [];
@@ -36,7 +38,7 @@ export function AdminSessionsPage() {
             className={cn("rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
               filter === st ? "border-primary bg-blue-50 text-blue-700" : "border-border text-muted-foreground hover:bg-muted")}
           >
-            {st} {st !== "all" && `(${all.filter((s) => s.status === st).length})`}
+            {tx(st)} {st !== "all" && `(${all.filter((s) => s.status === st).length})`}
           </button>
         ))}
       </div>
@@ -54,7 +56,7 @@ export function AdminSessionsPage() {
                   <div className="text-sm font-semibold text-foreground">{s.topicTitle}</div>
                   <div className="text-xs text-muted-foreground">{s.studentName} · {s.instructorName} · {fmt(s.scheduledAt)}</div>
                 </div>
-                <Badge tone={TONE[s.status] ?? "muted"} className="capitalize">{s.status}</Badge>
+                <Badge tone={TONE[s.status] ?? "muted"} className="capitalize">{tx(s.status)}</Badge>
               </div>
             ))}
           </div>

@@ -4,8 +4,10 @@ import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/cards";
 import { Loading, ErrorState } from "@/components/states";
 import { useAdminBusiness } from "@/hooks";
+import { useI18n } from "@/i18n";
 
 export function AdminBusinessPage() {
+  const { tx } = useI18n();
   const query = useAdminBusiness();
   if (query.isLoading) return <DashboardLayout><Loading label="Loading business overview…" /></DashboardLayout>;
   if (query.isError || !query.data) return <DashboardLayout><ErrorState error={query.error} onRetry={() => query.refetch()} /></DashboardLayout>;
@@ -25,9 +27,9 @@ export function AdminBusinessPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-6">
-          <h3 className="mb-4 font-display font-bold text-foreground">Revenue by month</h3>
+          <h3 className="mb-4 font-display font-bold text-foreground">{tx("Revenue by month")}</h3>
           {d.trend.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No revenue yet.</p>
+            <p className="text-sm text-muted-foreground">{tx("No revenue yet.")}</p>
           ) : (
             <div className="space-y-2">
               {d.trend.map((t) => (
@@ -44,9 +46,9 @@ export function AdminBusinessPage() {
         </Card>
 
         <Card className="p-6">
-          <h3 className="mb-4 font-display font-bold text-foreground">Revenue by plan</h3>
+          <h3 className="mb-4 font-display font-bold text-foreground">{tx("Revenue by plan")}</h3>
           {d.plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No plan revenue yet.</p>
+            <p className="text-sm text-muted-foreground">{tx("No plan revenue yet.")}</p>
           ) : (
             <div className="space-y-2">
               {d.plans.map((p) => (

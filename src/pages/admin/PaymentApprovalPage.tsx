@@ -15,6 +15,7 @@ import {
 } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { PaymentStatus } from "@/types";
+import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 function badgeStatus(status: string): PaymentStatus {
@@ -31,6 +32,7 @@ function when(iso: string): string {
 }
 
 export function PaymentApprovalPage() {
+  const { tx } = useI18n();
   const query = useAdminProofs();
   const approve = useApprovePayment();
   const reject = useRejectPayment();
@@ -78,7 +80,7 @@ export function PaymentApprovalPage() {
       else if (action === "reject") await reject.mutateAsync({ proofId: id, note: note.trim() || undefined });
       else await requestInfo.mutateAsync({ proofId: id, note: note.trim() });
     } catch {
-      setActionError("Could not complete that action. Please try again.");
+      setActionError(tx("Could not complete that action. Please try again."));
     }
   }
 
@@ -91,7 +93,7 @@ export function PaymentApprovalPage() {
         subtitle="Every transfer is verified manually here — proofs are never auto-approved."
         action={
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-            {proofs.length} pending
+            {proofs.length} {tx("pending")}
           </span>
         }
       />
@@ -103,7 +105,7 @@ export function PaymentApprovalPage() {
           {/* Queue */}
           <Card className="overflow-hidden p-0 lg:col-span-2">
             <div className="border-b border-border px-5 py-3">
-              <h3 className="text-sm font-bold text-foreground">Submitted proofs</h3>
+              <h3 className="text-sm font-bold text-foreground">{tx("Submitted proofs")}</h3>
             </div>
             <div className="divide-y divide-border">
               {proofs.map((p) => (
@@ -139,7 +141,7 @@ export function PaymentApprovalPage() {
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">{selected.studentName}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {selected.planName} plan · submitted {when(selected.submittedAt)}
+                    {selected.planName} {tx("plan")} · {tx("submitted")} {when(selected.submittedAt)}
                   </p>
                 </div>
                 <PaymentStatusBadge status={badgeStatus(selected.status)} />
@@ -152,10 +154,10 @@ export function PaymentApprovalPage() {
                 <>
                   <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
                     {[
-                      ["Amount", `${d.amount} ${d.currency}`],
-                      ["Transaction ref", d.transactionNumber],
-                      ["Transfer date", when(d.transferDatetime)],
-                      ["Sender", d.senderName ?? "—"],
+                      [tx("Amount"), `${d.amount} ${d.currency}`],
+                      [tx("Transaction ref"), d.transactionNumber],
+                      [tx("Transfer date"), when(d.transferDatetime)],
+                      [tx("Sender"), d.senderName ?? "—"],
                     ].map(([k, v]) => (
                       <div key={k} className="rounded-xl border border-border p-3">
                         <div className="text-xs uppercase tracking-wide text-muted-foreground">{k}</div>
@@ -172,20 +174,20 @@ export function PaymentApprovalPage() {
                         rel="noreferrer"
                         className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50/60"
                       >
-                        <FileText size={16} /> View receipt ({d.receiptName}) <ExternalLink size={13} />
+                        <FileText size={16} /> {tx("View receipt")} ({d.receiptName}) <ExternalLink size={13} />
                       </a>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No receipt attached.</p>
+                      <p className="text-sm text-muted-foreground">{tx("No receipt attached.")}</p>
                     )}
                   </div>
 
                   <label htmlFor="review-note" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Note to the student (required to request more information)
+                    {tx("Note to the student (required to request more information)")}
                   </label>
                   <Textarea
                     id="review-note"
                     rows={2}
-                    placeholder="e.g. The receipt is blurry — please re-upload a clearer photo."
+                    placeholder={tx("e.g. The receipt is blurry — please re-upload a clearer photo.")}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
@@ -205,13 +207,13 @@ export function PaymentApprovalPage() {
                   disabled={busy || !note.trim()}
                   onClick={() => run(selected.id, "request_info")}
                 >
-                  <MessageSquare size={16} /> {requestInfo.isPending ? "Sending…" : "Request info"}
+                  <MessageSquare size={16} /> {requestInfo.isPending ? tx("Sending…") : tx("Request info")}
                 </Button>
                 <Button variant="danger" className="flex-1" disabled={busy} onClick={() => run(selected.id, "reject")}>
-                  <X size={16} /> Reject
+                  <X size={16} /> {tx("Reject")}
                 </Button>
                 <Button className="flex-1" disabled={busy} onClick={() => run(selected.id, "approve")}>
-                  <Check size={16} /> {approve.isPending ? "Approving…" : "Approve & activate"}
+                  <Check size={16} /> {approve.isPending ? tx("Approving…") : tx("Approve & activate")}
                 </Button>
               </div>
             </Card>

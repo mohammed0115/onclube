@@ -3,6 +3,7 @@ import * as Icons from "lucide-react";
 import { ChevronRight, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { Booking, Instructor, SkillScore, Topic } from "@/types";
 
 type IconName = keyof typeof Icons;
@@ -24,14 +25,15 @@ export function StatCard({
   hint?: string;
   tone?: string;
 }) {
+  const { tx } = useI18n();
   return (
     <Card className="p-5">
       <div className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", tone)}>
         <Icon name={icon} size={18} />
       </div>
-      <div className="mb-0.5 text-2xl font-extrabold text-foreground">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      {hint && <div className="mt-1 text-xs font-medium text-indigo-600">{hint}</div>}
+      <div className="mb-0.5 text-2xl font-extrabold text-foreground">{tx(value)}</div>
+      <div className="text-xs text-muted-foreground">{tx(label)}</div>
+      {hint && <div className="mt-1 text-xs font-medium text-indigo-600">{tx(hint)}</div>}
     </Card>
   );
 }

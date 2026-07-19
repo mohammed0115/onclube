@@ -31,7 +31,7 @@ const NAV_KEY: Record<string, string> = {
   Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Payment Approval": "nav.payments",
   Members: "nav.members", Business: "nav.business", Platform: "nav.platform",
-  "Audit log": "nav.audit", Teaching: "nav.teaching",
+  "Audit log": "nav.audit", Teaching: "nav.teaching", Sessions: "nav.sessionsAll",
 };
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
@@ -74,6 +74,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: GraduationCap, label: "Teaching", short: "Teach", to: "/instructor" },
     { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },
     { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
+    { icon: User, label: "My Profile", short: "Profile", to: "/instructor/profile" },
   ],
 };
 
@@ -94,7 +95,7 @@ function activeProfile(role: Role, user: UserProfile | null) {
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, role: authRole, logout } = useAuth();
   const { pathname } = useLocation();
-  const { t } = useI18n();
+  const { t, tx } = useI18n();
   const role: Role = (authRole as Role) ?? "student";
   const items = NAV[role];
   const profile = activeProfile(role, user);
@@ -133,7 +134,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-foreground">{profile.name}</div>
-              <div className="truncate text-xs text-muted-foreground">{profile.sub}</div>
+              <div className="truncate text-xs text-muted-foreground">{tx(profile.sub)}</div>
             </div>
           </div>
           <button

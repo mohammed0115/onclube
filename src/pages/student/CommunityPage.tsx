@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading, EmptyState } from "@/components/states";
 import { useCommunitySessions, useJoinGroupSession } from "@/hooks";
+import { useI18n } from "@/i18n";
 import type { GroupSession } from "@/api/types";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export function CommunityPage() {
 }
 
 function SessionCard({ gs }: { gs: GroupSession }) {
+  const { tx } = useI18n();
   const join = useJoinGroupSession();
   const full = gs.seatsLeft <= 0 && !gs.joined;
   const pct = Math.min(100, Math.round((gs.seatsTaken / gs.capacity) * 100));
@@ -77,7 +79,7 @@ function SessionCard({ gs }: { gs: GroupSession }) {
           {gs.seatsLeft > 0 ? (
             <span className="font-medium text-emerald-600">{gs.seatsLeft} seats left</span>
           ) : (
-            <span className="font-medium text-red-500">Full</span>
+            <span className="font-medium text-red-500">{tx("Full")}</span>
           )}
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -99,7 +101,7 @@ function SessionCard({ gs }: { gs: GroupSession }) {
             disabled={join.isPending}
             onClick={() => join.mutate({ id: gs.id, join: false })}
           >
-            <Check size={15} /> Joined — tap to leave
+            <Check size={15} /> {tx("Joined — tap to leave")}
           </Button>
         ) : (
           <Button
@@ -107,7 +109,7 @@ function SessionCard({ gs }: { gs: GroupSession }) {
             disabled={full || join.isPending}
             onClick={() => join.mutate({ id: gs.id, join: true })}
           >
-            {full ? "Session full" : "Join session"}
+            {full ? tx("Session full") : tx("Join session")}
           </Button>
         )}
       </div>

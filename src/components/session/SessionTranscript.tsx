@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Captions } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { SpeakerRole } from "@/lib/transcript";
 import { useSessionTranscript } from "@/hooks";
 import { TranscriptPanel } from "./TranscriptPanel";
@@ -19,6 +20,7 @@ export function SessionTranscript({
   speakerName: string;
   role: SpeakerRole;
 }) {
+  const { tx } = useI18n();
   const transcript = useSessionTranscript({ sessionId, participantId, speakerName, role });
   const [open, setOpen] = useState(false);
   const reconnecting = transcript.connectionState === "reconnecting";
@@ -27,7 +29,7 @@ export function SessionTranscript({
     <div className="pointer-events-auto relative">
       <button
         type="button"
-        aria-label={open ? "Close transcript" : "Open transcript"}
+        aria-label={open ? tx("Close transcript") : tx("Open transcript")}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
@@ -35,7 +37,7 @@ export function SessionTranscript({
           reconnecting && "ring-1 ring-amber-400"
         )}
       >
-        <Captions size={14} /> CC
+        <Captions size={14} /> {tx("CC")}
       </button>
 
       {open && (

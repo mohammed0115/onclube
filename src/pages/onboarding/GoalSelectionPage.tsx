@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useGoals, useSetGoal } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 function GoalIcon({ name }: { name: string }) {
   const Cmp = (Icons[(name || "Circle") as keyof typeof Icons] ?? Icons.Circle) as Icons.LucideIcon;
@@ -15,6 +16,7 @@ function GoalIcon({ name }: { name: string }) {
 }
 
 export function GoalSelectionPage() {
+  const { tx } = useI18n();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<string>("");
   const { data: goals, isLoading, isError, error, refetch } = useGoals();
@@ -34,9 +36,9 @@ export function GoalSelectionPage() {
     <OnboardingLayout step={1} total={3}>
       <div className="mx-auto max-w-2xl pt-4">
         <div className="mb-10 text-center">
-          <h2 className="font-display text-3xl font-extrabold text-foreground">What do you want to practise?</h2>
+          <h2 className="font-display text-3xl font-extrabold text-foreground">{tx("What do you want to practise?")}</h2>
           <p className="mt-3 text-muted-foreground">
-            Your goal shapes which topics and questions instructors prepare for you.
+            {tx("Your goal shapes which topics and questions instructors prepare for you.")}
           </p>
         </div>
 
@@ -70,7 +72,7 @@ export function GoalSelectionPage() {
 
             {setGoal.isError && (
               <p role="alert" className="mb-4 text-center text-sm font-medium text-red-600">
-                Could not save your goal. Please try again.
+                {tx("Could not save your goal. Please try again.")}
               </p>
             )}
 
@@ -80,9 +82,9 @@ export function GoalSelectionPage() {
               className="w-full"
               size="lg"
             >
-              {setGoal.isPending ? "Saving…" : (
+              {setGoal.isPending ? tx("Saving…") : (
                 <>
-                  Continue to placement test <ChevronRight size={18} />
+                  {tx("Continue to placement test")} <ChevronRight size={18} />
                 </>
               )}
             </Button>

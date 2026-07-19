@@ -16,6 +16,7 @@ import {
 } from "@/hooks";
 import { ApiError } from "@/api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 type Section = "written" | "spoken";
 
@@ -38,6 +39,7 @@ function messageForError(err: unknown): string {
 }
 
 export function PlacementTestPage() {
+  const { tx } = useI18n();
   const navigate = useNavigate();
   const testQuery = usePlacementTest();
   const statusQuery = usePlacementStatus();
@@ -87,12 +89,12 @@ export function PlacementTestPage() {
     return (
       <Shell>
         <Card className="rounded-3xl p-8 text-center">
-          <h3 className="mb-2 font-display text-xl font-bold text-foreground">Placement complete</h3>
+          <h3 className="mb-2 font-display text-xl font-bold text-foreground">{tx("Placement complete")}</h3>
           <p className="mb-6 text-sm text-muted-foreground">
-            You've already finished your placement interview.
+            {tx("You've already finished your placement interview.")}
           </p>
           <Button size="lg" className="w-full" onClick={() => navigate("/onboarding/placement-result")}>
-            View my result <ChevronRight size={18} />
+            {tx("View my result")} <ChevronRight size={18} />
           </Button>
         </Card>
       </Shell>
@@ -176,16 +178,16 @@ export function PlacementTestPage() {
     <Shell>
       {/* Section indicator — one flow, two sections. */}
       <div className="mb-6 flex items-center gap-2">
-        <SectionPill active={section === "written"} done={section === "spoken"} icon={<PenLine size={14} />} label="Written" />
+        <SectionPill active={section === "written"} done={section === "spoken"} icon={<PenLine size={14} />} label={tx("Written")} />
         <div className="h-px flex-1 bg-border" />
-        <SectionPill active={section === "spoken"} done={false} icon={<Mic size={14} />} label="Spoken" />
+        <SectionPill active={section === "spoken"} done={false} icon={<Mic size={14} />} label={tx("Spoken")} />
       </div>
 
       <div className="mb-4 flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100">
           <Sparkles size={14} className="text-purple-600" />
         </div>
-        <AIBadge label="AI placement" />
+        <AIBadge label={tx("AI placement")} />
       </div>
 
       {section === "written" ? (
@@ -194,10 +196,10 @@ export function PlacementTestPage() {
           <div className="mb-5">
             <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
               <span>
-                Question {safeIndex + 1} of {totalWritten}
+                {tx("Question")} {safeIndex + 1} {tx("of")} {totalWritten}
               </span>
               <span>
-                {writtenAnsweredCount}/{totalWritten} answered
+                {writtenAnsweredCount}/{totalWritten} {tx("answered")}
               </span>
             </div>
             <div
@@ -215,7 +217,7 @@ export function PlacementTestPage() {
           </div>
 
           <p className="mb-4 text-sm text-muted-foreground">
-            Choose the best word to complete each sentence. You can go back and change your answers.
+            {tx("Choose the best word to complete each sentence. You can go back and change your answers.")}
           </p>
 
           <Card className="mb-4 rounded-3xl p-6">
@@ -268,7 +270,7 @@ export function PlacementTestPage() {
             </fieldset>
           </Card>
 
-          {error && <ErrorBanner>{error}</ErrorBanner>}
+          {error && <ErrorBanner>{tx(error)}</ErrorBanner>}
 
           <div className="flex gap-3">
             <Button
@@ -278,27 +280,26 @@ export function PlacementTestPage() {
               className="flex-1"
               size="lg"
             >
-              <ChevronLeft size={18} /> Previous
+              <ChevronLeft size={18} /> {tx("Previous")}
             </Button>
             {isLastWritten ? (
               <Button onClick={onSaveWritten} disabled={busy} className="flex-1" size="lg">
-                {saveWritten.isPending ? "Saving…" : "Continue to spoken"} <ChevronRight size={18} />
+                {saveWritten.isPending ? tx("Saving…") : tx("Continue to spoken")} <ChevronRight size={18} />
               </Button>
             ) : (
               <Button onClick={goNextWritten} disabled={busy} className="flex-1" size="lg">
-                Next <ChevronRight size={18} />
+                {tx("Next")} <ChevronRight size={18} />
               </Button>
             )}
           </div>
         </>
       ) : (
         <>
-          {error && <ErrorBanner>{error}</ErrorBanner>}
+          {error && <ErrorBanner>{tx(error)}</ErrorBanner>}
           <p className="mb-4 text-sm text-muted-foreground">
-            Your AI tutor will ask five short questions, one at a time. Just speak your answer — it&apos;s
-            saved automatically and the tutor moves on. You can repeat or ask to explain any question.
+            {tx("Your AI tutor will ask five short questions, one at a time. Just speak your answer — it's saved automatically and the tutor moves on. You can repeat or ask to explain any question.")}
           </p>
-          <TutorInterview onFinished={onSeeResult} finishedCtaLabel="See my result" />
+          <TutorInterview onFinished={onSeeResult} finishedCtaLabel={tx("See my result")} />
         </>
       )}
     </Shell>

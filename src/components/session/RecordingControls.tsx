@@ -1,5 +1,6 @@
 import { Circle, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { RecordingConnectionState, RecordingStatus } from "@/lib/recording";
 
 // Pure: the instructor-only start/stop control. Rendered ONLY when canControl is
@@ -15,12 +16,13 @@ export function RecordingControls({
   onStart: () => void;
   onStop: () => void;
 }) {
+  const { tx } = useI18n();
   const disconnected = connectionState !== "connected" && connectionState !== "reconnecting";
 
   if (status === "processing") {
     return (
-      <button type="button" disabled aria-label="Recording processing" className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70">
-        Processing…
+      <button type="button" disabled aria-label={tx("Recording processing")} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/70">
+        {tx("Processing…")}
       </button>
     );
   }
@@ -29,12 +31,12 @@ export function RecordingControls({
     return (
       <button
         type="button"
-        aria-label="Stop recording"
+        aria-label={tx("Stop recording")}
         onClick={onStop}
         disabled={disconnected}
         className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-40"
       >
-        <Square size={13} className="fill-red-500 text-red-500" /> Stop recording
+        <Square size={13} className="fill-red-500 text-red-500" /> {tx("Stop recording")}
       </button>
     );
   }
@@ -43,14 +45,14 @@ export function RecordingControls({
   return (
     <button
       type="button"
-      aria-label="Start recording"
+      aria-label={tx("Start recording")}
       onClick={onStart}
       disabled={disconnected}
       className={cn(
         "flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-40"
       )}
     >
-      <Circle size={13} className="fill-red-500 text-red-500" /> Record
+      <Circle size={13} className="fill-red-500 text-red-500" /> {tx("Record")}
     </button>
   );
 }

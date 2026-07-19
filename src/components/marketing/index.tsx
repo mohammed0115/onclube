@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CheckCircle } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import { BlobShape, ConversationScene } from "./illustrations";
 
 export * from "./illustrations";
@@ -70,6 +71,7 @@ export function BrandPanel({
   perks?: string[];
   footnote?: string;
 }) {
+  const { tx } = useI18n();
   return (
     <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-10 lg:flex">
       <BlobShape className="absolute -right-24 -top-24 h-96 w-96 opacity-20" />
@@ -91,7 +93,7 @@ export function BrandPanel({
           <div className="mt-6 space-y-3">
             {perks.map((p) => (
               <div key={p} className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <CheckCircle size={16} className="text-success" /> {p}
+                <CheckCircle size={16} className="text-success" /> {tx(p)}
               </div>
             ))}
           </div>

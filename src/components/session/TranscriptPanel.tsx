@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import type { TranscriptConnectionState, TranscriptError, TranscriptSegment } from "@/lib/transcript";
 
 const CONNECTION_COPY: Record<string, { label: string; tone: string; pulse?: boolean }> = {
@@ -29,6 +30,7 @@ export function TranscriptPanel({
   error: TranscriptError | null;
   onClose: () => void;
 }) {
+  const { tx } = useI18n();
   const bottomRef = useRef<HTMLDivElement>(null);
   const conn = CONNECTION_COPY[connectionState] ?? CONNECTION_COPY.idle;
   const loading = connectionState === "connecting" && segments.length === 0;
@@ -39,15 +41,15 @@ export function TranscriptPanel({
   }, [segments.length, segments]);
 
   return (
-    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label="Live transcript">
+    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label={tx("Live transcript")}>
       <header className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Transcript</span>
+          <span className="text-sm font-semibold">{tx("Transcript")}</span>
           <span className={cn("text-[11px] font-medium", conn.tone, conn.pulse && "animate-pulse")} role="status" aria-live="polite">
-            {conn.label}
+            {tx(conn.label)}
           </span>
         </div>
-        <button type="button" aria-label="Close transcript" onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
+        <button type="button" aria-label={tx("Close transcript")} onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
           <X size={16} />
         </button>
       </header>
@@ -57,11 +59,11 @@ export function TranscriptPanel({
           <div className="flex h-full items-center justify-center" role="status" aria-live="polite">
             <div className="flex flex-col items-center gap-2 text-slate-400">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
-              <span className="text-xs">Starting transcript…</span>
+              <span className="text-xs">{tx("Starting transcript…")}</span>
             </div>
           </div>
         ) : segments.length === 0 ? (
-          <p className="py-8 text-center text-xs text-slate-400">No transcript yet.</p>
+          <p className="py-8 text-center text-xs text-slate-400">{tx("No transcript yet.")}</p>
         ) : (
           segments.map((s) => (
             <div key={s.segmentId} data-testid="transcript-segment" data-final={String(s.isFinal)} className="text-sm">
@@ -88,7 +90,7 @@ export function TranscriptPanel({
 
       {error && (
         <div className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600" role="alert">
-          Transcript interrupted — reconnecting…
+          {tx("Transcript interrupted — reconnecting…")}
         </div>
       )}
     </section>

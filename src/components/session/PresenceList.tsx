@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { AttendanceRecord, AttendanceStatus } from "@/lib/presence";
+import { useI18n } from "@/i18n";
 
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -17,30 +18,31 @@ const STATUS_BADGE: Record<AttendanceStatus, { label: string; cls: string }> = {
 
 // Pure: the current participants list with presence dot, role, status + timer.
 export function PresenceList({ participants, myId }: { participants: AttendanceRecord[]; myId: string }) {
+  const { tx } = useI18n();
   if (participants.length === 0) {
-    return <p className="py-4 text-center text-xs text-slate-400">No participants yet.</p>;
+    return <p className="py-4 text-center text-xs text-slate-400">{tx("No participants yet.")}</p>;
   }
   return (
-    <ul className="space-y-1.5" aria-label="Participants">
+    <ul className="space-y-1.5" aria-label={tx("Participants")}>
       {participants.map((p) => {
         const badge = STATUS_BADGE[p.attendanceStatus];
         return (
           <li key={p.participantId} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
             <span
               className={cn("h-2 w-2 flex-shrink-0 rounded-full", p.currentlyPresent ? "bg-emerald-500" : "bg-slate-300")}
-              aria-label={p.currentlyPresent ? "Present" : "Left"}
+              aria-label={p.currentlyPresent ? tx("Present") : tx("Left")}
             />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-slate-900">
                 {p.participantName}
-                {p.participantId === myId ? " (You)" : ""}
+                {p.participantId === myId ? tx(" (You)") : ""}
               </div>
               <div className="text-[11px] capitalize text-slate-500">{p.role}</div>
             </div>
             <span className="tabular-nums text-[11px] text-slate-500" data-testid={`presence-timer-${p.participantId}`}>
               {formatDuration(p.totalPresenceDuration)}
             </span>
-            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", badge.cls)}>{badge.label}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", badge.cls)}>{tx(badge.label)}</span>
           </li>
         );
       })}

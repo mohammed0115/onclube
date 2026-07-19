@@ -9,6 +9,7 @@ import { Field } from "@/components/forms";
 import { Loading } from "@/components/states";
 import { useAuth } from "@/auth/AuthProvider";
 import { useGoals, useSetGoal, useUpdateProfile, useSubscription, useBillingHistory } from "@/hooks";
+import { useI18n } from "@/i18n";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -17,6 +18,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export function SettingsPage() {
+  const { tx } = useI18n();
   const { user, refreshUser } = useAuth();
   const goalsQuery = useGoals();
   const setGoal = useSetGoal();
@@ -51,25 +53,25 @@ export function SettingsPage() {
         {/* Profile */}
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-            <User size={16} className="text-indigo-600" /> Profile
+            <User size={16} className="text-indigo-600" /> {tx("Profile")}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Full name" htmlFor="name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Field label="Email" htmlFor="email" value={user.email} readOnly />
+            <Field label={tx("Full name") as string} htmlFor="name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Field label={tx("Email") as string} htmlFor="email" value={user.email} readOnly />
           </div>
           <div className="mt-4 flex items-center gap-3">
             <Button size="sm" onClick={saveName} disabled={updateProfile.isPending || !name.trim() || name.trim() === user.fullName}>
-              {updateProfile.isPending ? <><Loader2 size={15} className="animate-spin" /> Saving…</> : "Save name"}
+              {updateProfile.isPending ? <><Loader2 size={15} className="animate-spin" /> {tx("Saving…")}</> : tx("Save name")}
             </Button>
-            {savedName && <span className="flex items-center gap-1 text-sm text-emerald-600"><Check size={15} /> Saved</span>}
-            {user.level && <span className="ml-auto"><Badge tone="indigo">Level {user.level}</Badge></span>}
+            {savedName && <span className="flex items-center gap-1 text-sm text-emerald-600"><Check size={15} /> {tx("Saved")}</span>}
+            {user.level && <span className="ml-auto"><Badge tone="indigo">{tx("Level")} {user.level}</Badge></span>}
           </div>
         </Card>
 
         {/* Learning goal */}
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Target size={16} className="text-indigo-600" /> Learning goal
+            <Target size={16} className="text-indigo-600" /> {tx("Learning goal")}
           </div>
           {goalsQuery.isLoading ? (
             <Loading label="Loading goals…" />
@@ -99,7 +101,7 @@ export function SettingsPage() {
         {/* Subscription */}
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-            <CreditCard size={16} className="text-indigo-600" /> Subscription
+            <CreditCard size={16} className="text-indigo-600" /> {tx("Subscription")}
           </div>
           {sub.isLoading ? (
             <Loading label="Loading subscription…" />
@@ -110,13 +112,13 @@ export function SettingsPage() {
               <Stat label="Renews / expires" value={<span className="font-semibold text-foreground">{fmtDate(sub.data.expiresAt)}</span>} />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No active subscription. <a href="/billing/pricing" className="font-semibold text-indigo-600 underline">Choose a plan</a>.</p>
+            <p className="text-sm text-muted-foreground">{tx("No active subscription.")} <a href="/billing/pricing" className="font-semibold text-indigo-600 underline">{tx("Choose a plan")}</a>.</p>
           )}
 
           {/* Billing history (previously unused API, now surfaced) */}
           {history.data && history.data.length > 0 && (
             <div className="mt-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment history</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tx("Payment history")}</p>
               <div className="space-y-1.5">
                 {history.data.map((h) => (
                   <div key={h.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
@@ -134,9 +136,10 @@ export function SettingsPage() {
 }
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  const { tx } = useI18n();
   return (
     <div className="rounded-xl border border-border p-3">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{tx(label)}</div>
       <div className="mt-1">{value}</div>
     </div>
   );
