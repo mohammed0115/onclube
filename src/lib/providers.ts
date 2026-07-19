@@ -84,7 +84,13 @@ export function resolveProviders(env: ProviderEnv = readProviderEnv()): Resolved
     presence: prod && env.presenceWsUrl ? () => new WebSocketPresenceProvider(env.presenceWsUrl!) : createStubPresenceProvider,
     transcript: prod && env.transcriptWsUrl ? () => new WebSocketTranscriptProvider(env.transcriptWsUrl!) : createStubTranscriptProvider,
     files: prod && env.fileUploadUrl ? () => new HttpFileSharingProvider(env.fileUploadUrl!) : createStubFileSharingProvider,
-    video: prod && env.agoraAppId ? () => new AgoraVideoRoomProvider(env.agoraAppId!) : createStubVideoRoomProvider,
+    // Video is NOT gated on the build-time VITE_AGORA_APP_ID: the appId, channel,
+    // token and uid all come from the server's /join response at runtime. Gating
+    // on the build arg meant an empty VITE_AGORA_APP_ID at build silently dropped
+    // every participant into the LOCAL stub room — isolating them from each other.
+    // In staging/production we always use the real Agora adapter; the constructor
+    // appId is only a fallback (join() reads credential.appId).
+    video: prod ? () => new AgoraVideoRoomProvider(env.agoraAppId ?? "") : createStubVideoRoomProvider,
     recording: prod && env.recordingControlUrl ? () => new CloudRecordingProvider(env.recordingControlUrl!) : createStubRecordingProvider,
     whiteboard: prod && env.whiteboardWsUrl ? () => new WebSocketWhiteboardProvider(env.whiteboardWsUrl!) : createStubWhiteboardProvider,
   };

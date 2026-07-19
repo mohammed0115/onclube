@@ -52,17 +52,27 @@ describe("Provider composition root (Sprint 10)", () => {
     expect(resolveProviders({ ...FULL_PROD, providerMode: "staging" }).chat()).toBeInstanceOf(WebSocketChatTransport);
   });
 
-  it("falls back to STUB per-provider when that provider is unconfigured", () => {
-    // Production mode, but no URLs/keys → every provider degrades to its stub.
+  it("falls back to STUB per-provider when that provider is unconfigured (except video)", () => {
+    // Production mode, but no URLs/keys → URL-driven providers degrade to their stub.
     const p = resolveProviders({ providerMode: "production" });
     expect(p.chat).toBe(createStubChatTransport);
-    expect(p.video).toBe(createStubVideoRoomProvider);
+    // Video is the exception: it must use the real Agora adapter in production even
+    // without a build-time appId, because appId/channel/token come from the server
+    // /join response. Falling back to the stub here would isolate participants.
+    expect(p.video()).toBeInstanceOf(AgoraVideoRoomProvider);
+  });
+
+  it("video uses real Agora in production regardless of build-time appId (server supplies it)", () => {
+    expect(resolveProviders({ providerMode: "production" }).video()).toBeInstanceOf(AgoraVideoRoomProvider);
+    expect(resolveProviders({ providerMode: "staging" }).video()).toBeInstanceOf(AgoraVideoRoomProvider);
+    // still stub outside production
+    expect(resolveProviders({ providerMode: "development" }).video).toBe(createStubVideoRoomProvider);
   });
 
   it("mixes: configured providers go production, unconfigured stay stub", () => {
     const p = resolveProviders({ providerMode: "production", chatWsUrl: "wss://only-chat" });
     expect(p.chat()).toBeInstanceOf(WebSocketChatTransport);
-    expect(p.video).toBe(createStubVideoRoomProvider); // agoraAppId not set → stub
+    expect(p.video()).toBeInstanceOf(AgoraVideoRoomProvider); // video not gated on appId
   });
 
   it("isProductionMode honours the mode ladder", () => {
