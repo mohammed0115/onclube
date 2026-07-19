@@ -1,9 +1,11 @@
 import { Loader2, AlertCircle, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api";
+import { useI18n } from "@/i18n";
 
 /** Inline loading spinner with an accessible label. */
 export function Loading({ label = "Loading…", className = "" }: { label?: string; className?: string }) {
+  const { tx } = useI18n();
   return (
     <div
       role="status"
@@ -11,7 +13,7 @@ export function Loading({ label = "Loading…", className = "" }: { label?: stri
       className={`flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground ${className}`}
     >
       <Loader2 className="animate-spin text-indigo-500" size={26} />
-      <span className="text-sm">{label}</span>
+      <span className="text-sm">{tx(label)}</span>
     </div>
   );
 }
@@ -28,11 +30,12 @@ export function EmptyState({
   icon?: React.ReactNode;
   action?: React.ReactNode;
 }) {
+  const { tx } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-14 text-center">
       <div className="mb-1">{icon}</div>
-      <div className="text-sm font-semibold text-foreground">{title}</div>
-      {description && <div className="max-w-sm text-sm text-muted-foreground">{description}</div>}
+      <div className="text-sm font-semibold text-foreground">{tx(title)}</div>
+      {description && <div className="max-w-sm text-sm text-muted-foreground">{tx(description)}</div>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
@@ -57,17 +60,18 @@ export function ErrorState({
   onRetry?: () => void;
   title?: string;
 }) {
+  const { tx } = useI18n();
   return (
     <div
       role="alert"
       className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50/50 py-14 text-center"
     >
       <AlertCircle size={26} className="text-red-500" />
-      <div className="text-sm font-semibold text-foreground">{title}</div>
-      <div className="max-w-sm text-sm text-muted-foreground">{humanizeError(error)}</div>
+      <div className="text-sm font-semibold text-foreground">{tx(title)}</div>
+      <div className="max-w-sm text-sm text-muted-foreground">{tx(humanizeError(error))}</div>
       {onRetry && (
         <Button variant="ghost" size="sm" className="mt-3" onClick={onRetry}>
-          Try again
+          {tx("Try again")}
         </Button>
       )}
     </div>

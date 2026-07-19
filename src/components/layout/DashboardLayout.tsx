@@ -147,7 +147,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-end border-b border-border bg-card px-4 py-3.5 md:px-6">
           {/* Brand shows in the header only on mobile (sidebar is hidden there). */}
-          <div className="mr-auto md:hidden">
+          <div className="me-auto md:hidden">
             <Logo to={`/${role === "student" ? "student" : role}`} />
           </div>
           <div className="flex items-center gap-3">

@@ -25,14 +25,16 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 // Pure presentation: renders the validated report DTO. No AI, no calculations.
 
 function FeedbackCard({ title, body, icon }: { title: string; body: string; icon: React.ReactNode }) {
+  const { tx } = useI18n();
   return (
     <Card className="p-5">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-        {icon} {title}
+        {icon} {tx(title)}
       </div>
       <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
     </Card>
@@ -40,11 +42,12 @@ function FeedbackCard({ title, body, icon }: { title: string; body: string; icon
 }
 
 function BulletList({ title, items, icon, tone }: { title: string; items: string[]; icon: React.ReactNode; tone: string }) {
+  const { tx } = useI18n();
   if (items.length === 0) return null;
   return (
     <Card className="p-5">
       <div className={`mb-3 flex items-center gap-2 text-sm font-semibold ${tone}`}>
-        {icon} {title}
+        {icon} {tx(title)}
       </div>
       <ul className="space-y-2">
         {items.map((item, i) => (
