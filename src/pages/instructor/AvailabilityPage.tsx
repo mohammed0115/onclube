@@ -24,7 +24,7 @@ const KIND_META: Record<AvailabilityExceptionKind, { label: string; icon: typeof
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 08:00 – 21:00
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 00:00 – 23:00 (full day)
 
 const p = (n: number) => String(n).padStart(2, "0");
 const slotKey = (y: number, mo1: number, d: number, h: number) => `${y}-${p(mo1)}-${p(d)}T${p(h)}`;
