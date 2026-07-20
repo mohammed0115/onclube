@@ -217,3 +217,30 @@ def test_completing_a_session_notifies_the_student_with_report_ready():
     assert n is not None
     assert "Great work" in n.title
     assert n.data and "report_id" in n.data
+
+
+def test_student_transcript_is_persisted_and_feeds_the_report():
+    """The speech-capture path: student POSTs transcript -> saved -> report uses it."""
+    from rest_framework.test import APIClient
+
+    from apps.ai_reports.models import AIReport
+    from apps.sessions.models import SessionTranscript
+
+    booking, session = _session(days_ahead=0)
+
+    sc = APIClient()
+    sc.force_authenticate(user=booking.student.user)
+    r = sc.post(
+        f"/api/v1/sessions/{session.id}/transcript/",
+        {"content": [{"text": "I want to improve my interview answers.", "speaker": "Student"}], "source": "asr"},
+        format="json",
+    )
+    assert r.status_code in (200, 201), r.content
+    assert SessionTranscript.objects.filter(session=session).exists()
+
+    ic = APIClient()
+    ic.force_authenticate(user=booking.instructor.user)
+    assert ic.post(f"/api/v1/sessions/{session.id}/end/").status_code == 200
+
+    rep = AIReport.objects.get(session=session)
+    assert rep.status == "ready" and rep.content is not None

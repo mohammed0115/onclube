@@ -562,6 +562,7 @@ export { useSessionPresence } from "./useSessionPresence";
 export type { SessionPresenceController } from "./useSessionPresence";
 export { useSessionTranscript } from "./useSessionTranscript";
 export type { SessionTranscriptController } from "./useSessionTranscript";
+export { useSessionSpeechCapture } from "./useSessionSpeechCapture";
 
 export function useEndSession() {
   const qc = useQueryClient();

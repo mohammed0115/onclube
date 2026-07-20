@@ -4,7 +4,7 @@ import { Logo } from "@/components/navigation/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
-import { useVideoRoom } from "@/hooks";
+import { useVideoRoom, useSessionSpeechCapture } from "@/hooks";
 import type { RoomCredential, ScreenShareState, VideoRoomErrorCode } from "@/lib/video";
 import { SessionChat } from "./SessionChat";
 import { SessionWhiteboard } from "./SessionWhiteboard";
@@ -204,6 +204,9 @@ export function VideoRoom({
 }) {
   const { tx } = useI18n();
   const room = useVideoRoom({ credential, displayName });
+  // Capture the student's spoken answers so the AI report evaluates the real
+  // conversation (persists to the transcript before the instructor ends).
+  useSessionSpeechCapture(credential.sessionId, viewerRole === "student", displayName);
   const [panel, setPanel] = useState<"none" | "chat" | "whiteboard" | "files" | "questions">(
     // Open the questions panel by default so the instructor can drive the Q&A.
     questions.length > 0 ? "questions" : "none",
