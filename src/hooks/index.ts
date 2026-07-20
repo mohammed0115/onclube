@@ -386,6 +386,22 @@ export const useAuditLog = () =>
 export const useAdminSessions = () =>
   useQuery({ queryKey: qk.adminSessions, queryFn: topicsApi.adminSessions });
 
+export const useAdminBookings = () =>
+  useQuery({ queryKey: qk.adminBookings, queryFn: topicsApi.adminBookings });
+
+export function useAdminCancelBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; forceCredit?: boolean }) =>
+      topicsApi.adminUpdateBooking(input.id, { status: "cancelled", forceCredit: input.forceCredit }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminBookings });
+      qc.invalidateQueries({ queryKey: qk.adminSessions });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
 export const useAdminBusiness = () =>
   useQuery({ queryKey: qk.adminBusiness, queryFn: topicsApi.adminBusiness });
 

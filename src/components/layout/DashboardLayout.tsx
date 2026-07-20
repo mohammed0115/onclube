@@ -32,6 +32,7 @@ const NAV_KEY: Record<string, string> = {
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Payment Approval": "nav.payments",
   Members: "nav.members", Business: "nav.business", Platform: "nav.platform",
   "Audit log": "nav.audit", Teaching: "nav.teaching", Sessions: "nav.sessionsAll",
+  Bookings: "nav.bookings",
 };
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
@@ -66,6 +67,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/admin" },
     { icon: Wallet, label: "Payment Approval", short: "Payments", to: "/admin/payments" },
     { icon: CalendarClock, label: "Sessions", to: "/admin/sessions" },
+    { icon: Calendar, label: "Bookings", to: "/admin/bookings" },
     { icon: Users, label: "Members", to: "/admin/members" },
     { icon: BarChart3, label: "Business", short: "Business", to: "/admin/business" },
     { icon: Server, label: "Platform", short: "Platform", to: "/admin/platform" },
