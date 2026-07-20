@@ -26,6 +26,12 @@ fi
 echo "[entrypoint] applying migrations ..."
 python manage.py migrate --noinput
 
+# ── Optional one-time seed (opt-in) ───────────────────────────────────────────
+# Set SEED_ON_START=true on the FIRST deploy to seed baseline data (goals/topics)
+# and the founding instructor (with photo). Idempotent, but a re-run re-features
+# the founding instructor — so unset it after the first boot.
+[ "${SEED_ON_START:-false}" = "true" ] && { echo "[entrypoint] seeding baseline data ..."; python manage.py seed_reference || true; python manage.py seed_founding_instructor || true; }
+
 # ── Static files (Django admin/DRF etc.) ─────────────────────────────────────
 echo "[entrypoint] collecting static ..."
 python manage.py collectstatic --noinput --clear
