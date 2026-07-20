@@ -18,6 +18,8 @@ import {
   Plus,
   Minus,
   Quote,
+  Award,
+  BadgeCheck,
 } from "lucide-react";
 import { MarketingNav } from "@/components/layout/MarketingNav";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,8 @@ import {
   ConversationScene,
   GrowthMark,
 } from "@/components/marketing";
-import { instructors } from "@/data/mockData";
+import { usePublicInstructors } from "@/hooks";
+import { initialsOf, accentFor } from "@/lib/instructor";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
@@ -96,6 +99,7 @@ const FAQ = [
 
 export function LandingPage() {
   const { tx } = useI18n();
+  const { data: instructors = [] } = usePublicInstructors();
   return (
     <div className="min-h-screen bg-white font-sans text-foreground">
       <MarketingNav />
@@ -136,17 +140,26 @@ export function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-2.5">
-                  {instructors.map((i) => (
-                    <div
-                      key={i.id}
-                      className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br text-xs font-bold text-white",
-                        i.accent
-                      )}
-                    >
-                      {i.initials}
-                    </div>
-                  ))}
+                  {instructors.slice(0, 4).map((i) =>
+                    i.avatarUrl ? (
+                      <img
+                        key={i.id}
+                        src={i.avatarUrl}
+                        alt={i.fullName}
+                        className="h-9 w-9 rounded-full border-2 border-white object-cover"
+                      />
+                    ) : (
+                      <div
+                        key={i.id}
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br text-xs font-bold text-white",
+                          accentFor(i.slug ?? i.id)
+                        )}
+                      >
+                        {initialsOf(i.fullName)}
+                      </div>
+                    )
+                  )}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">{tx("Real instructors")}</span> {tx("· vetted & rated")}
@@ -325,24 +338,68 @@ export function LandingPage() {
           title={tx("Real people lead every session")}
           subtitle={tx("AI prepares and analyses — but the conversation is always with a friendly, vetted human.")}
         />
-        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {instructors.map((i) => (
-            <div
-              key={i.id}
-              className="rounded-3xl border border-border bg-card p-7 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/60"
-            >
-              <div className={cn("mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br text-2xl font-bold text-white shadow-md", i.accent)}>
-                {i.initials}
+        {instructors.length === 0 ? (
+          <p className="mt-10 text-center text-sm text-muted-foreground">{tx("Our instructors will appear here soon.")}</p>
+        ) : (
+          <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {instructors.map((i) => (
+              <div
+                key={i.id}
+                className="group relative flex flex-col rounded-3xl border border-border bg-card p-6 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/60"
+              >
+                {/* Badges */}
+                <div className="absolute left-4 top-4 flex flex-col items-start gap-1">
+                  {i.foundingInstructor && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                      <Award size={11} /> {tx("Founding")}
+                    </span>
+                  )}
+                  {i.featured && !i.foundingInstructor && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700">
+                      <Star size={11} className="fill-indigo-500 text-indigo-500" /> {tx("Featured")}
+                    </span>
+                  )}
+                </div>
+                {i.verified && (
+                  <span className="absolute right-4 top-4 text-blue-500" title={tx("Verified")}>
+                    <BadgeCheck size={20} className="fill-blue-100" />
+                  </span>
+                )}
+
+                {i.avatarUrl ? (
+                  <img src={i.avatarUrl} alt={i.fullName} className="mx-auto h-20 w-20 rounded-full object-cover shadow-md" />
+                ) : (
+                  <div className={cn("mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br text-2xl font-bold text-white shadow-md", accentFor(i.slug ?? i.id))}>
+                    {initialsOf(i.fullName)}
+                  </div>
+                )}
+                <div className="mt-4 font-display text-lg font-bold text-foreground">{i.fullName}</div>
+                <div className="text-sm font-medium text-primary">{i.jobTitle}</div>
+                <div className="mt-0.5 text-sm text-muted-foreground">{i.flag} {i.country}</div>
+                {i.headline && <p className="mt-2 text-sm text-slate-600">{i.headline}</p>}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                    <Star size={12} className="fill-amber-500 text-amber-500" /> {i.rating.toFixed(1)}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">{i.sessionsHosted} {tx("sessions")}</span>
+                  {i.yearsExperience > 0 && (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">{i.yearsExperience}+ {tx("yrs")}</span>
+                  )}
+                </div>
+                <div className="mt-5 flex flex-1 items-end justify-center gap-2">
+                  {i.slug && (
+                    <Button asChild variant="soft" size="sm">
+                      <Link to={`/instructors/${i.slug}`}>{tx("View Profile")}</Link>
+                    </Button>
+                  )}
+                  <Button asChild size="sm">
+                    <Link to="/register">{tx("Book Session")}</Link>
+                  </Button>
+                </div>
               </div>
-              <div className="mt-4 font-display text-lg font-bold text-foreground">{i.name}</div>
-              <div className="text-sm text-muted-foreground">{i.flag} {i.country}</div>
-              <p className="mt-2 text-sm text-slate-600">{i.headline}</p>
-              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                <Star size={12} className="fill-amber-500 text-amber-500" /> {i.rating} · {i.sessionsHosted} {tx("sessions")}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* ── 7. Student Results ────────────────────────────────── */}

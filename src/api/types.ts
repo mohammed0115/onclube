@@ -576,6 +576,41 @@ export interface AITutorStatus {
   activeSession: AITutorSession | null;
 }
 
+// ── public instructor directory + profiles ──────────────────────────────────────
+export interface PublicInstructor {
+  id: string;
+  slug: string | null;
+  fullName: string;
+  jobTitle: string | null;
+  headline: string | null;
+  country: string | null;
+  flag: string | null;
+  avatarUrl: string | null;
+  rating: number;
+  sessionsHosted: number;
+  yearsExperience: number;
+  specialization: string | null;
+  featured: boolean;
+  foundingInstructor: boolean;
+  verified: boolean;
+  acceptStudents: boolean;
+  availableFor: { ielts: boolean; business: boolean; conversation: boolean };
+  socialLinks: Record<string, string>;
+}
+
+export interface PublicInstructorProfile extends PublicInstructor {
+  city: string | null;
+  nationality: string | null;
+  bio: string | null;
+  coverPhotoUrl: string | null;
+  introVideoUrl: string | null;
+  languages: string[];
+  education: { degree: string; institution: string; country: string; startYear: number | null; endYear: number | null }[];
+  experience: { company: string; position: string; description: string; from: string; to: string }[];
+  certifications: { title: string; issuer: string; issueDate: string; credentialUrl: string }[];
+  stats: { rating: number; totalSessions: number; yearsExperience: number };
+}
+
 export interface AdminBookingItem {
   id: string;
   studentId: string;

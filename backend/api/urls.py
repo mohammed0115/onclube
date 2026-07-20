@@ -73,6 +73,26 @@ urlpatterns = [
     path("student/topics/<uuid:topic_id>/", v.StudentTopicDetailView.as_view()),
     path("student/topics/<uuid:topic_id>/questions/", v.StudentTopicQuestionsView.as_view()),
     path("instructors/<uuid:instructor_id>/availability/", v.InstructorOpenSlotsView.as_view()),
+
+    # ── Public instructor directory + profiles (unauthenticated) ──
+    path("instructors/", v.InstructorPublicListView.as_view()),
+    path("instructors/<slug:slug>/", v.InstructorPublicDetailView.as_view()),
+
+    # ── Teacher self-service public profile ──
+    path("instructor/public-profile/", v.InstructorPublicProfileView.as_view()),
+    path("instructor/public-settings/", v.InstructorPublicSettingsView.as_view()),
+    path("instructor/social-links/", v.InstructorSocialLinksView.as_view()),
+    path("instructor/education/", v.InstructorEducationView.as_view()),
+    path("instructor/experience/", v.InstructorExperienceView.as_view()),
+    path("instructor/certifications/", v.InstructorCertificationsView.as_view()),
+
+    # ── Admin instructor controls ──
+    path("admin/instructors/", v.AdminInstructorListView.as_view()),
+    path("admin/instructors/<uuid:instructor_id>/approve/", v.AdminInstructorApproveView.as_view()),
+    path("admin/instructors/<uuid:instructor_id>/feature/", v.AdminInstructorFeatureView.as_view()),
+    path("admin/instructors/<uuid:instructor_id>/visibility/", v.AdminInstructorVisibilityView.as_view()),
+    path("admin/instructors/<uuid:instructor_id>/founding/", v.AdminInstructorFoundingView.as_view()),
+    path("admin/instructors/<uuid:instructor_id>/display-order/", v.AdminInstructorDisplayOrderView.as_view()),
     path("student/calendar/", v.StudentCalendarView.as_view()),
     path("student/schedule/", v.StudentScheduleView.as_view()),
     path("student/schedule/generate/", v.StudentScheduleGenerateView.as_view()),

@@ -7,4 +7,5 @@ export { sessionsApi } from "./sessions";
 export { reportsApi } from "./reports";
 export { notificationsApi } from "./notifications";
 export { topicsApi } from "./topics";
+export { instructorsApi } from "./instructors";
 export type * from "./types";

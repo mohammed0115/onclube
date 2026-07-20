@@ -758,6 +758,162 @@ class AITutorEndView(APIView):
         return Response(EndAITutorSessionUseCase().execute(actor=request.user, session_id=session_id))
 
 
+# ── Public instructor directory + profiles ────────────────────────────────────
+_PROFILE_KEY_MAP = {
+    "jobTitle": "job_title", "yearsExperience": "years_experience",
+    "avatarUrl": "avatar_url", "coverPhotoUrl": "cover_photo_url",
+    "introVideoUrl": "intro_video_url", "specialization": "specialty",
+    "headline": "headline", "bio": "bio", "country": "country", "city": "city",
+    "nationality": "nationality", "specialty": "specialty", "languages": "languages",
+}
+_SETTINGS_KEY_MAP = {
+    "showOnLanding": "show_on_landing", "acceptStudents": "accept_students",
+    "availableForIelts": "available_for_ielts",
+    "availableForBusiness": "available_for_business",
+    "availableForConversation": "available_for_conversation",
+}
+
+
+def _map_keys(data, mapping):
+    return {mapping[k]: v for k, v in data.items() if k in mapping}
+
+
+class InstructorPublicListView(APIView):
+    """Approved, public instructors for the landing page / directory."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from application.instructor.public_profile import ListPublicInstructorsUseCase
+
+        return Response(ListPublicInstructorsUseCase().execute())
+
+
+class InstructorPublicDetailView(APIView):
+    """A single public instructor profile by slug (SEO-friendly)."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        from application.instructor.public_profile import GetPublicInstructorUseCase
+
+        return Response(GetPublicInstructorUseCase().execute(slug=slug))
+
+
+class InstructorPublicProfileView(APIView):
+    """Teacher edits their own professional information."""
+
+    def put(self, request):
+        from application.instructor.public_profile import UpdatePublicProfileUseCase
+
+        data = _map_keys(request.data, _PROFILE_KEY_MAP)
+        return Response(UpdatePublicProfileUseCase().execute(actor=request.user, data=data))
+
+    patch = put
+
+
+class InstructorPublicSettingsView(APIView):
+    """Teacher toggles their public-profile settings."""
+
+    def put(self, request):
+        from application.instructor.public_profile import UpdatePublicSettingsUseCase
+
+        data = _map_keys(request.data, _SETTINGS_KEY_MAP)
+        return Response(UpdatePublicSettingsUseCase().execute(actor=request.user, data=data))
+
+    patch = put
+
+
+class InstructorSocialLinksView(APIView):
+    def put(self, request):
+        from application.instructor.public_profile import ReplaceSocialLinksUseCase
+
+        links = request.data.get("links", request.data if isinstance(request.data, list) else [])
+        return Response(ReplaceSocialLinksUseCase().execute(actor=request.user, links=links))
+
+
+class InstructorEducationView(APIView):
+    def put(self, request):
+        from application.instructor.public_profile import ReplaceEducationUseCase
+
+        items = request.data.get("items", [])
+        return Response(ReplaceEducationUseCase().execute(actor=request.user, items=items))
+
+
+class InstructorExperienceView(APIView):
+    def put(self, request):
+        from application.instructor.public_profile import ReplaceExperienceUseCase
+
+        items = request.data.get("items", [])
+        return Response(ReplaceExperienceUseCase().execute(actor=request.user, items=items))
+
+
+class InstructorCertificationsView(APIView):
+    def put(self, request):
+        from application.instructor.public_profile import ReplaceCertificationsUseCase
+
+        items = request.data.get("items", [])
+        return Response(ReplaceCertificationsUseCase().execute(actor=request.user, items=items))
+
+
+# ── Admin instructor controls ─────────────────────────────────────────────────
+class AdminInstructorListView(AdminAPIView):
+    def get(self, request):
+        from application.instructor.public_profile import ListAdminInstructorsUseCase
+
+        return Response(ListAdminInstructorsUseCase().execute(actor=request.user))
+
+
+class AdminInstructorApproveView(AdminAPIView):
+    def patch(self, request, instructor_id):
+        from application.instructor.public_profile import SetInstructorApprovedUseCase
+
+        return Response(SetInstructorApprovedUseCase().execute(
+            actor=request.user, instructor_id=instructor_id,
+            approved=bool(request.data.get("approved", True)),
+        ))
+
+
+class AdminInstructorFeatureView(AdminAPIView):
+    def patch(self, request, instructor_id):
+        from application.instructor.public_profile import SetInstructorFeaturedUseCase
+
+        return Response(SetInstructorFeaturedUseCase().execute(
+            actor=request.user, instructor_id=instructor_id,
+            featured=bool(request.data.get("featured", True)),
+        ))
+
+
+class AdminInstructorVisibilityView(AdminAPIView):
+    def patch(self, request, instructor_id):
+        from application.instructor.public_profile import SetInstructorVisibilityUseCase
+
+        return Response(SetInstructorVisibilityUseCase().execute(
+            actor=request.user, instructor_id=instructor_id,
+            show=bool(request.data.get("showOnLanding", True)),
+        ))
+
+
+class AdminInstructorFoundingView(AdminAPIView):
+    def patch(self, request, instructor_id):
+        from application.instructor.public_profile import SetInstructorFoundingUseCase
+
+        return Response(SetInstructorFoundingUseCase().execute(
+            actor=request.user, instructor_id=instructor_id,
+            founding=bool(request.data.get("founding", True)),
+        ))
+
+
+class AdminInstructorDisplayOrderView(AdminAPIView):
+    def patch(self, request, instructor_id):
+        from application.instructor.public_profile import SetInstructorDisplayOrderUseCase
+
+        return Response(SetInstructorDisplayOrderUseCase().execute(
+            actor=request.user, instructor_id=instructor_id,
+            order=int(request.data.get("displayOrder", 0)),
+        ))
+
+
 class StudentScheduleWindowsView(APIView):
     """The recurring availability windows a student may pick within — resolved from
     a topicId (its instructor) or an explicit instructorId query param."""

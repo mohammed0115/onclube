@@ -565,6 +565,20 @@ export const handlers = [
       },
     })
   ),
+
+  // Public instructor directory (landing page).
+  http.get(`${B}/instructors/`, () =>
+    HttpResponse.json([
+      {
+        id: "ins1", slug: "hasaballah-hamadain", fullName: "Hasaballah Hamadain",
+        jobTitle: "Conversation Coach", headline: "Speak with confidence", country: "Sudan",
+        flag: "🇸🇩", avatarUrl: null, rating: 5, sessionsHosted: 120, yearsExperience: 8,
+        specialization: "Conversation", featured: true, foundingInstructor: true, verified: true,
+        acceptStudents: true, availableFor: { ielts: true, business: true, conversation: true },
+        socialLinks: {},
+      },
+    ])
+  ),
 ];
 
 export const server = setupServer(...handlers);

@@ -3,6 +3,7 @@ import { RequireRole } from "@/auth/guards";
 
 // Public
 import { LandingPage } from "@/pages/public/LandingPage";
+import { PublicInstructorPage } from "@/pages/public/PublicInstructorPage";
 import { RegisterPage } from "@/pages/public/RegisterPage";
 import { LoginPage } from "@/pages/public/LoginPage";
 import { ForgotPasswordPage } from "@/pages/public/ForgotPasswordPage";
@@ -61,6 +62,7 @@ export function AppRoutes() {
     <Routes>
       {/* 01–03 Public */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/instructors/:slug" element={<PublicInstructorPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

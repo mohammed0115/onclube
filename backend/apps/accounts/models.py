@@ -164,9 +164,35 @@ class InstructorProfile(BaseModel, SoftDeleteModel):
     interests = models.JSONField(default=list, blank=True)
     years_experience = models.PositiveSmallIntegerField(default=0)
 
+    # ── Public profile (dynamic landing page + /instructors/{slug}) ──
+    slug = models.SlugField(max_length=140, unique=True, null=True, blank=True)
+    job_title = models.CharField(max_length=120, null=True, blank=True)  # e.g. IELTS Instructor
+    city = models.CharField(max_length=80, null=True, blank=True)
+    nationality = models.CharField(max_length=80, null=True, blank=True)
+    cover_photo_url = models.URLField(max_length=500, null=True, blank=True)
+
+    # Public-settings flags (teacher-editable, admin-gated for approval/founding).
+    profile_approved = models.BooleanField(default=False)   # admin approves the public profile
+    show_on_landing = models.BooleanField(default=True)     # teacher opt-in to appear
+    accept_students = models.BooleanField(default=True)
+    featured = models.BooleanField(default=False)           # admin-controlled
+    founding_instructor = models.BooleanField(default=False)  # admin-controlled 🏅
+    available_for_ielts = models.BooleanField(default=False)
+    available_for_business = models.BooleanField(default=False)
+    available_for_conversation = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)   # admin ordering
+
     class Meta:
         db_table = "instructor_profiles"
-        indexes = [models.Index(fields=["-rating"])]
+        indexes = [
+            models.Index(fields=["-rating"]),
+            # Landing-page query: approved + public, ordered featured→order→rating.
+            models.Index(
+                fields=["-featured", "display_order", "-rating"],
+                name="instructor_public_idx",
+                condition=models.Q(profile_approved=True, show_on_landing=True),
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 check=models.Q(rating__gte=0) & models.Q(rating__lte=5),
@@ -178,5 +204,94 @@ class InstructorProfile(BaseModel, SoftDeleteModel):
         if self.rating is not None and not (0 <= self.rating <= 5):
             raise ValidationError({"rating": "Rating must be between 0 and 5."})
 
+    @property
+    def is_public(self) -> bool:
+        """Visible on the landing page / public directory."""
+        return bool(self.profile_approved and self.show_on_landing and self.deleted_at is None)
+
     def __str__(self):
         return f"InstructorProfile<{self.user.full_name}>"
+
+
+class InstructorEducation(BaseModel):
+    """One education record on a teacher's public profile."""
+
+    instructor = models.ForeignKey(
+        InstructorProfile, on_delete=models.CASCADE, related_name="education"
+    )
+    degree = models.CharField(max_length=160)
+    institution = models.CharField(max_length=160)
+    country = models.CharField(max_length=80, blank=True, default="")
+    start_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    end_year = models.PositiveSmallIntegerField(null=True, blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "instructor_education"
+        indexes = [models.Index(fields=["instructor", "sort_order"])]
+
+    def __str__(self):
+        return f"{self.degree} — {self.institution}"
+
+
+class InstructorExperience(BaseModel):
+    """One work-experience record on a teacher's public profile."""
+
+    instructor = models.ForeignKey(
+        InstructorProfile, on_delete=models.CASCADE, related_name="experience"
+    )
+    company = models.CharField(max_length=160)
+    position = models.CharField(max_length=160)
+    description = models.TextField(blank=True, default="")
+    from_date = models.CharField(max_length=40, blank=True, default="")  # free-form "Mar 2018"
+    to_date = models.CharField(max_length=40, blank=True, default="")    # or "Present"
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "instructor_experience"
+        indexes = [models.Index(fields=["instructor", "sort_order"])]
+
+    def __str__(self):
+        return f"{self.position} @ {self.company}"
+
+
+class InstructorCertification(BaseModel):
+    """A certification on a teacher's public profile (CELTA, TESOL, …)."""
+
+    instructor = models.ForeignKey(
+        InstructorProfile, on_delete=models.CASCADE, related_name="certifications"
+    )
+    title = models.CharField(max_length=160)
+    issuer = models.CharField(max_length=160, blank=True, default="")
+    issue_date = models.CharField(max_length=40, blank=True, default="")
+    credential_url = models.URLField(max_length=500, blank=True, default="")
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "instructor_certifications"
+        indexes = [models.Index(fields=["instructor", "sort_order"])]
+
+    def __str__(self):
+        return self.title
+
+
+class InstructorSocialLink(BaseModel):
+    """A social/website link on a teacher's public profile. `platform` is one of a
+    known set (linkedin, facebook, github, x, youtube, instagram, tiktok, website)."""
+
+    instructor = models.ForeignKey(
+        InstructorProfile, on_delete=models.CASCADE, related_name="social_links"
+    )
+    platform = models.CharField(max_length=20)
+    url = models.URLField(max_length=500)
+
+    class Meta:
+        db_table = "instructor_social_links"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["instructor", "platform"], name="uniq_instructor_social_platform"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.platform}: {self.url}"

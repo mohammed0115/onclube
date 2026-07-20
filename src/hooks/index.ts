@@ -6,6 +6,7 @@ import {
   authApi,
   billingApi,
   bookingApi,
+  instructorsApi,
   notificationsApi,
   placementApi,
   reportsApi,
@@ -238,6 +239,17 @@ export const useStudentProgress = () =>
 
 export const useStudentPlan = () =>
   useQuery({ queryKey: qk.studentPlan, queryFn: bookingApi.plan });
+
+// ── public instructors ──────────────────────────────────────────────────────────
+export const usePublicInstructors = () =>
+  useQuery({ queryKey: qk.publicInstructors, queryFn: instructorsApi.list });
+
+export const usePublicInstructor = (slug: string) =>
+  useQuery({
+    queryKey: qk.publicInstructor(slug),
+    queryFn: () => instructorsApi.bySlug(slug),
+    enabled: !!slug,
+  });
 
 // ── AI tutor ──────────────────────────────────────────────────────────────────
 export const useAITutorStatus = () =>

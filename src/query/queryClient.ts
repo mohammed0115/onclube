@@ -53,6 +53,8 @@ export const qk = {
   studentProgress: ["student", "progress"] as const,
   studentPlan: ["student", "plan"] as const,
   aiTutorStatus: ["student", "ai-tutor", "status"] as const,
+  publicInstructors: ["instructors", "public"] as const,
+  publicInstructor: (slug: string) => ["instructors", "public", slug] as const,
   adminBookings: ["admin", "bookings"] as const,
   adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,
