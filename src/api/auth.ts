@@ -38,7 +38,17 @@ export const authApi = {
     return api.put<UserProfile>("/me/goal/", { goalId });
   },
 
-  logout() {
+  /** Revoke the refresh token server-side, then clear local tokens. Best-effort:
+   * a network/API failure still clears locally so the user is logged out here. */
+  async logout(): Promise<void> {
+    const refresh = tokenStore.refresh();
+    if (refresh) {
+      try {
+        await api.post("/auth/logout/", { refresh }, { auth: false });
+      } catch {
+        // token may already be expired/blacklisted — logout still succeeds locally
+      }
+    }
     tokenStore.clear();
   },
 };

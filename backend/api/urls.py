@@ -28,6 +28,7 @@ urlpatterns = [
     path("auth/token/", _ThrottledTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/token/refresh/", _ThrottledTokenRefreshView.as_view(), name="token_refresh"),
     path("auth/register/", v.RegisterView.as_view()),
+    path("auth/logout/", v.LogoutView.as_view()),
     path("auth/password/reset/", v.PasswordResetRequestView.as_view()),
     path("auth/password/reset/confirm/", v.PasswordResetConfirmView.as_view()),
     path("me/", v.MeView.as_view(), name="me"),

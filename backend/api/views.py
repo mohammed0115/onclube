@@ -192,6 +192,30 @@ class RegisterView(APIView):
         return Response(s.UserProfileSerializer(dto).data, status=status.HTTP_201_CREATED)
 
 
+class LogoutView(APIView):
+    """Real, server-side logout: blacklist the presented refresh token so it can
+    no longer mint new access tokens. Idempotent and safe to call with just the
+    refresh token (an already-expired/blacklisted token is a no-op)."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from rest_framework_simplejwt.exceptions import TokenError
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        raw = request.data.get("refresh")
+        if not raw:
+            return Response(
+                {"code": "validation_error", "detail": "refresh is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            RefreshToken(raw).blacklist()
+        except TokenError:
+            pass  # already invalid — logout still succeeds
+        return Response({"loggedOut": True})
+
+
 class MeView(APIView):
     def get(self, request):
         dto = GetCurrentUserProfileUseCase().execute(actor=request.user)

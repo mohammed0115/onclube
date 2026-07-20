@@ -85,8 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return created;
   };
 
-  const logout = () => {
-    authApi.logout();
+  const logout = async () => {
+    await authApi.logout(); // revoke the refresh token server-side, then clear
     setUser(null);
     setStatus("anonymous");
     navigate("/login", { replace: true });

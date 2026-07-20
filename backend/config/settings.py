@@ -90,6 +90,8 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    # Server-side refresh-token revocation (real logout + rotation).
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 LOCAL_APPS = [
@@ -268,8 +270,13 @@ if SENTRY_DSN and not DEBUG:
 from datetime import timedelta  # noqa: E402
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Short access token; env-tunable. Shared/kiosk machines can lower these.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_MINUTES", default=30)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESH_DAYS", default=7)),
+    # Each refresh mints a NEW refresh token and blacklists the old one, so a
+    # captured refresh token can be used at most once before it stops working.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 # ── Payment providers (configurable) ──────────────────────────────────────────
