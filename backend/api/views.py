@@ -972,6 +972,8 @@ class InstructorTopicUpdateView(APIView):
         )
         return Response(s.TopicFullSerializer(dto).data)
 
+    patch = put  # accept PATCH too (all fields are optional — partial update)
+
 
 class InstructorTopicPublishView(APIView):
     def post(self, request, topic_id):

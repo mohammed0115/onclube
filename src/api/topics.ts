@@ -69,7 +69,8 @@ export const topicsApi = {
     return api.post<TopicFull>("/instructor/topics/create/", input);
   },
   updateTopic(topicId: string, patch: { title?: string; category?: string; level?: string; description?: string }): Promise<TopicFull> {
-    return api.patch<TopicFull>(`/instructor/topics/${topicId}/`, patch);
+    // The backend view exposes PUT (partial-friendly: all fields optional), not PATCH.
+    return api.put<TopicFull>(`/instructor/topics/${topicId}/`, patch);
   },
   suggestSubtopics(topicId: string): Promise<{ topicId: string; items: string[]; createdIds: string[] }> {
     return api.post(`/instructor/topics/${topicId}/suggest-subtopics/`, {});
