@@ -9,12 +9,14 @@ import { Field } from "@/components/forms";
 import { AIBadge, AISuggestionRow } from "@/components/ai";
 import {
   useCreateTopic,
+  useUpdateTopic,
   useSuggestSubtopics,
   useSuggestQuestions,
   useApproveTopicQuestion,
   useAddTopicQuestion,
   usePublishTopic,
 } from "@/hooks";
+import { ApiError } from "@/api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
@@ -39,6 +41,7 @@ export function TopicQuestionBuilderPage() {
   const [error, setError] = useState<string | null>(null);
 
   const createTopic = useCreateTopic();
+  const updateTopic = useUpdateTopic();
   const suggestSubs = useSuggestSubtopics();
   const suggestQs = useSuggestQuestions();
   const approveQ = useApproveTopicQuestion();
@@ -47,19 +50,24 @@ export function TopicQuestionBuilderPage() {
 
   const generating = createTopic.isPending || suggestSubs.isPending || suggestQs.isPending;
 
-  /** Create the draft topic once (returns its id), so AI + questions have a target. */
+  /** Create the draft topic (once) and always sync the current form values to it,
+   * so later edits (esp. the description, required to publish) reach the backend. */
   async function ensureDraft(): Promise<string | null> {
-    if (topicId) return topicId;
     if (!title.trim()) {
       setError(tx("Please enter a topic title first."));
       return null;
     }
-    const t = await createTopic.mutateAsync({
+    const fields = {
       title: title.trim(),
       category: category.trim() || "General",
       level: level.trim() || "B1",
       description: description.trim() || undefined,
-    });
+    };
+    if (topicId) {
+      await updateTopic.mutateAsync({ topicId, patch: fields });
+      return topicId;
+    }
+    const t = await createTopic.mutateAsync(fields);
     setTopicId(t.id);
     return t.id;
   }
@@ -109,17 +117,23 @@ export function TopicQuestionBuilderPage() {
 
   async function onPublish() {
     setError(null);
-    const id = await ensureDraft();
-    if (!id) return;
+    if (!description.trim()) {
+      setError(tx("A description is required to publish."));
+      return;
+    }
     if (acceptedQuestions.length === 0) {
       setError(tx("Add at least one discussion question before publishing."));
       return;
     }
     try {
+      const id = await ensureDraft(); // syncs the description to the draft
+      if (!id) return;
       await publish.mutateAsync(id);
       navigate("/instructor");
-    } catch {
-      setError(tx("Could not publish the topic. Please try again."));
+    } catch (err) {
+      // Surface the real backend reason (e.g. missing description / no approved question).
+      const detail = err instanceof ApiError && typeof err.detail === "string" ? err.detail : null;
+      setError(detail ?? tx("Could not publish the topic. Please try again."));
     }
   }
 

@@ -396,6 +396,12 @@ export function useCreateTopic() {
       topicsApi.createTopic(input),
   });
 }
+export function useUpdateTopic() {
+  return useMutation({
+    mutationFn: (input: { topicId: string; patch: { title?: string; category?: string; level?: string; description?: string } }) =>
+      topicsApi.updateTopic(input.topicId, input.patch),
+  });
+}
 export function useSuggestSubtopics() {
   return useMutation({ mutationFn: (topicId: string) => topicsApi.suggestSubtopics(topicId) });
 }

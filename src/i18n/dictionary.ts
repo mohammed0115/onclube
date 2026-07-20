@@ -241,6 +241,7 @@ const PAIRS: [string, string][] = [
   ["Write your discussion question:", "اكتب سؤال النقاش:"],
   ["Could not add your question. Please try again.", "تعذّرت إضافة سؤالك. الرجاء المحاولة مرة أخرى."],
   ["Add at least one discussion question before publishing.", "أضف سؤال نقاش واحدًا على الأقل قبل النشر."],
+  ["A description is required to publish.", "الوصف مطلوب للنشر."],
   ["Could not publish the topic. Please try again.", "تعذّر نشر الموضوع. الرجاء المحاولة مرة أخرى."],
   ["e.g. Job Interview Practice", "مثال: التدرّب على مقابلة العمل"],
   ["What will students practise?", "ماذا سيتدرّب الطلاب عليه؟"],

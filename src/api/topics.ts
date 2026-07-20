@@ -68,6 +68,9 @@ export const topicsApi = {
   createTopic(input: { title: string; category: string; level: string; description?: string }): Promise<TopicFull> {
     return api.post<TopicFull>("/instructor/topics/create/", input);
   },
+  updateTopic(topicId: string, patch: { title?: string; category?: string; level?: string; description?: string }): Promise<TopicFull> {
+    return api.patch<TopicFull>(`/instructor/topics/${topicId}/`, patch);
+  },
   suggestSubtopics(topicId: string): Promise<{ topicId: string; items: string[]; createdIds: string[] }> {
     return api.post(`/instructor/topics/${topicId}/suggest-subtopics/`, {});
   },
