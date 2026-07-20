@@ -232,6 +232,10 @@ export const useWeeklyCalendar = (topicId: string, weekStart?: string) =>
     enabled: !!topicId,
   });
 
+// ── progress dashboard ──────────────────────────────────────────────────────────
+export const useStudentProgress = () =>
+  useQuery({ queryKey: qk.studentProgress, queryFn: bookingApi.progress });
+
 // ── recurring weekly schedule (student-driven) ──────────────────────────────────
 export const useStudentSchedule = () =>
   useQuery({ queryKey: qk.studentSchedule, queryFn: bookingApi.schedule });

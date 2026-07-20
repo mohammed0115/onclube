@@ -73,11 +73,16 @@ def test_generate_produces_the_11_field_content_and_marks_ready():
     report.refresh_from_db()
     assert report.status == AIReportStatus.READY
     assert report.overall_score is not None and report.generated_at is not None
-    assert set(report.content) == {
+    assert {
         "overallSummary", "grammarFeedback", "vocabularyFeedback", "fluencyFeedback",
         "pronunciationFeedback", "strengths", "weaknesses", "recommendedTopics",
         "homework", "nextLessonFocus", "confidenceScore",
+    }.issubset(report.content)
+    # Per-skill numeric scores are persisted for the progress dashboard.
+    assert {r["label"] for r in report.skills} >= {
+        "Grammar", "Vocabulary", "Fluency", "Pronunciation", "Confidence",
     }
+    assert all(0 <= r["value"] <= 100 for r in report.skills)
     # Server-side meta stored but NOT part of content.
     assert report.provider_name == "heuristic"
     assert "providerName" not in report.content and "prompt" not in report.content

@@ -16,10 +16,28 @@ from domain.session_report.provider import (
 )
 
 
+def _clamp(v: int) -> int:
+    return max(0, min(int(v), 100))
+
+
 def _confidence(context: SessionReportContext) -> int:
     # A stable proxy from engagement (transcript turns), capped to a sensible band.
     base = 55 + min(context.turns, 20) * 2
-    return max(0, min(base, 95))
+    return _clamp(min(base, 95))
+
+
+def _skill_scores(context: SessionReportContext) -> dict:
+    """Deterministic per-skill scores around the engagement baseline. Distinct,
+    stable offsets so the progress dashboard shows meaningful per-skill movement
+    as engagement grows session to session. Not a real assessment — a transparent
+    heuristic used only when no scoring engine is configured."""
+    base = _confidence(context)
+    return {
+        "grammar_score": _clamp(base - 3),
+        "vocabulary_score": _clamp(base - 6),
+        "fluency_score": _clamp(base + 1),
+        "pronunciation_score": _clamp(base - 1),
+    }
 
 
 class HeuristicSessionReportProvider(SessionReportProvider):
@@ -71,5 +89,6 @@ class HeuristicSessionReportProvider(SessionReportProvider):
             ],
             next_lesson_focus="Reinforce past-tense narration and expand active vocabulary.",
             confidence_score=_confidence(context),
+            **_skill_scores(context),
         )
         return GeneratedSessionReport(content=content, provider_name=self.name, fallback_used=False)

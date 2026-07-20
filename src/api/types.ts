@@ -506,6 +506,42 @@ export interface InstructorWindows {
   windows: AvailabilityWindow[];
 }
 
+// ── progress dashboard ──────────────────────────────────────────────────────────
+export interface ProgressOverallPoint {
+  label: string;
+  score: number;
+  date: string | null;
+  topic: string | null;
+}
+
+export interface ProgressOverall {
+  current: number | null;
+  previous: number | null;
+  delta: number | null;
+  series: ProgressOverallPoint[];
+}
+
+export interface SkillSeriesPoint {
+  label: string;
+  value: number | null;
+}
+
+export interface SkillProgress {
+  label: string;
+  color: string | null;
+  current: number | null;
+  previous: number | null;
+  delta: number | null;
+  series: SkillSeriesPoint[];
+}
+
+export interface StudentProgress {
+  sessionsCount: number;
+  overall: ProgressOverall;
+  skills: SkillProgress[];
+  message: string;
+}
+
 export interface AdminBookingItem {
   id: string;
   studentId: string;

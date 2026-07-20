@@ -11,6 +11,7 @@ import type {
   SchedulePickInput,
   SetScheduleResult,
   StudentDashboard,
+  StudentProgress,
   StudentSchedule,
   WeeklyCalendar,
 } from "./types";
@@ -18,6 +19,11 @@ import type {
 export const bookingApi = {
   studentDashboard(): Promise<StudentDashboard> {
     return api.get<StudentDashboard>("/student/dashboard/");
+  },
+
+  /** Session-over-session progress (overall + per-skill, with deltas + series). */
+  progress(): Promise<StudentProgress> {
+    return api.get<StudentProgress>("/student/progress/");
   },
 
   /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */

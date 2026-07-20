@@ -131,7 +131,11 @@ from application.sessions.use_cases import (
 )
 
 # AI reports
-from application.ai_reports.queries import GetAIReportDetailUseCase, GetSessionReportUseCase
+from application.ai_reports.queries import (
+    GetAIReportDetailUseCase,
+    GetSessionReportUseCase,
+    GetStudentProgressUseCase,
+)
 from application.ai_reports.use_cases import (
     GenerateAISessionReportUseCase,
     GenerateDiscussionQuestionsUseCase,
@@ -668,6 +672,14 @@ class StudentScheduleGenerateView(APIView):
 
     def post(self, request):
         return Response(GenerateScheduleBookingsUseCase().execute(actor=request.user))
+
+
+class StudentProgressView(APIView):
+    """The student's session-over-session progress (overall + per-skill, with a
+    time series and current-vs-previous deltas)."""
+
+    def get(self, request):
+        return Response(GetStudentProgressUseCase().execute(actor=request.user))
 
 
 class StudentScheduleWindowsView(APIView):

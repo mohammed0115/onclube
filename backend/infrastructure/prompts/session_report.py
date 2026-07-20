@@ -30,6 +30,10 @@ _EXPECTED_OUTPUT_SCHEMA = {
         "homework": {"type": "array", "items": {"type": "string"}},
         "nextLessonFocus": {"type": "string"},
         "confidenceScore": {"type": "integer", "minimum": 0, "maximum": 100},
+        "grammarScore": {"type": "integer", "minimum": 0, "maximum": 100},
+        "vocabularyScore": {"type": "integer", "minimum": 0, "maximum": 100},
+        "fluencyScore": {"type": "integer", "minimum": 0, "maximum": 100},
+        "pronunciationScore": {"type": "integer", "minimum": 0, "maximum": 100},
     },
     "additionalProperties": False,
 }
@@ -46,7 +50,9 @@ _INSTRUCTION_MESSAGE = (
     "Return EXACTLY these keys and nothing else: overallSummary, grammarFeedback, "
     "vocabularyFeedback, fluencyFeedback, pronunciationFeedback (strings), strengths, "
     "weaknesses, recommendedTopics, homework (arrays of strings), nextLessonFocus "
-    "(string), confidenceScore (integer 0-100). Do not add unknown fields. Do not "
+    "(string), confidenceScore (integer 0-100), and the per-skill integer scores "
+    "grammarScore, vocabularyScore, fluencyScore, pronunciationScore (each 0-100, "
+    "scoring THIS session's spoken performance). Do not add unknown fields. Do not "
     "include CEFR level, grades, attendance, or any explanation outside the JSON."
 )
 

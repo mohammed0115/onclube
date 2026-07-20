@@ -76,6 +76,7 @@ urlpatterns = [
     path("student/schedule/", v.StudentScheduleView.as_view()),
     path("student/schedule/generate/", v.StudentScheduleGenerateView.as_view()),
     path("student/schedule/windows/", v.StudentScheduleWindowsView.as_view()),
+    path("student/progress/", v.StudentProgressView.as_view()),
     path("student/bookings/", v.StudentBookingsView.as_view()),
     path("student/bookings/<uuid:booking_id>/", v.StudentBookingDetailView.as_view()),
     path("student/bookings/<uuid:booking_id>/rating/", v.SessionRatingView.as_view()),

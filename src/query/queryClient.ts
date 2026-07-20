@@ -50,6 +50,7 @@ export const qk = {
   calendar: (topicId: string, weekStart?: string) => ["student", "calendar", topicId, weekStart ?? "current"] as const,
   studentSchedule: ["student", "schedule"] as const,
   scheduleWindows: (key: string) => ["student", "schedule", "windows", key] as const,
+  studentProgress: ["student", "progress"] as const,
   adminBookings: ["admin", "bookings"] as const,
   adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,

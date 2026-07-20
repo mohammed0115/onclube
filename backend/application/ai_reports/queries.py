@@ -1,11 +1,30 @@
 """AI report query use cases (read-only)."""
 from application import mappers
-from application.permissions import ensure_report_viewer, ensure_session_participant
+from application.permissions import (
+    ensure_report_viewer,
+    ensure_session_participant,
+    get_student_profile,
+)
 from domain.dtos import AIReportDetailResult
+from domain.session_report.progress import compute_progress
 from infrastructure.container import (
     default_ai_report_repository,
     default_session_repository,
 )
+
+
+class GetStudentProgressUseCase:
+    """The student's session-over-session progress: overall + per-skill current vs
+    previous, a time series per skill, and an encouraging message. Reads only the
+    student's own READY reports (oldest → newest)."""
+
+    def __init__(self, *, reports=None):
+        self.reports = reports or default_ai_report_repository()
+
+    def execute(self, *, actor) -> dict:
+        student = get_student_profile(actor)
+        reports = self.reports.list_for_student(student)  # ready, oldest → newest
+        return compute_progress(reports)
 
 
 class GetAIReportDetailUseCase:

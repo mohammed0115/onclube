@@ -20,6 +20,8 @@ REPORT_KEYS = {
     "overallSummary", "grammarFeedback", "vocabularyFeedback", "fluencyFeedback",
     "pronunciationFeedback", "strengths", "weaknesses", "recommendedTopics",
     "homework", "nextLessonFocus", "confidenceScore",
+    # Per-skill numeric scores added for the progress dashboard.
+    "grammarScore", "vocabularyScore", "fluencyScore", "pronunciationScore",
 }
 
 

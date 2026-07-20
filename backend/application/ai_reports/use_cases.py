@@ -195,10 +195,15 @@ class GenerateAISessionReportUseCase:
         generated = self.reports_provider.generate(context=context)
         content = generated.content
 
-        report.content = content.to_camel_dict()  # validated 11 fields only
+        from domain.session_report.scoring import overall_from_content, skill_rows
+
+        report.content = content.to_camel_dict()  # validated fields only
         report.provider_name = generated.provider_name  # server-side meta (not serialized)
         report.fallback_used = generated.fallback_used
-        report.overall_score = content.confidence_score  # satisfies chk_ready_report_complete
+        # Persist comparable per-skill numbers so the report chart + progress
+        # dashboard have real data; overall = mean of the skills.
+        report.skills = skill_rows(content)
+        report.overall_score = overall_from_content(content)  # satisfies chk_ready_report_complete
         report.status = AIReportStatus.READY
         report.generated_at = timezone.now()
         report.save()
@@ -216,13 +221,34 @@ class GenerateAISessionReportUseCase:
             strengths = ", ".join(content.strengths[:2]) if content.strengths else ""
             weaknesses = ", ".join(content.weaknesses[:2]) if content.weaknesses else ""
             link = settings.FRONTEND_URL.rstrip("/") + f"/student/report/{report.id}"
+
+            # Compare against the student's previous ready report so the message
+            # shows measurable progress (the product's core promise).
+            previous = (
+                AIReport.objects.filter(student=student, status=AIReportStatus.READY)
+                .exclude(pk=report.pk)
+                .order_by("-session_date")
+                .first()
+            )
+            score = report.overall_score
+            if previous is not None and previous.overall_score is not None:
+                d = score - previous.overall_score
+                trend = (
+                    f"up {d} from last session 🎉" if d > 0
+                    else f"down {abs(d)} from last session" if d < 0
+                    else "the same as last session"
+                )
+                score_line = f"Your overall score is {score}/100 ({trend}). "
+            else:
+                score_line = f"Your overall score is {score}/100. "
+
             body = (
-                f'Great work in "{booking.topic_title}"! Your confidence score is '
-                f"{content.confidence_score}/100. "
+                f'Great work in "{booking.topic_title}"! '
+                + score_line
                 + (f"Strengths: {strengths}. " if strengths else "")
                 + (f"To work on: {weaknesses}. " if weaknesses else "")
                 + (f"Next focus: {content.next_lesson_focus} " if content.next_lesson_focus else "")
-                + f"See your full report: {link}"
+                + f"See your progress: {link}"
             )
             Notification.objects.create(
                 user=booking.student.user,

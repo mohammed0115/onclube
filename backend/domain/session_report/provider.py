@@ -52,11 +52,18 @@ class SessionReportContent:
     homework: list[str] = field(default_factory=list)
     next_lesson_focus: str = ""
     confidence_score: int = 0  # 0-100
+    # Optional per-skill numeric scores (0-100). Drive the progress dashboard's
+    # session-over-session comparison. None ⇒ the engine didn't score that skill
+    # (the application layer then falls back to the confidence score for it).
+    grammar_score: int | None = None
+    vocabulary_score: int | None = None
+    fluency_score: int | None = None
+    pronunciation_score: int | None = None
 
     def to_camel_dict(self) -> dict:
         """Client-facing shape (camelCase). Only the validated fields — no prompt,
         no provider, no raw output, no chain of thought."""
-        return {
+        data = {
             "overallSummary": self.overall_summary,
             "grammarFeedback": self.grammar_feedback,
             "vocabularyFeedback": self.vocabulary_feedback,
@@ -69,6 +76,15 @@ class SessionReportContent:
             "nextLessonFocus": self.next_lesson_focus,
             "confidenceScore": self.confidence_score,
         }
+        for key, value in (
+            ("grammarScore", self.grammar_score),
+            ("vocabularyScore", self.vocabulary_score),
+            ("fluencyScore", self.fluency_score),
+            ("pronunciationScore", self.pronunciation_score),
+        ):
+            if value is not None:
+                data[key] = value
+        return data
 
 
 @dataclass(frozen=True)

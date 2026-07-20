@@ -64,6 +64,19 @@ def _confidence(value) -> int:
     return int(round(value))
 
 
+def _opt_score(data, field: str):
+    """Optional 0-100 skill score. Absent/null ⇒ None. Present-but-invalid ⇒ raise
+    (a malformed provider payload still triggers the heuristic fallback)."""
+    if field not in data or data[field] is None:
+        return None
+    value = data[field]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise InvalidSessionReport(f"{field} must be a number.")
+    if not (0 <= value <= 100):
+        raise InvalidSessionReport(f"{field} must be between 0 and 100.")
+    return int(round(value))
+
+
 def parse_session_report_payload(data) -> SessionReportContent:
     """Validate a provider payload dict and assemble the report, or raise."""
     if not isinstance(data, dict):
@@ -85,4 +98,8 @@ def parse_session_report_payload(data) -> SessionReportContent:
         homework=_str_list(data["homework"], "homework"),
         next_lesson_focus=_text(data["nextLessonFocus"], "nextLessonFocus"),
         confidence_score=_confidence(data["confidenceScore"]),
+        grammar_score=_opt_score(data, "grammarScore"),
+        vocabulary_score=_opt_score(data, "vocabularyScore"),
+        fluency_score=_opt_score(data, "fluencyScore"),
+        pronunciation_score=_opt_score(data, "pronunciationScore"),
     )

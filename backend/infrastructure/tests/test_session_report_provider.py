@@ -120,8 +120,11 @@ def test_heuristic_always_produces_a_valid_report():
     gen = HeuristicSessionReportProvider().generate(context=_context())
     assert gen.provider_name == "heuristic" and gen.fallback_used is False
     d = gen.content.to_camel_dict()
-    assert len(d) == 11 and 0 <= d["confidenceScore"] <= 100
+    # 11 core fields + 4 optional per-skill scores the heuristic now emits.
+    assert len(d) == 15 and 0 <= d["confidenceScore"] <= 100
     assert d["overallSummary"] and d["nextLessonFocus"]
+    for key in ("grammarScore", "vocabularyScore", "fluencyScore", "pronunciationScore"):
+        assert 0 <= d[key] <= 100
 
 
 # ── OpenAI adapter: success + every failure mode falls back ───────────────────
