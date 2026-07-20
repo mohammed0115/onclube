@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Sparkles, Wand2, Plus, X, Check } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -6,37 +7,123 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/forms";
 import { AIBadge, AISuggestionRow } from "@/components/ai";
+import {
+  useCreateTopic,
+  useSuggestSubtopics,
+  useSuggestQuestions,
+  useApproveTopicQuestion,
+  useAddTopicQuestion,
+  usePublishTopic,
+} from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
-// AI suggestions the instructor can choose to pull in. Nothing is added automatically.
-const AI_SUBTOPICS = [
-  "Introducing yourself confidently",
-  "Talking about strengths and weaknesses",
-  "Handling unexpected questions",
-];
-const AI_QUESTIONS = [
-  "Tell me a little about yourself and your background.",
-  "What are you most proud of in your career so far?",
-  "Describe a challenge you faced and how you solved it.",
-  "Why do you want to work with our team?",
-];
+type SuggestedQuestion = { id: string; text: string };
 
 export function TopicQuestionBuilderPage() {
   const { tx } = useI18n();
+  const navigate = useNavigate();
+
+  // Topic form (controlled).
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Career");
+  const [level, setLevel] = useState("B1");
+  const [description, setDescription] = useState("");
+
+  // Draft topic + AI results.
+  const [topicId, setTopicId] = useState<string | null>(null);
+  const [suggestedSubtopics, setSuggestedSubtopics] = useState<string[]>([]);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<SuggestedQuestion[]>([]);
   const [acceptedSubtopics, setAcceptedSubtopics] = useState<string[]>([]);
   const [acceptedQuestions, setAcceptedQuestions] = useState<string[]>([]);
-  const [generated, setGenerated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const accept = (
-    text: string,
-    list: string[],
-    setList: (v: string[]) => void
-  ) => {
-    if (!list.includes(text)) setList([...list, text]);
-  };
-  const remove = (text: string, list: string[], setList: (v: string[]) => void) =>
-    setList(list.filter((x) => x !== text));
+  const createTopic = useCreateTopic();
+  const suggestSubs = useSuggestSubtopics();
+  const suggestQs = useSuggestQuestions();
+  const approveQ = useApproveTopicQuestion();
+  const addQ = useAddTopicQuestion();
+  const publish = usePublishTopic();
+
+  const generating = createTopic.isPending || suggestSubs.isPending || suggestQs.isPending;
+
+  /** Create the draft topic once (returns its id), so AI + questions have a target. */
+  async function ensureDraft(): Promise<string | null> {
+    if (topicId) return topicId;
+    if (!title.trim()) {
+      setError(tx("Please enter a topic title first."));
+      return null;
+    }
+    const t = await createTopic.mutateAsync({
+      title: title.trim(),
+      category: category.trim() || "General",
+      level: level.trim() || "B1",
+      description: description.trim() || undefined,
+    });
+    setTopicId(t.id);
+    return t.id;
+  }
+
+  async function onGenerate() {
+    setError(null);
+    try {
+      const id = await ensureDraft();
+      if (!id) return;
+      const [subs, qs] = await Promise.all([suggestSubs.mutateAsync(id), suggestQs.mutateAsync(id)]);
+      setSuggestedSubtopics(subs.items);
+      // suggest-questions persists drafts; pair each item with its created id so
+      // "accept" approves that exact question.
+      setSuggestedQuestions(qs.items.map((text, i) => ({ text, id: qs.createdIds[i] })));
+    } catch {
+      setError(tx("Could not generate suggestions. Please try again."));
+    }
+  }
+
+  const acceptSubtopic = (s: string) =>
+    setAcceptedSubtopics((cur) => (cur.includes(s) ? cur : [...cur, s]));
+
+  async function acceptQuestion(q: SuggestedQuestion) {
+    if (acceptedQuestions.includes(q.text)) return;
+    setError(null);
+    try {
+      if (q.id && topicId) await approveQ.mutateAsync({ topicId, questionId: q.id });
+      setAcceptedQuestions((cur) => [...cur, q.text]);
+    } catch {
+      setError(tx("Could not accept that question. Please try again."));
+    }
+  }
+
+  async function addOwnQuestion() {
+    const text = window.prompt(tx("Write your discussion question:"))?.trim();
+    if (!text) return;
+    setError(null);
+    try {
+      const id = await ensureDraft();
+      if (!id) return;
+      await addQ.mutateAsync({ topicId: id, text });
+      setAcceptedQuestions((cur) => [...cur, text]);
+    } catch {
+      setError(tx("Could not add your question. Please try again."));
+    }
+  }
+
+  async function onPublish() {
+    setError(null);
+    const id = await ensureDraft();
+    if (!id) return;
+    if (acceptedQuestions.length === 0) {
+      setError(tx("Add at least one discussion question before publishing."));
+      return;
+    }
+    try {
+      await publish.mutateAsync(id);
+      navigate("/instructor");
+    } catch {
+      setError(tx("Could not publish the topic. Please try again."));
+    }
+  }
+
+  const generated = suggestedSubtopics.length > 0 || suggestedQuestions.length > 0;
 
   return (
     <DashboardLayout>
@@ -44,8 +131,18 @@ export function TopicQuestionBuilderPage() {
         title="Build a topic"
         subtitle="You create the topic. AI suggests subtopics and questions — you decide what to keep."
         back="/instructor"
-        action={<Button size="sm">{tx("Publish topic")}</Button>}
+        action={
+          <Button size="sm" onClick={onPublish} disabled={publish.isPending}>
+            {publish.isPending ? tx("Publishing…") : tx("Publish topic")}
+          </Button>
+        }
       />
+
+      {error && (
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* LEFT — the instructor's own topic */}
@@ -53,16 +150,12 @@ export function TopicQuestionBuilderPage() {
           <Card className="p-6">
             <h3 className="mb-4 font-display font-bold text-foreground">{tx("Topic details")}</h3>
             <div className="space-y-4">
-              <Field label={tx("Topic title")} htmlFor="title" defaultValue="Job Interview Practice" />
+              <Field label={tx("Topic title")} htmlFor="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tx("e.g. Job Interview Practice")} />
               <div className="grid grid-cols-2 gap-4">
-                <Field label={tx("Category")} htmlFor="cat" defaultValue="Career" />
-                <Field label={tx("Level")} htmlFor="level" defaultValue="B1" />
+                <Field label={tx("Category")} htmlFor="cat" value={category} onChange={(e) => setCategory(e.target.value)} />
+                <Field label={tx("Level")} htmlFor="level" value={level} onChange={(e) => setLevel(e.target.value)} />
               </div>
-              <Field
-                label={tx("Short description")}
-                htmlFor="desc"
-                defaultValue="Rehearse common interview questions and tell your story clearly."
-              />
+              <Field label={tx("Short description")} htmlFor="desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={tx("What will students practise?")} />
             </div>
           </Card>
 
@@ -80,7 +173,7 @@ export function TopicQuestionBuilderPage() {
                     <span className="flex items-center gap-2 text-foreground">
                       <Check size={14} className="text-emerald-500" /> {s}
                     </span>
-                    <button onClick={() => remove(s, acceptedSubtopics, setAcceptedSubtopics)} className="text-muted-foreground hover:text-red-500">
+                    <button onClick={() => setAcceptedSubtopics((c) => c.filter((x) => x !== s))} className="text-muted-foreground hover:text-red-500">
                       <X size={14} />
                     </button>
                   </div>
@@ -106,14 +199,14 @@ export function TopicQuestionBuilderPage() {
                       </span>
                       {q}
                     </span>
-                    <button onClick={() => remove(q, acceptedQuestions, setAcceptedQuestions)} className="mt-0.5 text-muted-foreground hover:text-red-500">
+                    <button onClick={() => setAcceptedQuestions((c) => c.filter((x) => x !== q))} className="mt-0.5 text-muted-foreground hover:text-red-500">
                       <X size={14} />
                     </button>
                   </li>
                 ))}
               </ol>
             )}
-            <button className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:underline">
+            <button onClick={addOwnQuestion} className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:underline">
               <Plus size={14} /> {tx("Add your own question")}
             </button>
           </Card>
@@ -133,8 +226,8 @@ export function TopicQuestionBuilderPage() {
               <p className="mb-4 text-sm text-muted-foreground">
                 {tx("Generate subtopic and question ideas from your topic title and level. Review each one and add only what you like.")}
               </p>
-              <Button onClick={() => setGenerated(true)} className="w-full">
-                <Wand2 size={15} /> {generated ? tx("Regenerate suggestions") : tx("Generate suggestions")}
+              <Button onClick={onGenerate} disabled={generating} className="w-full">
+                <Wand2 size={15} /> {generating ? tx("Generating…") : generated ? tx("Regenerate suggestions") : tx("Generate suggestions")}
               </Button>
             </div>
           </Card>
@@ -147,13 +240,8 @@ export function TopicQuestionBuilderPage() {
                   <h3 className="font-display font-bold text-foreground">{tx("Suggested subtopics")}</h3>
                 </div>
                 <div className="space-y-2">
-                  {AI_SUBTOPICS.map((s) => (
-                    <AISuggestionRow
-                      key={s}
-                      text={s}
-                      accepted={acceptedSubtopics.includes(s)}
-                      onAccept={() => accept(s, acceptedSubtopics, setAcceptedSubtopics)}
-                    />
+                  {suggestedSubtopics.map((s) => (
+                    <AISuggestionRow key={s} text={s} accepted={acceptedSubtopics.includes(s)} onAccept={() => acceptSubtopic(s)} />
                   ))}
                 </div>
               </Card>
@@ -164,13 +252,8 @@ export function TopicQuestionBuilderPage() {
                   <h3 className="font-display font-bold text-foreground">{tx("Suggested questions")}</h3>
                 </div>
                 <div className="space-y-2">
-                  {AI_QUESTIONS.map((q) => (
-                    <AISuggestionRow
-                      key={q}
-                      text={q}
-                      accepted={acceptedQuestions.includes(q)}
-                      onAccept={() => accept(q, acceptedQuestions, setAcceptedQuestions)}
-                    />
+                  {suggestedQuestions.map((q) => (
+                    <AISuggestionRow key={q.id ?? q.text} text={q.text} accepted={acceptedQuestions.includes(q.text)} onAccept={() => acceptQuestion(q)} />
                   ))}
                 </div>
               </Card>

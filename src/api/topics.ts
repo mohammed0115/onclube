@@ -63,6 +63,24 @@ export const topicsApi = {
   instructorTopics(): Promise<TopicFull[]> {
     return api.get<TopicFull[]>("/instructor/topics/");
   },
+  createTopic(input: { title: string; category: string; level: string; description?: string }): Promise<TopicFull> {
+    return api.post<TopicFull>("/instructor/topics/create/", input);
+  },
+  suggestSubtopics(topicId: string): Promise<{ topicId: string; items: string[]; createdIds: string[] }> {
+    return api.post(`/instructor/topics/${topicId}/suggest-subtopics/`, {});
+  },
+  suggestQuestions(topicId: string): Promise<{ topicId: string; items: string[]; createdIds: string[] }> {
+    return api.post(`/instructor/topics/${topicId}/suggest-questions/`, {});
+  },
+  addTopicQuestion(topicId: string, text: string): Promise<QuestionFull> {
+    return api.post<QuestionFull>(`/instructor/topics/${topicId}/questions/`, { text });
+  },
+  approveTopicQuestion(topicId: string, questionId: string): Promise<QuestionFull> {
+    return api.post<QuestionFull>(`/instructor/topics/${topicId}/questions/${questionId}/approve/`, {});
+  },
+  publishTopic(topicId: string): Promise<TopicFull> {
+    return api.post<TopicFull>(`/instructor/topics/${topicId}/publish/`, {});
+  },
   instructorAvailability(): Promise<AvailabilitySlot[]> {
     return api.get<AvailabilitySlot[]>("/instructor/availability/");
   },

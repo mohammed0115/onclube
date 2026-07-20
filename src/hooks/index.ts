@@ -389,6 +389,38 @@ export const useAdminSessions = () =>
 export const useAdminBookings = () =>
   useQuery({ queryKey: qk.adminBookings, queryFn: topicsApi.adminBookings });
 
+// ── instructor: topic builder (real AI suggestions) ─────────────────────────
+export function useCreateTopic() {
+  return useMutation({
+    mutationFn: (input: { title: string; category: string; level: string; description?: string }) =>
+      topicsApi.createTopic(input),
+  });
+}
+export function useSuggestSubtopics() {
+  return useMutation({ mutationFn: (topicId: string) => topicsApi.suggestSubtopics(topicId) });
+}
+export function useSuggestQuestions() {
+  return useMutation({ mutationFn: (topicId: string) => topicsApi.suggestQuestions(topicId) });
+}
+export function useAddTopicQuestion() {
+  return useMutation({
+    mutationFn: (input: { topicId: string; text: string }) => topicsApi.addTopicQuestion(input.topicId, input.text),
+  });
+}
+export function useApproveTopicQuestion() {
+  return useMutation({
+    mutationFn: (input: { topicId: string; questionId: string }) =>
+      topicsApi.approveTopicQuestion(input.topicId, input.questionId),
+  });
+}
+export function usePublishTopic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (topicId: string) => topicsApi.publishTopic(topicId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.instructorTopics }),
+  });
+}
+
 export function useAdminCancelBooking() {
   const qc = useQueryClient();
   return useMutation({

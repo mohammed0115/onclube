@@ -185,8 +185,23 @@ def default_meeting_token_provider():
 
 
 def default_ai_provider():
-    # STUB — replace with OpenAIProvider in a later phase.
-    return StubAIProvider()
+    # Real OpenAI topic assistance (subtopic/question suggestions) WHEN a key is
+    # configured; otherwise the deterministic stub. OpenAI always falls back to the
+    # stub on any failure, so topic building never breaks.
+    from django.conf import settings
+
+    stub = StubAIProvider()
+    api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
+    if api_key:
+        from infrastructure.gateways.topic_assist import OpenAITopicAssistProvider
+
+        return OpenAITopicAssistProvider(
+            fallback=stub,
+            api_key=api_key,
+            model=getattr(settings, "OPENAI_MODEL", "gpt-4o-mini"),
+            timeout=getattr(settings, "OPENAI_TIMEOUT_SECONDS", 20),
+        )
+    return stub
 
 
 def default_session_report_provider():
