@@ -239,6 +239,22 @@ export interface Plan {
   sessionsPerMonth: number;
   features: string[];
   recommended: boolean;
+  active?: boolean;
+}
+
+export interface CreatePlanInput {
+  code: string;
+  name: string;
+  price: number | string;
+  currency?: string;
+  cadence?: string;
+  billing_period_days?: number;
+  description?: string;
+  emoji?: string;
+  sessions_per_month: number;
+  features?: string[];
+  recommended?: boolean;
+  active?: boolean;
 }
 
 export interface SubscriptionDetail {

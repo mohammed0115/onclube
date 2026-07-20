@@ -124,3 +124,5 @@ class AdminActionType(models.TextChoices):
     BOOKING_CANCEL_OVERRIDE = "booking_cancel_override", "Booking cancel override"
     USER_STATUS_CHANGED = "user_status_changed", "User status changed"
     USER_ROLE_CHANGED = "user_role_changed", "User role changed"
+    PLAN_CREATED = "plan_created", "Plan created"
+    PLAN_UPDATED = "plan_updated", "Plan updated"

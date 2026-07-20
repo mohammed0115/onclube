@@ -49,6 +49,7 @@ export const qk = {
   openSlots: (instructorId: string) => ["instructor", instructorId, "slots"] as const,
   calendar: (topicId: string, weekStart?: string) => ["student", "calendar", topicId, weekStart ?? "current"] as const,
   adminBookings: ["admin", "bookings"] as const,
+  adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,
   instructorProfile: ["instructor", "profile"] as const,
   instructorTopics: ["instructor", "topics"] as const,

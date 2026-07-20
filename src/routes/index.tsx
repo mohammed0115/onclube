@@ -49,6 +49,7 @@ import { AdminMembersPage } from "@/pages/admin/AdminMembersPage";
 import { AdminAuditPage } from "@/pages/admin/AdminAuditPage";
 import { AdminSessionsPage } from "@/pages/admin/AdminSessionsPage";
 import { AdminBookingsPage } from "@/pages/admin/AdminBookingsPage";
+import { AdminPlansPage } from "@/pages/admin/AdminPlansPage";
 import { AdminBusinessPage } from "@/pages/admin/AdminBusinessPage";
 import { AdminPlatformPage } from "@/pages/admin/AdminPlatformPage";
 
@@ -104,6 +105,7 @@ export function AppRoutes() {
       <Route path="/admin/members" element={<RequireRole roles={["admin"]}><AdminMembersPage /></RequireRole>} />
       <Route path="/admin/sessions" element={<RequireRole roles={["admin"]}><AdminSessionsPage /></RequireRole>} />
       <Route path="/admin/bookings" element={<RequireRole roles={["admin"]}><AdminBookingsPage /></RequireRole>} />
+      <Route path="/admin/plans" element={<RequireRole roles={["admin"]}><AdminPlansPage /></RequireRole>} />
       <Route path="/admin/business" element={<RequireRole roles={["admin"]}><AdminBusinessPage /></RequireRole>} />
       <Route path="/admin/platform" element={<RequireRole roles={["admin"]}><AdminPlatformPage /></RequireRole>} />
       <Route path="/admin/audit" element={<RequireRole roles={["admin"]}><AdminAuditPage /></RequireRole>} />

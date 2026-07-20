@@ -12,7 +12,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.permissions import IsAdminRole
 from apps.common.enums import AIReportStatus
+
+
 from api import serializers as s
 
 # Use cases — accounts / onboarding
@@ -142,7 +145,10 @@ from application.admin_ops.queries import (
 )
 from application.admin_ops.use_cases import (
     ChangeUserRoleUseCase,
+    CreatePlanUseCase,
+    ListPlansAdminUseCase,
     SetUserStatusUseCase,
+    UpdatePlanUseCase,
 )
 from application.notifications.queries import ListNotificationsUseCase
 
@@ -151,6 +157,14 @@ def _validated(serializer_cls, request):
     serializer = serializer_cls(data=request.data)
     serializer.is_valid(raise_exception=True)
     return serializer.validated_data
+
+
+class AdminAPIView(APIView):
+    """Base for every /admin/* view — enforces the admin role at the HTTP layer
+    (in addition to ensure_admin in the use case). Defense-in-depth: a forgotten
+    domain check can never expose an admin endpoint to an ordinary user."""
+
+    permission_classes = [IsAdminRole]
 
 
 # ── Auth / Profile ────────────────────────────────────────────────────────────
@@ -216,7 +230,7 @@ class PasswordResetConfirmView(APIView):
         return Response(result)
 
 
-class AdminInviteUserView(APIView):
+class AdminInviteUserView(AdminAPIView):
     """Admin invites a user (instructor/admin/student) and emails a set-password link."""
 
     def post(self, request):
@@ -227,7 +241,7 @@ class AdminInviteUserView(APIView):
         return Response(result, status=status.HTTP_201_CREATED)
 
 
-class AdminUsersView(APIView):
+class AdminUsersView(AdminAPIView):
     """Members table — all users (optionally filtered by ?role=)."""
 
     def get(self, request):
@@ -235,40 +249,40 @@ class AdminUsersView(APIView):
         return Response(items)
 
 
-class AdminUserStatusView(APIView):
+class AdminUserStatusView(AdminAPIView):
     def post(self, request, user_id):
         data = _validated(s.SetUserStatusInputSerializer, request)
         result = SetUserStatusUseCase().execute(actor=request.user, user_id=user_id, status=data["status"])
         return Response(result)
 
 
-class AdminUserRoleView(APIView):
+class AdminUserRoleView(AdminAPIView):
     def post(self, request, user_id):
         data = _validated(s.ChangeUserRoleInputSerializer, request)
         result = ChangeUserRoleUseCase().execute(actor=request.user, user_id=user_id, role=data["role"])
         return Response(result)
 
 
-class AdminAuditLogView(APIView):
+class AdminAuditLogView(AdminAPIView):
     def get(self, request):
         return Response(ListAuditLogUseCase().execute(actor=request.user))
 
 
-class AdminSessionsView(APIView):
+class AdminSessionsView(AdminAPIView):
     """Operations monitor — all sessions across the platform."""
 
     def get(self, request):
         return Response(ListAdminSessionsUseCase().execute(actor=request.user))
 
 
-class AdminBusinessView(APIView):
+class AdminBusinessView(AdminAPIView):
     """Business KPIs — revenue, subscriptions, plan mix, teaching output."""
 
     def get(self, request):
         return Response(GetBusinessOverviewUseCase().execute(actor=request.user))
 
 
-class AdminPlatformView(APIView):
+class AdminPlatformView(AdminAPIView):
     """Platform monitor — provider health + AI report queue."""
 
     def get(self, request):
@@ -421,7 +435,7 @@ class PlacementStatusView(APIView):
         return Response(s.PlacementAttemptStatusSerializer(dto).data)
 
 
-class AdminPlacementResetSpokenView(APIView):
+class AdminPlacementResetSpokenView(AdminAPIView):
     def post(self, request, student_id):
         data = _validated(s.PlacementResetInputSerializer, request)
         dto = AdminResetSpokenAttemptUseCase().execute(
@@ -652,25 +666,25 @@ class InstructorSuggestQuestionsView(APIView):
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
-class AdminDashboardView(APIView):
+class AdminDashboardView(AdminAPIView):
     def get(self, request):
         dto = GetAdminDashboardUseCase().execute(actor=request.user)
         return Response(s.AdminDashboardSerializer(dto).data)
 
 
-class AdminPaymentProofListView(APIView):
+class AdminPaymentProofListView(AdminAPIView):
     def get(self, request):
         dtos = ListAdminPaymentApprovalsUseCase().execute(actor=request.user)
         return Response(s.PaymentApprovalItemSerializer(dtos, many=True).data)
 
 
-class AdminApprovePaymentView(APIView):
+class AdminApprovePaymentView(AdminAPIView):
     def post(self, request, proof_id):
         dto = ApprovePaymentProofUseCase().execute(actor=request.user, proof_id=proof_id)
         return Response(s.PaymentApprovalResultSerializer(dto).data)
 
 
-class AdminRejectPaymentView(APIView):
+class AdminRejectPaymentView(AdminAPIView):
     def post(self, request, proof_id):
         data = _validated(s.ReviewNoteInputSerializer, request)
         dto = RejectPaymentProofUseCase().execute(
@@ -679,19 +693,19 @@ class AdminRejectPaymentView(APIView):
         return Response(s.PaymentDecisionSerializer(dto).data)
 
 
-class AdminReopenPaymentView(APIView):
+class AdminReopenPaymentView(AdminAPIView):
     def post(self, request, proof_id):
         dto = ReopenPaymentProofUseCase().execute(actor=request.user, proof_id=proof_id)
         return Response(s.PaymentDecisionSerializer(dto).data)
 
 
-class AdminPaymentProofDetailView(APIView):
+class AdminPaymentProofDetailView(AdminAPIView):
     def get(self, request, proof_id):
         dto = GetAdminPaymentProofUseCase().execute(actor=request.user, proof_id=proof_id)
         return Response(s.PaymentProofDetailSerializer(dto).data)
 
 
-class AdminRequestPaymentInfoView(APIView):
+class AdminRequestPaymentInfoView(AdminAPIView):
     def post(self, request, proof_id):
         data = _validated(s.ReviewNoteInputSerializer, request)
         dto = RequestPaymentInformationUseCase().execute(
@@ -700,7 +714,7 @@ class AdminRequestPaymentInfoView(APIView):
         return Response(s.PaymentDecisionSerializer(dto).data)
 
 
-class AdminExtendSubscriptionView(APIView):
+class AdminExtendSubscriptionView(AdminAPIView):
     def patch(self, request, subscription_id):
         data = _validated(s.ExtendSubscriptionInputSerializer, request)
         dto = ExtendSubscriptionUseCase().execute(
@@ -712,7 +726,7 @@ class AdminExtendSubscriptionView(APIView):
         return Response(s.SubscriptionResultSerializer(dto).data)
 
 
-class AdminTopUpSubscriptionView(APIView):
+class AdminTopUpSubscriptionView(AdminAPIView):
     def patch(self, request, subscription_id):
         data = _validated(s.TopUpInputSerializer, request)
         dto = TopUpSubscriptionUseCase().execute(
@@ -724,7 +738,7 @@ class AdminTopUpSubscriptionView(APIView):
         return Response(s.SubscriptionResultSerializer(dto).data)
 
 
-class AdminRefundNoteView(APIView):
+class AdminRefundNoteView(AdminAPIView):
     def post(self, request, subscription_id):
         data = _validated(s.RefundNoteInputSerializer, request)
         dto = RecordRefundNoteUseCase().execute(
@@ -737,7 +751,7 @@ class AdminRefundNoteView(APIView):
         return Response(s.RefundNoteSerializer(dto).data, status=status.HTTP_201_CREATED)
 
 
-class AdminCancelBookingView(APIView):
+class AdminCancelBookingView(AdminAPIView):
     def post(self, request, booking_id):
         data = _validated(s.AdminCancelInputSerializer, request)
         dto = CancelBookingUseCase().execute(
@@ -746,13 +760,31 @@ class AdminCancelBookingView(APIView):
         return Response(s.CancellationSerializer(dto).data)
 
 
-class AdminBookingsListView(APIView):
+class AdminPlansView(AdminAPIView):
+    def get(self, request):
+        plans = ListPlansAdminUseCase().execute(actor=request.user)
+        return Response(s.PlanSerializer(plans, many=True).data)
+
+    def post(self, request):
+        data = _validated(s.CreatePlanInputSerializer, request)
+        plan = CreatePlanUseCase().execute(actor=request.user, data=data)
+        return Response(s.PlanSerializer(plan).data, status=status.HTTP_201_CREATED)
+
+
+class AdminPlanDetailView(AdminAPIView):
+    def patch(self, request, plan_id):
+        data = _validated(s.UpdatePlanInputSerializer, request)
+        plan = UpdatePlanUseCase().execute(actor=request.user, plan_id=plan_id, data=data)
+        return Response(s.PlanSerializer(plan).data)
+
+
+class AdminBookingsListView(AdminAPIView):
     def get(self, request):
         dtos = ListAdminBookingsUseCase().execute(actor=request.user)
         return Response(s.AdminBookingItemSerializer(dtos, many=True).data)
 
 
-class AdminBookingUpdateView(APIView):
+class AdminBookingUpdateView(AdminAPIView):
     def patch(self, request, booking_id):
         # The supported admin update is a cancellation (with an optional credit override).
         data = _validated(s.AdminBookingUpdateInputSerializer, request)
@@ -857,7 +889,7 @@ class SessionReportRegenerateView(APIView):
         return Response(s.AIReportAckSerializer(dto).data, status=status.HTTP_201_CREATED)
 
 
-class AdminSessionReportRegenerateView(APIView):
+class AdminSessionReportRegenerateView(AdminAPIView):
     """Explicit admin-only regeneration of a session report."""
 
     def post(self, request, session_id):

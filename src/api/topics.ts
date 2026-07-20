@@ -20,6 +20,8 @@ import type {
   PaymentApprovalResult,
   PaymentDecision,
   PaymentProofDetail,
+  Plan,
+  CreatePlanInput,
   QuestionFull,
   TopicFull,
   TopicPreview,
@@ -157,6 +159,15 @@ export const topicsApi = {
   },
   adminBookings(): Promise<AdminBookingItem[]> {
     return api.get<AdminBookingItem[]>("/admin/bookings/");
+  },
+  adminPlans(): Promise<Plan[]> {
+    return api.get<Plan[]>("/admin/plans/");
+  },
+  adminCreatePlan(input: CreatePlanInput): Promise<Plan> {
+    return api.post<Plan>("/admin/plans/", input);
+  },
+  adminUpdatePlan(planId: string, patch: Partial<CreatePlanInput>): Promise<Plan> {
+    return api.patch<Plan>(`/admin/plans/${planId}/`, patch);
   },
   adminUpdateBooking(bookingId: string, body: { status: "cancelled"; forceCredit?: boolean }): Promise<Cancellation> {
     return api.patch<Cancellation>(`/admin/bookings/${bookingId}/`, body);

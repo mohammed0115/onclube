@@ -105,6 +105,36 @@ class PlanSerializer(serializers.Serializer):
     sessionsPerMonth = serializers.IntegerField(source="sessions_per_month")
     features = serializers.JSONField()
     recommended = serializers.BooleanField()
+    active = serializers.BooleanField(required=False)
+
+
+class CreatePlanInputSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=40)
+    name = serializers.CharField(max_length=60)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.CharField(max_length=3, required=False, default="SDG")
+    cadence = serializers.CharField(max_length=20, required=False, default="/ month")
+    billing_period_days = serializers.IntegerField(required=False, default=30)
+    description = serializers.CharField(required=False, allow_blank=True, default=None)
+    emoji = serializers.CharField(max_length=8, required=False, allow_blank=True, default=None)
+    sessions_per_month = serializers.IntegerField(min_value=0)
+    features = serializers.JSONField(required=False, default=list)
+    recommended = serializers.BooleanField(required=False, default=False)
+    active = serializers.BooleanField(required=False, default=True)
+
+
+class UpdatePlanInputSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=60, required=False)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    currency = serializers.CharField(max_length=3, required=False)
+    cadence = serializers.CharField(max_length=20, required=False)
+    billing_period_days = serializers.IntegerField(required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    emoji = serializers.CharField(max_length=8, required=False, allow_blank=True)
+    sessions_per_month = serializers.IntegerField(required=False, min_value=0)
+    features = serializers.JSONField(required=False)
+    recommended = serializers.BooleanField(required=False)
+    active = serializers.BooleanField(required=False)
 
 
 class SubscriptionDetailSerializer(serializers.Serializer):

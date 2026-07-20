@@ -434,6 +434,35 @@ export function useAdminCancelBooking() {
   });
 }
 
+// ── admin: plans (Phase 9) ──────────────────────────────────────────────────
+export const useAdminPlans = () =>
+  useQuery({ queryKey: qk.adminPlans, queryFn: topicsApi.adminPlans });
+
+export function useCreatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("@/api/types").CreatePlanInput) => topicsApi.adminCreatePlan(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminPlans });
+      qc.invalidateQueries({ queryKey: qk.plans });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
+export function useUpdatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; patch: Partial<import("@/api/types").CreatePlanInput> }) =>
+      topicsApi.adminUpdatePlan(input.id, input.patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminPlans });
+      qc.invalidateQueries({ queryKey: qk.plans });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
 export const useAdminBusiness = () =>
   useQuery({ queryKey: qk.adminBusiness, queryFn: topicsApi.adminBusiness });
 

@@ -26,6 +26,7 @@ const TRANSLATIONS: Record<string, { en: string; ar: string }> = {
   "nav.teaching": { en: "Teaching", ar: "التدريس" },
   "nav.sessionsAll": { en: "Sessions", ar: "الجلسات" },
   "nav.bookings": { en: "Bookings", ar: "الحجوزات" },
+  "nav.plans": { en: "Plans", ar: "الخطط" },
   "nav.logout": { en: "Log out", ar: "تسجيل الخروج" },
   // common
   "common.save": { en: "Save", ar: "حفظ" },

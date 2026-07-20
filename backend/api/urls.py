@@ -117,6 +117,8 @@ urlpatterns = [
     path("admin/subscriptions/<uuid:subscription_id>/extend/", v.AdminExtendSubscriptionView.as_view()),
     path("admin/subscriptions/<uuid:subscription_id>/topup/", v.AdminTopUpSubscriptionView.as_view()),
     path("admin/subscriptions/<uuid:subscription_id>/refund-note/", v.AdminRefundNoteView.as_view()),
+    path("admin/plans/", v.AdminPlansView.as_view()),
+    path("admin/plans/<uuid:plan_id>/", v.AdminPlanDetailView.as_view()),
     path("admin/bookings/", v.AdminBookingsListView.as_view()),
     path("admin/bookings/<uuid:booking_id>/", v.AdminBookingUpdateView.as_view()),
     path("admin/bookings/<uuid:booking_id>/cancel/", v.AdminCancelBookingView.as_view()),

@@ -46,6 +46,9 @@ CODE_STATUS = {
     "no_sessions_remaining": http_status.HTTP_409_CONFLICT,
     "slot_unavailable": http_status.HTTP_409_CONFLICT,
     "slot_instructor_mismatch": http_status.HTTP_409_CONFLICT,
+    # Admin plan management (Phase 9)
+    "plan_not_found": http_status.HTTP_404_NOT_FOUND,
+    "plan_code_taken": http_status.HTTP_409_CONFLICT,
     "cancellation_window_closed": http_status.HTTP_409_CONFLICT,
     "questions_not_available": http_status.HTTP_403_FORBIDDEN,
     "session_not_joinable": http_status.HTTP_409_CONFLICT,
