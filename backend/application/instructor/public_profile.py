@@ -15,6 +15,11 @@ class GetPublicInstructorUseCase:
 
 
 # ── teacher self-service ──────────────────────────────────────────────────────
+class GetOwnPublicProfileUseCase:
+    def execute(self, *, actor) -> dict:
+        return svc.own_profile_dto(get_instructor_profile(actor))
+
+
 class UpdatePublicProfileUseCase:
     def execute(self, *, actor, data) -> dict:
         return svc.update_public_profile(get_instructor_profile(actor), data)

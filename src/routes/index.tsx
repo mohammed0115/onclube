@@ -42,6 +42,7 @@ import { InstructorDashboardPage } from "@/pages/instructor/InstructorDashboardP
 import { AvailabilityPage } from "@/pages/instructor/AvailabilityPage";
 import { TopicQuestionBuilderPage } from "@/pages/instructor/TopicQuestionBuilderPage";
 import { InstructorProfilePage } from "@/pages/instructor/InstructorProfilePage";
+import { InstructorPublicProfilePage } from "@/pages/instructor/InstructorPublicProfilePage";
 import { InstructorSessionsPage } from "@/pages/instructor/InstructorSessionsPage";
 import { InstructorStudentsPage } from "@/pages/instructor/InstructorStudentsPage";
 import { InstructorStudentDetailPage } from "@/pages/instructor/InstructorStudentDetailPage";
@@ -103,6 +104,7 @@ export function AppRoutes() {
       <Route path="/instructor/availability" element={<RequireRole roles={["instructor", "admin"]}><AvailabilityPage /></RequireRole>} />
       <Route path="/instructor/topics" element={<RequireRole roles={["instructor", "admin"]}><TopicQuestionBuilderPage /></RequireRole>} />
       <Route path="/instructor/profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorProfilePage /></RequireRole>} />
+      <Route path="/instructor/public-profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorPublicProfilePage /></RequireRole>} />
       <Route path="/instructor/sessions" element={<RequireRole roles={["instructor", "admin"]}><InstructorSessionsPage /></RequireRole>} />
       <Route path="/instructor/students" element={<RequireRole roles={["instructor", "admin"]}><InstructorStudentsPage /></RequireRole>} />
       <Route path="/instructor/students/:id" element={<RequireRole roles={["instructor", "admin"]}><InstructorStudentDetailPage /></RequireRole>} />

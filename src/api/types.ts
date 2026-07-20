@@ -611,6 +611,23 @@ export interface PublicInstructorProfile extends PublicInstructor {
   stats: { rating: number; totalSessions: number; yearsExperience: number };
 }
 
+export interface OwnInstructorProfile extends PublicInstructorProfile {
+  profileApproved: boolean;
+  publicUrl: string | null;
+  settings: {
+    showOnLanding: boolean;
+    acceptStudents: boolean;
+    availableForIelts: boolean;
+    availableForBusiness: boolean;
+    availableForConversation: boolean;
+  };
+}
+
+export interface InstructorEducationInput { degree: string; institution: string; country?: string; startYear?: number | null; endYear?: number | null }
+export interface InstructorExperienceInput { company: string; position: string; description?: string; from?: string; to?: string }
+export interface InstructorCertificationInput { title: string; issuer?: string; issueDate?: string; credentialUrl?: string }
+export interface InstructorSocialLinkInput { platform: string; url: string }
+
 export interface AdminBookingItem {
   id: string;
   studentId: string;

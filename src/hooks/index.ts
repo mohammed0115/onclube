@@ -251,6 +251,34 @@ export const usePublicInstructor = (slug: string) =>
     enabled: !!slug,
   });
 
+// ── teacher self-service (build CV) ──
+export const useOwnPublicProfile = () =>
+  useQuery({ queryKey: qk.ownPublicProfile, queryFn: instructorsApi.ownProfile });
+
+function useOwnProfileMutation<T>(fn: (v: T) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.ownPublicProfile });
+      qc.invalidateQueries({ queryKey: qk.publicInstructors });
+    },
+  });
+}
+
+export const useUpdatePublicProfile = () =>
+  useOwnProfileMutation((data: Record<string, unknown>) => instructorsApi.updateProfile(data));
+export const useUpdatePublicSettings = () =>
+  useOwnProfileMutation((data: Record<string, boolean>) => instructorsApi.updateSettings(data));
+export const useReplaceSocialLinks = () =>
+  useOwnProfileMutation((links: import("@/api/types").InstructorSocialLinkInput[]) => instructorsApi.replaceSocial(links));
+export const useReplaceEducation = () =>
+  useOwnProfileMutation((items: import("@/api/types").InstructorEducationInput[]) => instructorsApi.replaceEducation(items));
+export const useReplaceExperience = () =>
+  useOwnProfileMutation((items: import("@/api/types").InstructorExperienceInput[]) => instructorsApi.replaceExperience(items));
+export const useReplaceCertifications = () =>
+  useOwnProfileMutation((items: import("@/api/types").InstructorCertificationInput[]) => instructorsApi.replaceCertifications(items));
+
 // ── AI tutor ──────────────────────────────────────────────────────────────────
 export const useAITutorStatus = () =>
   useQuery({ queryKey: qk.aiTutorStatus, queryFn: bookingApi.aiTutorStatus });

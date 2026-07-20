@@ -145,6 +145,22 @@ def get_public_instructor(slug) -> dict:
     return full_dto(instructor)
 
 
+def own_profile_dto(instructor) -> dict:
+    """The teacher's own editable profile (bypasses the public approval gate) —
+    full public data plus the editable settings + approval status."""
+    data = full_dto(instructor)
+    data["settings"] = {
+        "showOnLanding": instructor.show_on_landing,
+        "acceptStudents": instructor.accept_students,
+        "availableForIelts": instructor.available_for_ielts,
+        "availableForBusiness": instructor.available_for_business,
+        "availableForConversation": instructor.available_for_conversation,
+    }
+    data["profileApproved"] = instructor.profile_approved
+    data["publicUrl"] = f"/instructors/{instructor.slug}" if instructor.slug else None
+    return data
+
+
 # ── teacher self-service ──────────────────────────────────────────────────────
 _PROFILE_FIELDS = {
     "job_title", "headline", "bio", "country", "city", "nationality",

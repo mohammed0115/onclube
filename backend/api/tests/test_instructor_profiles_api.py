@@ -96,6 +96,33 @@ def test_teacher_updates_profile_settings_and_social_links():
     assert ins.job_title == "IELTS Instructor" and ins.slug  # slug auto-assigned
 
 
+def test_teacher_reads_own_profile_and_builds_cv():
+    ins = make_instructor()
+    c = client_for(ins.user)
+
+    # Own profile is readable even before admin approval.
+    own = c.get("/api/v1/instructor/public-profile/")
+    assert own.status_code == 200
+    assert "settings" in own.data and own.data["profileApproved"] is False
+
+    # Build the CV: education + experience + certifications.
+    c.put("/api/v1/instructor/education/", {"items": [
+        {"degree": "BA English", "institution": "Khartoum U", "country": "Sudan", "startYear": 2013, "endYear": 2017},
+    ]}, format="json")
+    c.put("/api/v1/instructor/experience/", {"items": [
+        {"company": "School", "position": "Teacher", "description": "Taught English.", "from": "2018", "to": "Present"},
+    ]}, format="json")
+    r = c.put("/api/v1/instructor/certifications/", {"items": [
+        {"title": "CELTA", "issuer": "Cambridge", "issueDate": "2020", "credentialUrl": ""},
+    ]}, format="json")
+    assert r.status_code == 200
+
+    again = c.get("/api/v1/instructor/public-profile/").data
+    assert len(again["education"]) == 1 and again["education"][0]["degree"] == "BA English"
+    assert len(again["experience"]) == 1 and again["experience"][0]["position"] == "Teacher"
+    assert len(again["certifications"]) == 1 and again["certifications"][0]["title"] == "CELTA"
+
+
 def test_teacher_rejects_unknown_social_platform():
     ins = make_instructor()
     r = client_for(ins.user).put(

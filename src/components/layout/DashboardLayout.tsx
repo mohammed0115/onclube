@@ -18,6 +18,7 @@ import {
   LogOut,
   TrendingUp,
   Bot,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
@@ -31,7 +32,7 @@ const NAV_KEY: Record<string, string> = {
   Dashboard: "nav.dashboard", "Book Session": "nav.book", "My Schedule": "nav.schedule", "My Progress": "nav.progress", "AI Tutor": "nav.aitutor", Practice: "nav.practice",
   Community: "nav.community", "Session Reports": "nav.reports", Settings: "nav.settings",
   Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
-  "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Payment Approval": "nav.payments",
+  "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Public Profile": "nav.publicProfile", "Payment Approval": "nav.payments",
   Members: "nav.members", Business: "nav.business", Platform: "nav.platform",
   "Audit log": "nav.audit", Teaching: "nav.teaching", Sessions: "nav.sessionsAll",
   Bookings: "nav.bookings", Plans: "nav.plans",
@@ -66,6 +67,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: Calendar, label: "My Sessions", short: "Sessions", to: "/instructor/sessions" },
     { icon: Users, label: "My Students", short: "Students", to: "/instructor/students" },
     { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
+    { icon: BadgeCheck, label: "Public Profile", short: "CV", to: "/instructor/public-profile" },
     { icon: User, label: "My Profile", short: "Profile", to: "/instructor/profile" },
   ],
   admin: [

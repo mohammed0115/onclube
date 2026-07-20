@@ -801,7 +801,12 @@ class InstructorPublicDetailView(APIView):
 
 
 class InstructorPublicProfileView(APIView):
-    """Teacher edits their own professional information."""
+    """Teacher reads/edits their own professional (public) profile."""
+
+    def get(self, request):
+        from application.instructor.public_profile import GetOwnPublicProfileUseCase
+
+        return Response(GetOwnPublicProfileUseCase().execute(actor=request.user))
 
     def put(self, request):
         from application.instructor.public_profile import UpdatePublicProfileUseCase
