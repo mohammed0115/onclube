@@ -714,6 +714,33 @@ class SetAvailabilityInputSerializer(serializers.Serializer):
     slots = _SlotInputSerializer(many=True)
 
 
+# ── recurring weekly schedule (student-driven) ──────────────────────────────────
+class _SchedulePickInputSerializer(serializers.Serializer):
+    weekday = serializers.IntegerField(min_value=0, max_value=6)
+    startTime = serializers.TimeField()
+    topicId = serializers.UUIDField()
+    durationMinutes = serializers.IntegerField(min_value=1, required=False, default=45)
+
+
+class SetStudentScheduleInputSerializer(serializers.Serializer):
+    picks = _SchedulePickInputSerializer(many=True)
+
+
+class _RecurringWindowInputSerializer(serializers.Serializer):
+    weekday = serializers.IntegerField(min_value=0, max_value=6)
+    startTime = serializers.TimeField()
+    endTime = serializers.TimeField()
+
+    def validate(self, data):
+        if data["endTime"] <= data["startTime"]:
+            raise serializers.ValidationError("endTime must be after startTime.")
+        return data
+
+
+class SetRecurringAvailabilityInputSerializer(serializers.Serializer):
+    windows = _RecurringWindowInputSerializer(many=True)
+
+
 # ── placement (Phase 8E) ───────────────────────────────────────────────────────
 # Output serializers read frozen DTOs only. `options` are the visible MCQ choices;
 # the answer key (`correct_answer`, `correct_index`, `scoring_rubric`) and any

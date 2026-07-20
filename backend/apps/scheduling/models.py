@@ -183,6 +183,15 @@ class Booking(BaseModel, SoftDeleteModel):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     credit_refunded = models.BooleanField(default=False)
+    # When a booking was materialised from a student's recurring weekly schedule,
+    # this links back to the originating pick (null for one-off manual bookings).
+    schedule_slot = models.ForeignKey(
+        "StudentScheduleSlot",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bookings",
+    )
 
     class Meta:
         db_table = "bookings"
@@ -323,3 +332,93 @@ class AvailabilityException(BaseModel):
 
     def __str__(self):
         return f"AvailabilityException<{self.instructor_id} {self.kind} {self.start_at:%Y-%m-%d}>"
+
+
+class RecurringAvailability(BaseModel):
+    """An instructor's *recurring weekly* availability window — e.g. "every Sunday
+    08:00–22:00". This replaces the need to pre-create individual slots: a student
+    picks their own recurring times, and those picks are only valid when they fall
+    inside one of these windows. `weekday` is 0=Monday … 6=Sunday (matches
+    `domain.rules.scheduling.WEEKDAY_NAMES`). When an instructor has *no* windows at
+    all, they are treated as available all week (the "available all the time"
+    default), so the feature works with zero instructor setup."""
+
+    instructor = models.ForeignKey(
+        "accounts.InstructorProfile",
+        on_delete=models.CASCADE,
+        related_name="recurring_availability",
+    )
+    weekday = models.PositiveSmallIntegerField()  # 0=Mon … 6=Sun
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        db_table = "recurring_availability"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["instructor", "weekday", "start_time"],
+                name="uniq_recurring_window_per_instructor",
+            ),
+            models.CheckConstraint(
+                check=models.Q(weekday__gte=0) & models.Q(weekday__lte=6),
+                name="chk_recurring_weekday_range",
+            ),
+            models.CheckConstraint(
+                check=models.Q(end_time__gt=models.F("start_time")),
+                name="chk_recurring_window_range",
+            ),
+        ]
+        indexes = [models.Index(fields=["instructor", "weekday"])]
+
+    def __str__(self):
+        return f"RecurringAvailability<{self.instructor_id} d{self.weekday} {self.start_time}-{self.end_time}>"
+
+
+class StudentScheduleSlot(BaseModel, SoftDeleteModel):
+    """One recurring weekly pick a *student* makes for themselves: "every
+    <weekday> at <start_time>, practise <topic> with its instructor". The system
+    materialises concrete `Booking`s from active picks for the coming weeks
+    (`services.generate_bookings_from_schedule`), consuming one session credit per
+    generated booking. `weekday` is 0=Monday … 6=Sunday.
+
+    At most one *active* pick per (student, weekday, start_time) — a student can't
+    book themselves into two topics at the same wall-clock time."""
+
+    student = models.ForeignKey(
+        "accounts.StudentProfile",
+        on_delete=models.CASCADE,
+        related_name="schedule_slots",
+    )
+    instructor = models.ForeignKey(
+        "accounts.InstructorProfile",
+        on_delete=models.PROTECT,
+        related_name="student_schedule_slots",
+    )
+    topic = models.ForeignKey(
+        Topic, on_delete=models.PROTECT, related_name="schedule_slots"
+    )
+    weekday = models.PositiveSmallIntegerField()  # 0=Mon … 6=Sun
+    start_time = models.TimeField()
+    duration_minutes = models.PositiveIntegerField(default=45)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "student_schedule_slots"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "weekday", "start_time"],
+                condition=models.Q(active=True, deleted_at__isnull=True),
+                name="uniq_active_student_schedule_slot",
+            ),
+            models.CheckConstraint(
+                check=models.Q(weekday__gte=0) & models.Q(weekday__lte=6),
+                name="chk_schedule_slot_weekday_range",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["student", "active"]),
+            models.Index(fields=["instructor", "weekday"]),
+        ]
+
+    def __str__(self):
+        return f"StudentScheduleSlot<{self.student_id} d{self.weekday} {self.start_time} {self.topic_id}>"

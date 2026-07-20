@@ -442,6 +442,70 @@ export interface WeeklyCalendar {
   days: CalendarDay[];
 }
 
+// ── recurring weekly schedule (student-driven) ──────────────────────────────────
+export interface SchedulePick {
+  id: string;
+  weekday: number; // 0=Mon … 6=Sun
+  startTime: string; // "HH:MM"
+  durationMinutes: number;
+  topicId: string;
+  topicTitle: string;
+  instructorId: string;
+  instructorName: string;
+}
+
+export interface GeneratedBooking {
+  bookingId: string;
+  topicTitle: string;
+  scheduledAt: string;
+  status: string;
+}
+
+export interface ScheduleGenerationSummary {
+  created: number;
+  skipped: number;
+  outOfCredits: boolean;
+  bookings: GeneratedBooking[];
+}
+
+export interface ScheduleUpcomingItem {
+  bookingId: string;
+  topicTitle: string;
+  instructorName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+}
+
+export interface StudentSchedule {
+  schedule: SchedulePick[];
+  upcoming: ScheduleUpcomingItem[];
+}
+
+export interface SetScheduleResult {
+  schedule: SchedulePick[];
+  generated: ScheduleGenerationSummary;
+}
+
+export interface SchedulePickInput {
+  weekday: number;
+  startTime: string; // "HH:MM"
+  topicId: string;
+  durationMinutes?: number;
+}
+
+export interface AvailabilityWindow {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface InstructorWindows {
+  instructorId: string | null;
+  instructorName: string | null;
+  windows: AvailabilityWindow[];
+}
+
 export interface AdminBookingItem {
   id: string;
   studentId: string;

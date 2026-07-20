@@ -5,7 +5,7 @@ Encodes: §2.1 no double booking, §2.3 sessions ≥ 0, §2.4 expired subscripti
 blocks booking, Business Rule 8 cancellation credit window, and §2.5 question
 visibility gate.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.db.models import F
@@ -34,6 +34,8 @@ from domain.rules.scheduling import (
     CANCELLATION_CREDIT_WINDOW,  # re-exported for backward compatibility
     cancellation_refunds_credit,
     is_covered_by_intervals,
+    time_within_windows,
+    upcoming_dates_for_weekday,
 )
 
 from .models import (
@@ -43,7 +45,9 @@ from .models import (
     GroupSession,
     GroupSessionAttendee,
     Question,
+    RecurringAvailability,
     SessionRating,
+    StudentScheduleSlot,
     Topic,
 )
 
@@ -403,3 +407,264 @@ def get_topic_for_student(student, topic: Topic) -> dict:
         .values("id", "text", "ai_assisted")
     )
     return base
+
+
+# ── Recurring weekly schedule (student-driven) ────────────────────────────────
+#
+# The student builds their OWN recurring weekly timetable: for each pick they
+# choose a weekday, a time and a topic (which carries its instructor). Those picks
+# are only valid inside the instructor's recurring availability windows. The
+# system then materialises concrete Bookings for the coming weeks from the active
+# picks, reusing `create_booking` so credits, notifications, live-session rooms and
+# reports all keep working unchanged.
+
+# How many weeks ahead each active pick is materialised into real bookings.
+SCHEDULE_HORIZON_WEEKS = 2
+
+
+def _hm(t):
+    """(hour, minute) key so times compare without seconds/microseconds noise."""
+    return (t.hour, t.minute)
+
+
+def list_instructor_recurring_availability(instructor):
+    """The instructor's recurring weekly windows, ordered for display."""
+    return list_instructor_recurring_availability_by_id(instructor.pk)
+
+
+def list_instructor_recurring_availability_by_id(instructor_id):
+    """The recurring weekly windows for an instructor id, ordered for display."""
+    if not instructor_id:
+        return []
+    return list(
+        RecurringAvailability.objects.filter(instructor_id=instructor_id).order_by(
+            "weekday", "start_time"
+        )
+    )
+
+
+def instructor_windows_by_weekday(instructor_id):
+    """{weekday: [(start_time, end_time), …]} for a given instructor."""
+    out = {}
+    for w in RecurringAvailability.objects.filter(instructor_id=instructor_id).only(
+        "weekday", "start_time", "end_time"
+    ):
+        out.setdefault(w.weekday, []).append((w.start_time, w.end_time))
+    return out
+
+
+@transaction.atomic
+def set_instructor_recurring_availability(instructor, windows, *, actor=None):
+    """Replace the instructor's recurring windows with the desired set. Each window
+    is a dict {weekday, start_time, end_time}. Idempotent (full replace)."""
+    seen = set()
+    cleaned = []
+    for w in windows:
+        weekday = int(w["weekday"])
+        start = w["start_time"]
+        end = w["end_time"]
+        if not (0 <= weekday <= 6):
+            raise BusinessRuleError("weekday must be 0..6.", code="invalid_weekday")
+        if end <= start:
+            raise BusinessRuleError("End must be after start.", code="invalid_window_range")
+        key = (weekday, _hm(start))
+        if key in seen:
+            continue  # collapse duplicates on the same (weekday, start)
+        seen.add(key)
+        cleaned.append((weekday, start, end))
+
+    RecurringAvailability.objects.filter(instructor=instructor).delete()
+    RecurringAvailability.objects.bulk_create(
+        [
+            RecurringAvailability(
+                instructor=instructor,
+                weekday=weekday,
+                start_time=start,
+                end_time=end,
+                created_by=actor,
+                updated_by=actor,
+            )
+            for (weekday, start, end) in cleaned
+        ]
+    )
+    return list_instructor_recurring_availability(instructor)
+
+
+def list_student_schedule(student):
+    """The student's active recurring picks, ordered weekday→time."""
+    return list(
+        StudentScheduleSlot.objects.filter(
+            student=student, active=True, deleted_at__isnull=True
+        )
+        .select_related("topic", "instructor", "instructor__user")
+        .order_by("weekday", "start_time")
+    )
+
+
+def _validate_pick(student, pick):
+    """Validate one desired pick and resolve its topic/instructor. Returns a dict
+    ready to persist. Raises BusinessRuleError on any invalid pick."""
+    weekday = int(pick["weekday"])
+    start_time = pick["start_time"]
+    duration = int(pick.get("duration_minutes") or 45)
+    topic_id = pick["topic_id"]
+
+    if not (0 <= weekday <= 6):
+        raise BusinessRuleError("weekday must be 0..6.", code="invalid_weekday")
+    if duration <= 0:
+        raise BusinessRuleError("Duration must be positive.", code="invalid_duration")
+
+    topic = (
+        Topic.objects.select_related("instructor")
+        .filter(pk=topic_id, published=True, deleted_at__isnull=True)
+        .first()
+    )
+    if topic is None:
+        raise BusinessRuleError("Topic not found or not published.", code="topic_not_found")
+
+    windows = [
+        (w.start_time, w.end_time)
+        for w in RecurringAvailability.objects.filter(
+            instructor_id=topic.instructor_id, weekday=weekday
+        ).only("start_time", "end_time")
+    ]
+    # An instructor with *no* windows at all is treated as available all week.
+    has_any_window = RecurringAvailability.objects.filter(
+        instructor_id=topic.instructor_id
+    ).exists()
+    if has_any_window and not time_within_windows(start_time, windows):
+        raise BusinessRuleError(
+            "That time is outside the instructor's available hours.",
+            code="outside_availability",
+        )
+    return {
+        "weekday": weekday,
+        "start_time": start_time,
+        "duration_minutes": duration,
+        "topic": topic,
+        "instructor": topic.instructor,
+    }
+
+
+@transaction.atomic
+def set_student_schedule(student, picks):
+    """Upsert the student's recurring weekly schedule from `picks`. Each pick is a
+    dict {weekday, start_time, topic_id, duration_minutes?}. Picks removed from the
+    desired set are deactivated (their already-generated bookings are preserved).
+    Returns the active pick rows. Does NOT itself generate bookings — the caller
+    runs `generate_bookings_from_schedule` after."""
+    validated = [_validate_pick(student, p) for p in picks]
+
+    existing = {
+        (s.weekday, _hm(s.start_time)): s
+        for s in StudentScheduleSlot.objects.filter(
+            student=student, active=True, deleted_at__isnull=True
+        )
+    }
+    desired_keys = set()
+    result = []
+    for v in validated:
+        key = (v["weekday"], _hm(v["start_time"]))
+        if key in desired_keys:
+            continue  # a student can't pick the same weekday+time twice
+        desired_keys.add(key)
+        cur = existing.get(key)
+        if cur is None:
+            cur = StudentScheduleSlot.objects.create(
+                student=student,
+                instructor=v["instructor"],
+                topic=v["topic"],
+                weekday=v["weekday"],
+                start_time=v["start_time"],
+                duration_minutes=v["duration_minutes"],
+                active=True,
+            )
+        else:
+            fields = []
+            if cur.topic_id != v["topic"].id:
+                cur.topic = v["topic"]
+                fields.append("topic")
+            if cur.instructor_id != v["instructor"].id:
+                cur.instructor = v["instructor"]
+                fields.append("instructor")
+            if cur.duration_minutes != v["duration_minutes"]:
+                cur.duration_minutes = v["duration_minutes"]
+                fields.append("duration_minutes")
+            if fields:
+                fields.append("updated_at")
+                cur.save(update_fields=fields)
+        result.append(cur)
+
+    for key, s in existing.items():
+        if key not in desired_keys:
+            s.active = False
+            s.save(update_fields=["active", "updated_at"])
+
+    return result
+
+
+def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_WEEKS, now=None):
+    """Materialise concrete Bookings from the student's active recurring picks for
+    the next `horizon_weeks` occurrences of each pick.
+
+    Reuses `create_booking`, so every generated booking consumes exactly one
+    session credit and gets its live-session room + notifications. Generation is
+    idempotent (an occurrence that already has a live booking is skipped) and stops
+    cleanly the moment the student runs out of credits. Returns a summary dict."""
+    now = now or timezone.now()
+    tz = timezone.get_current_timezone()
+    ref_date = timezone.localtime(now).date()
+
+    picks = list_student_schedule(student)
+    created = []
+    skipped = []
+    out_of_credits = False
+
+    for pick in picks:
+        if out_of_credits:
+            break
+        dates = upcoming_dates_for_weekday(
+            weekday=pick.weekday, reference=ref_date, count=horizon_weeks, include_today=True
+        )
+        for d in dates:
+            naive = datetime.combine(d, pick.start_time)
+            start_at = timezone.make_aware(naive, tz)
+            if start_at < now:
+                continue  # occurrence already in the past
+
+            already = (
+                Booking.objects.filter(schedule_slot=pick, scheduled_at=start_at)
+                .exclude(status=BookingStatus.CANCELLED)
+                .exists()
+            )
+            if already:
+                continue
+
+            if is_covered_by_intervals(start_at, exception_intervals(pick.instructor_id)):
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "instructor_unavailable"})
+                continue
+
+            slot, _ = AvailabilitySlot.objects.get_or_create(
+                instructor=pick.instructor,
+                start_at=start_at,
+                defaults={"duration_minutes": pick.duration_minutes, "status": SlotStatus.OPEN},
+            )
+            if slot.status == SlotStatus.BOOKED:
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "slot_taken"})
+                continue
+
+            try:
+                booking = create_booking(student, pick.topic, slot)
+            except InsufficientSessionCredits:
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "no_credits"})
+                out_of_credits = True
+                break
+            except (SlotAlreadyBooked, NoActiveSubscription, SubscriptionExpired, BusinessRuleError) as exc:
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": getattr(exc, "code", "unavailable")})
+                continue
+
+            booking.schedule_slot = pick
+            booking.save(update_fields=["schedule_slot", "updated_at"])
+            created.append(booking)
+
+    return {"created": created, "skipped": skipped, "out_of_credits": out_of_credits}

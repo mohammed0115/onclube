@@ -6,7 +6,12 @@ import type {
   BookingResult,
   Cancellation,
   GroupSession,
+  InstructorWindows,
+  ScheduleGenerationSummary,
+  SchedulePickInput,
+  SetScheduleResult,
   StudentDashboard,
+  StudentSchedule,
   WeeklyCalendar,
 } from "./types";
 
@@ -20,6 +25,26 @@ export const bookingApi = {
     const q = new URLSearchParams({ topicId });
     if (weekStart) q.set("weekStart", weekStart);
     return api.get<WeeklyCalendar>(`/student/calendar/?${q.toString()}`);
+  },
+
+  /** The student's recurring weekly schedule + upcoming materialised bookings. */
+  schedule(): Promise<StudentSchedule> {
+    return api.get<StudentSchedule>("/student/schedule/");
+  },
+
+  /** Replace the weekly schedule and (re)generate upcoming bookings. */
+  setSchedule(picks: SchedulePickInput[]): Promise<SetScheduleResult> {
+    return api.put<SetScheduleResult>("/student/schedule/", { picks });
+  },
+
+  /** Re-run booking generation from the existing schedule (idempotent). */
+  generateSchedule(): Promise<ScheduleGenerationSummary> {
+    return api.post<ScheduleGenerationSummary>("/student/schedule/generate/", {});
+  },
+
+  /** The instructor availability windows a student may pick within (by topic). */
+  scheduleWindows(topicId: string): Promise<InstructorWindows> {
+    return api.get<InstructorWindows>(`/student/schedule/windows/?topicId=${encodeURIComponent(topicId)}`);
   },
 
   myBookings(): Promise<BookingListItem[]> {

@@ -1,8 +1,8 @@
 """Pure scheduling rules — bookability and the cancellation credit window."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import date, datetime, time, timedelta
+from typing import Iterable, Optional, Tuple
 
 # Business Rule 8: cancelling strictly more than 24h before the session returns
 # the session credit.
@@ -53,6 +53,34 @@ def is_covered_by_intervals(dt, intervals) -> bool:
     """True if `dt` falls inside any half-open [start, end) interval — used to test
     whether a slot time lands within an instructor's availability exception."""
     return any(start <= dt < end for start, end in intervals)
+
+
+# ── recurring weekly schedule (student-driven) ────────────────────────────────
+def time_within_windows(t: time, windows: Iterable[Tuple[time, time]]) -> bool:
+    """True if `t` falls inside any half-open [start, end) time window. An empty
+    window list means "no restriction" (instructor available all day) and always
+    returns True — this is the "available all the time" default when an instructor
+    has published no recurring availability."""
+    windows = list(windows)
+    if not windows:
+        return True
+    return any(start <= t < end for start, end in windows)
+
+
+def upcoming_dates_for_weekday(
+    *, weekday: int, reference: date, count: int, include_today: bool = True
+) -> list[date]:
+    """The next `count` calendar dates that fall on `weekday` (0=Mon … 6=Sun),
+    starting from `reference`. When `include_today` is True and `reference` already
+    is that weekday, `reference` is the first date returned; otherwise it starts at
+    the next occurrence. Pure — no timezone, no clock."""
+    if not (0 <= weekday <= 6):
+        raise ValueError("weekday must be 0..6 (Monday..Sunday)")
+    delta = (weekday - reference.weekday()) % 7
+    if delta == 0 and not include_today:
+        delta = 7
+    first = reference + timedelta(days=delta)
+    return [first + timedelta(days=7 * i) for i in range(max(count, 0))]
 
 
 def calendar_slot_status(*, slot_status, start_at, now, open_value="open",

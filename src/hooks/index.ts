@@ -232,6 +232,30 @@ export const useWeeklyCalendar = (topicId: string, weekStart?: string) =>
     enabled: !!topicId,
   });
 
+// ── recurring weekly schedule (student-driven) ──────────────────────────────────
+export const useStudentSchedule = () =>
+  useQuery({ queryKey: qk.studentSchedule, queryFn: bookingApi.schedule });
+
+export const useScheduleWindows = (topicId: string) =>
+  useQuery({
+    queryKey: qk.scheduleWindows(topicId || "none"),
+    queryFn: () => bookingApi.scheduleWindows(topicId),
+    enabled: !!topicId,
+  });
+
+export function useSetStudentSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (picks: import("@/api/types").SchedulePickInput[]) => bookingApi.setSchedule(picks),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.studentSchedule });
+      qc.invalidateQueries({ queryKey: qk.bookings });
+      qc.invalidateQueries({ queryKey: qk.studentDashboard });
+      qc.invalidateQueries({ queryKey: qk.subscription });
+    },
+  });
+}
+
 export function useCreateBooking() {
   const qc = useQueryClient();
   return useMutation({

@@ -86,9 +86,12 @@ from application.notifications.use_cases import MarkNotificationReadUseCase
 from application.scheduling.queries import (
     GetBookingDetailUseCase,
     GetInstructorDashboardUseCase,
+    GetInstructorWindowsUseCase,
     GetPracticeContentUseCase,
     GetQuestionsForBookingUseCase,
+    GetRecurringAvailabilityUseCase,
     GetStudentDashboardUseCase,
+    GetStudentScheduleUseCase,
     GetTopicPreviewOrFullUseCase,
     GetWeeklyCalendarUseCase,
     ListAdminBookingsUseCase,
@@ -104,11 +107,14 @@ from application.scheduling.queries import (
 from application.scheduling.use_cases import (
     CancelBookingUseCase,
     CreateBookingUseCase,
+    GenerateScheduleBookingsUseCase,
     JoinGroupSessionUseCase,
     LeaveGroupSessionUseCase,
     ListAvailableSlotsUseCase,
     RateSessionUseCase,
     RescheduleBookingUseCase,
+    SetRecurringAvailabilityUseCase,
+    SetStudentScheduleUseCase,
 )
 
 # Sessions
@@ -634,6 +640,55 @@ class StudentCalendarView(APIView):
         return Response(s.WeeklyCalendarSerializer(dto).data)
 
 
+class StudentScheduleView(APIView):
+    """The student's recurring weekly schedule. GET returns the saved picks and the
+    upcoming bookings materialised from them; PUT replaces the schedule and
+    (re)generates the next couple of weeks of bookings."""
+
+    def get(self, request):
+        return Response(GetStudentScheduleUseCase().execute(actor=request.user))
+
+    def put(self, request):
+        data = _validated(s.SetStudentScheduleInputSerializer, request)
+        picks = [
+            {
+                "weekday": p["weekday"],
+                "start_time": p["startTime"],
+                "topic_id": p["topicId"],
+                "duration_minutes": p.get("durationMinutes", 45),
+            }
+            for p in data["picks"]
+        ]
+        result = SetStudentScheduleUseCase().execute(actor=request.user, picks=picks)
+        return Response(result)
+
+
+class StudentScheduleGenerateView(APIView):
+    """Materialise upcoming bookings from the student's existing schedule (idempotent)."""
+
+    def post(self, request):
+        return Response(GenerateScheduleBookingsUseCase().execute(actor=request.user))
+
+
+class StudentScheduleWindowsView(APIView):
+    """The recurring availability windows a student may pick within — resolved from
+    a topicId (its instructor) or an explicit instructorId query param."""
+
+    def get(self, request):
+        topic_id = request.query_params.get("topicId")
+        instructor_id = request.query_params.get("instructorId")
+        if not topic_id and not instructor_id:
+            return Response(
+                {"code": "validation_error", "detail": "topicId or instructorId is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            GetInstructorWindowsUseCase().execute(
+                actor=request.user, topic_id=topic_id, instructor_id=instructor_id
+            )
+        )
+
+
 # ── Instructor ────────────────────────────────────────────────────────────────
 class InstructorDashboardView(APIView):
     def get(self, request):
@@ -1005,6 +1060,27 @@ class InstructorSetAvailabilityView(APIView):
         ]
         dtos = SetAvailabilityUseCase().execute(actor=request.user, slots=slots)
         return Response(s.InstructorSlotSerializer(dtos, many=True).data)
+
+
+class InstructorRecurringAvailabilityView(APIView):
+    """The instructor's recurring weekly availability windows (the times within
+    which students may build their own schedule). GET lists; PUT replaces."""
+
+    def get(self, request):
+        return Response(GetRecurringAvailabilityUseCase().execute(actor=request.user))
+
+    def put(self, request):
+        data = _validated(s.SetRecurringAvailabilityInputSerializer, request)
+        windows = [
+            {
+                "weekday": w["weekday"],
+                "start_time": w["startTime"],
+                "end_time": w["endTime"],
+            }
+            for w in data["windows"]
+        ]
+        result = SetRecurringAvailabilityUseCase().execute(actor=request.user, windows=windows)
+        return Response(result)
 
 
 class InstructorBookingsView(APIView):

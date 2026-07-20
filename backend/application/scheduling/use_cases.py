@@ -194,3 +194,85 @@ class ListAvailableSlotsUseCase:
             )
             for s in slots
         ]
+
+
+# ── Recurring weekly schedule ─────────────────────────────────────────────────
+def _fmt_time(t):
+    return t.strftime("%H:%M")
+
+
+def schedule_pick_dto(pick) -> dict:
+    """Serialise one StudentScheduleSlot to a camelCase dict."""
+    return {
+        "id": str(pick.id),
+        "weekday": pick.weekday,
+        "startTime": _fmt_time(pick.start_time),
+        "durationMinutes": pick.duration_minutes,
+        "topicId": str(pick.topic_id),
+        "topicTitle": pick.topic.title,
+        "instructorId": str(pick.instructor_id),
+        "instructorName": pick.instructor.user.full_name,
+    }
+
+
+def _generated_summary(result) -> dict:
+    return {
+        "created": len(result["created"]),
+        "skipped": len(result["skipped"]),
+        "outOfCredits": result["out_of_credits"],
+        "bookings": [
+            {
+                "bookingId": str(b.id),
+                "topicTitle": b.topic_title,
+                "scheduledAt": b.scheduled_at.isoformat(),
+                "status": b.status,
+            }
+            for b in result["created"]
+        ],
+    }
+
+
+class SetStudentScheduleUseCase:
+    """Replace the student's recurring weekly schedule, then materialise the next
+    couple of weeks of bookings from it. Returns the saved schedule plus a summary
+    of the bookings that were generated."""
+
+    def execute(self, *, actor, picks) -> dict:
+        student = get_student_profile(actor)
+        saved = scheduling_services.set_student_schedule(student, picks)
+        generated = scheduling_services.generate_bookings_from_schedule(student)
+        return {
+            "schedule": [schedule_pick_dto(p) for p in saved],
+            "generated": _generated_summary(generated),
+        }
+
+
+class GenerateScheduleBookingsUseCase:
+    """Materialise upcoming bookings from the student's existing schedule (idempotent).
+    Intended for on-demand refresh and for a periodic rolling job."""
+
+    def execute(self, *, actor) -> dict:
+        student = get_student_profile(actor)
+        generated = scheduling_services.generate_bookings_from_schedule(student)
+        return _generated_summary(generated)
+
+
+class SetRecurringAvailabilityUseCase:
+    """An instructor replaces their recurring weekly availability windows."""
+
+    def execute(self, *, actor, windows) -> list:
+        from application.permissions import get_instructor_profile
+
+        instructor = get_instructor_profile(actor)
+        saved = scheduling_services.set_instructor_recurring_availability(
+            instructor, windows, actor=actor
+        )
+        return [
+            {
+                "id": str(w.id),
+                "weekday": w.weekday,
+                "startTime": _fmt_time(w.start_time),
+                "endTime": _fmt_time(w.end_time),
+            }
+            for w in saved
+        ]

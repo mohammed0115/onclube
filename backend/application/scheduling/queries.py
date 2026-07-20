@@ -87,6 +87,93 @@ class GetWeeklyCalendarUseCase:
         )
 
 
+class GetStudentScheduleUseCase:
+    """The student's own recurring weekly schedule + the upcoming bookings that
+    were materialised from it."""
+
+    def execute(self, *, actor) -> dict:
+        from apps.scheduling import services as scheduling_services
+        from application.scheduling.use_cases import schedule_pick_dto
+
+        student = get_student_profile(actor)
+        picks = scheduling_services.list_student_schedule(student)
+        now = timezone.now()
+        upcoming = [
+            b
+            for b in self.__bookings().list_for_student(student)
+            if b.status == BookingStatus.UPCOMING
+            and b.schedule_slot_id is not None
+            and b.scheduled_at >= now
+        ]
+        upcoming.sort(key=lambda b: b.scheduled_at)
+        return {
+            "schedule": [schedule_pick_dto(p) for p in picks],
+            "upcoming": [
+                {
+                    "bookingId": str(b.id),
+                    "topicTitle": b.topic_title,
+                    "instructorName": b.instructor_name,
+                    "scheduledAt": b.scheduled_at.isoformat(),
+                    "durationMinutes": b.duration_minutes,
+                    "status": b.status,
+                }
+                for b in upcoming
+            ],
+        }
+
+    def __bookings(self):
+        return default_booking_repository()
+
+
+class GetInstructorWindowsUseCase:
+    """The recurring availability windows a student may pick within, resolved from
+    a topic (its instructor) or an explicit instructor id."""
+
+    def __init__(self, *, topics=None):
+        self.topics = topics or default_topic_repository()
+
+    def execute(self, *, actor, topic_id=None, instructor_id=None) -> dict:
+        from apps.scheduling import services as scheduling_services
+
+        get_student_profile(actor)  # student action
+        instructor_name = None
+        if topic_id is not None:
+            topic = self.topics.get(topic_id)
+            instructor_id = str(topic.instructor_id)
+            instructor_name = topic.instructor.user.full_name
+        windows = scheduling_services.list_instructor_recurring_availability_by_id(instructor_id)
+        return {
+            "instructorId": str(instructor_id) if instructor_id else None,
+            "instructorName": instructor_name,
+            "windows": [
+                {
+                    "weekday": w.weekday,
+                    "startTime": w.start_time.strftime("%H:%M"),
+                    "endTime": w.end_time.strftime("%H:%M"),
+                }
+                for w in windows
+            ],
+        }
+
+
+class GetRecurringAvailabilityUseCase:
+    """The instructor's own recurring weekly availability windows."""
+
+    def execute(self, *, actor) -> list:
+        from apps.scheduling import services as scheduling_services
+
+        instructor = get_instructor_profile(actor)
+        return [
+            {
+                "id": str(w.id),
+                "weekday": w.weekday,
+                "startTime": w.start_time.strftime("%H:%M"),
+                "endTime": w.end_time.strftime("%H:%M"),
+            }
+            for w in scheduling_services.list_instructor_recurring_availability(instructor)
+        ]
+
+
 class ListAdminBookingsUseCase:
     """All bookings (admin), newest first. Cancelled bookings are preserved."""
 
