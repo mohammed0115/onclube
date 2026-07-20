@@ -14,7 +14,10 @@ export const SELECTED_PLAN_KEY = "ec_selected_plan";
 export function PricingPage() {
   const { tx } = useI18n();
   const navigate = useNavigate();
-  const { data: plans, isLoading, isError, error, refetch } = usePlans();
+  const { data: allPlans, isLoading, isError, error, refetch } = usePlans();
+  // The main pricing page sells live-session plans; AI-tutor plans are subscribed
+  // from the AI Tutor page.
+  const plans = allPlans?.filter((p) => (p.kind ?? "sessions") === "sessions");
   const [selected, setSelected] = useState<string>("");
 
   // Default to the recommended plan once data arrives.

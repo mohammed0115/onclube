@@ -231,6 +231,7 @@ export interface Plan {
   id: string;
   code: string;
   name: string;
+  kind?: "sessions" | "ai_tutor";
   emoji: string | null;
   price: number;
   currency: string;
@@ -549,6 +550,30 @@ export interface StudentPlan {
   recommendedTopics: string[];
   focusAreas: string[];
   fromSession: { topic: string; date: string | null } | null;
+}
+
+// ── AI tutor ────────────────────────────────────────────────────────────────────
+export interface AITutorMessage {
+  role: "tutor" | "student";
+  text: string;
+  at: string;
+}
+
+export interface AITutorSession {
+  sessionId: string;
+  topic: string;
+  status: string;
+  startedAt: string;
+  expiresAt: string;
+  remainingSeconds: number;
+  messages: AITutorMessage[];
+}
+
+export interface AITutorStatus {
+  subscribed: boolean;
+  subscription: { expiresAt: string } | null;
+  sessionMinutes: number;
+  activeSession: AITutorSession | null;
 }
 
 export interface AdminBookingItem {

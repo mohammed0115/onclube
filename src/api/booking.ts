@@ -10,6 +10,8 @@ import type {
   ScheduleGenerationSummary,
   SchedulePickInput,
   SetScheduleResult,
+  AITutorSession,
+  AITutorStatus,
   StudentDashboard,
   StudentPlan,
   StudentProgress,
@@ -30,6 +32,20 @@ export const bookingApi = {
   /** Personal learning plan, regenerated from the latest report. */
   plan(): Promise<StudentPlan> {
     return api.get<StudentPlan>("/student/plan/");
+  },
+
+  // ── AI tutor ──
+  aiTutorStatus(): Promise<AITutorStatus> {
+    return api.get<AITutorStatus>("/student/ai-tutor/status/");
+  },
+  aiTutorStart(topic: string): Promise<AITutorSession> {
+    return api.post<AITutorSession>("/student/ai-tutor/start/", { topic });
+  },
+  aiTutorMessage(sessionId: string, text: string): Promise<AITutorSession> {
+    return api.post<AITutorSession>(`/student/ai-tutor/${sessionId}/message/`, { text });
+  },
+  aiTutorEnd(sessionId: string): Promise<AITutorSession> {
+    return api.post<AITutorSession>(`/student/ai-tutor/${sessionId}/end/`, {});
   },
 
   /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */

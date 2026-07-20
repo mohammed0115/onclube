@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from apps.common.enums import PaymentProofStatus, SubscriptionStatus
+from apps.common.enums import PaymentProofStatus, PlanKind, SubscriptionStatus
 from apps.common.models import BaseModel, SoftDeleteModel, TimeStampedModel, UUIDModel
 
 RETENTION_YEARS = 5
@@ -50,6 +50,10 @@ class Plan(BaseModel):
 
     code = models.CharField(max_length=40, unique=True)
     name = models.CharField(max_length=60)
+    # Which product this plan buys: live instructor sessions, or AI-tutor practice.
+    kind = models.CharField(
+        max_length=20, choices=PlanKind.choices, default=PlanKind.SESSIONS
+    )
     emoji = models.CharField(max_length=8, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default="SDG")

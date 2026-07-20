@@ -58,6 +58,16 @@ class PaymentProofStatus(models.TextChoices):
     NEEDS_INFO = "needs_info", "Needs more information"
 
 
+class PlanKind(models.TextChoices):
+    SESSIONS = "sessions", "Live sessions"   # 1:1 / group sessions with an instructor
+    AI_TUTOR = "ai_tutor", "AI tutor"        # 5-minute AI speaking practice
+
+
+class AITutorSessionStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    ENDED = "ended", "Ended"
+
+
 class SlotStatus(models.TextChoices):
     OPEN = "open", "Open"
     BOOKED = "booked", "Booked"

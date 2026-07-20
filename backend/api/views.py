@@ -715,6 +715,49 @@ class StudentPlanView(APIView):
         return Response(GetStudentPlanUseCase().execute(actor=request.user))
 
 
+# ── AI tutor ────────────────────────────────────────────────────────────────────
+class AITutorStatusView(APIView):
+    """Whether the student is subscribed + any live practice session to resume."""
+
+    def get(self, request):
+        from application.ai_tutor.use_cases import GetAITutorStatusUseCase
+
+        return Response(GetAITutorStatusUseCase().execute(actor=request.user))
+
+
+class AITutorStartView(APIView):
+    """Start a new 5-minute AI practice session."""
+
+    def post(self, request):
+        from application.ai_tutor.use_cases import StartAITutorSessionUseCase
+
+        data = _validated(s.StartAITutorInputSerializer, request)
+        result = StartAITutorSessionUseCase().execute(actor=request.user, topic=data.get("topic", ""))
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class AITutorMessageView(APIView):
+    """Send a message in a live practice session; returns the tutor's reply."""
+
+    def post(self, request, session_id):
+        from application.ai_tutor.use_cases import SendAITutorMessageUseCase
+
+        data = _validated(s.AITutorMessageInputSerializer, request)
+        result = SendAITutorMessageUseCase().execute(
+            actor=request.user, session_id=session_id, text=data["text"]
+        )
+        return Response(result)
+
+
+class AITutorEndView(APIView):
+    """End a practice session early."""
+
+    def post(self, request, session_id):
+        from application.ai_tutor.use_cases import EndAITutorSessionUseCase
+
+        return Response(EndAITutorSessionUseCase().execute(actor=request.user, session_id=session_id))
+
+
 class StudentScheduleWindowsView(APIView):
     """The recurring availability windows a student may pick within — resolved from
     a topicId (its instructor) or an explicit instructorId query param."""

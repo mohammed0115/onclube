@@ -257,6 +257,7 @@ class PlanResult:
     sessions_per_month: int
     features: list = field(default_factory=list)
     recommended: bool = False
+    kind: str = "sessions"
 
 
 @dataclass(frozen=True)

@@ -24,6 +24,7 @@ import { StudentDashboardPage } from "@/pages/student/StudentDashboardPage";
 import { BookSessionPage } from "@/pages/student/BookSessionPage";
 import { WeeklySchedulePage } from "@/pages/student/WeeklySchedulePage";
 import { ProgressPage } from "@/pages/student/ProgressPage";
+import { AITutorPage } from "@/pages/student/AITutorPage";
 import { BookingCalendarPage } from "@/pages/student/BookingCalendarPage";
 import { BookingSummaryPage } from "@/pages/student/BookingSummaryPage";
 import { BookingSuccessPage } from "@/pages/student/BookingSuccessPage";
@@ -82,6 +83,7 @@ export function AppRoutes() {
       <Route path="/student/book" element={<RequireRole roles={["student"]}><BookSessionPage /></RequireRole>} />
       <Route path="/student/schedule" element={<RequireRole roles={["student"]}><WeeklySchedulePage /></RequireRole>} />
       <Route path="/student/progress" element={<RequireRole roles={["student"]}><ProgressPage /></RequireRole>} />
+      <Route path="/student/ai-tutor" element={<RequireRole roles={["student"]}><AITutorPage /></RequireRole>} />
       <Route path="/student/book/:topicId" element={<RequireRole roles={["student"]}><BookingCalendarPage /></RequireRole>} />
       <Route path="/student/book/:topicId/confirm/:slotId" element={<RequireRole roles={["student"]}><BookingSummaryPage /></RequireRole>} />
       <Route path="/student/book/success/:bookingId" element={<RequireRole roles={["student"]}><BookingSuccessPage /></RequireRole>} />

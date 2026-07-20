@@ -239,6 +239,33 @@ export const useStudentProgress = () =>
 export const useStudentPlan = () =>
   useQuery({ queryKey: qk.studentPlan, queryFn: bookingApi.plan });
 
+// ── AI tutor ──────────────────────────────────────────────────────────────────
+export const useAITutorStatus = () =>
+  useQuery({ queryKey: qk.aiTutorStatus, queryFn: bookingApi.aiTutorStatus });
+
+export function useStartAITutor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (topic: string) => bookingApi.aiTutorStart(topic),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.aiTutorStatus }),
+  });
+}
+
+export function useSendAITutorMessage() {
+  return useMutation({
+    mutationFn: (input: { sessionId: string; text: string }) =>
+      bookingApi.aiTutorMessage(input.sessionId, input.text),
+  });
+}
+
+export function useEndAITutor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => bookingApi.aiTutorEnd(sessionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.aiTutorStatus }),
+  });
+}
+
 // ── recurring weekly schedule (student-driven) ──────────────────────────────────
 export const useStudentSchedule = () =>
   useQuery({ queryKey: qk.studentSchedule, queryFn: bookingApi.schedule });

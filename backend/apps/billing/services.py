@@ -52,6 +52,13 @@ def approve_payment_proof(proof: PaymentProof, admin) -> Subscription:
     now = timezone.now()
     plan = proof.plan
 
+    # AI-tutor plans activate a SEPARATE subscription (not session credits), so they
+    # don't touch the student's session mirror or the one-active-session-sub rule.
+    from apps.common.enums import PlanKind
+
+    if plan.kind == PlanKind.AI_TUTOR:
+        return _activate_ai_tutor_subscription(proof, admin, now)
+
     # One active subscription per student (§2.2): block a second activation with a
     # clean domain error rather than letting the partial-unique constraint 500.
     existing_active = (
@@ -109,6 +116,53 @@ def approve_payment_proof(proof: PaymentProof, admin) -> Subscription:
         data={"subscription_id": str(subscription.pk)},
     )
     return subscription
+
+
+def _activate_ai_tutor_subscription(proof, admin, now):
+    """Activate (or promote) an AI-tutor subscription from an approved proof.
+    Returns the AITutorSubscription (compatible with the approval result: it has
+    id/status/started_at/expires_at and a sessions_remaining shim)."""
+    from apps.ai_tutor.models import AITutorSubscription
+
+    plan = proof.plan
+    existing_active = (
+        AITutorSubscription.objects.filter(
+            student=proof.student, status=SubscriptionStatus.ACTIVE
+        ).first()
+    )
+    if existing_active is not None:
+        raise BusinessRuleError(
+            "This student already has an active AI-tutor subscription.",
+            code="ai_tutor_subscription_already_active",
+        )
+
+    sub = AITutorSubscription.objects.create(
+        student=proof.student,
+        plan=plan,
+        status=SubscriptionStatus.ACTIVE,
+        started_at=now,
+        expires_at=now + timezone.timedelta(days=plan.billing_period_days),
+        activated_by=admin,
+    )
+
+    proof.status = PaymentProofStatus.APPROVED
+    proof.reviewed_by = admin
+    proof.reviewed_at = now
+    proof.full_clean(exclude=["retain_until"])
+    proof.save()
+
+    _log_admin_action(
+        admin, AdminActionType.PAYMENT_APPROVE, proof,
+        metadata={"ai_tutor_subscription_id": str(sub.pk), "kind": "ai_tutor"},
+    )
+    Notification.objects.create(
+        user=proof.student.user,
+        type=NotificationType.PAYMENT_APPROVED,
+        title="AI Tutor is ready",
+        body=f"Your {plan.name} plan is active — start a 5-minute practice any time.",
+        data={"ai_tutor_subscription_id": str(sub.pk)},
+    )
+    return sub
 
 
 @transaction.atomic

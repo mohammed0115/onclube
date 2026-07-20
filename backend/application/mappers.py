@@ -100,6 +100,7 @@ def plan_result(p) -> dtos.PlanResult:
         sessions_per_month=p.sessions_per_month,
         features=p.features,
         recommended=p.recommended,
+        kind=getattr(p, "kind", "sessions"),
     )
 
 

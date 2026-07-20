@@ -17,6 +17,7 @@ import {
   Bell,
   LogOut,
   TrendingUp,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
@@ -27,7 +28,7 @@ import { useNotifications, useMarkNotificationRead } from "@/hooks";
 
 // Map nav labels → translation keys (English stays the source/default).
 const NAV_KEY: Record<string, string> = {
-  Dashboard: "nav.dashboard", "Book Session": "nav.book", "My Schedule": "nav.schedule", "My Progress": "nav.progress", Practice: "nav.practice",
+  Dashboard: "nav.dashboard", "Book Session": "nav.book", "My Schedule": "nav.schedule", "My Progress": "nav.progress", "AI Tutor": "nav.aitutor", Practice: "nav.practice",
   Community: "nav.community", "Session Reports": "nav.reports", Settings: "nav.settings",
   Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Payment Approval": "nav.payments",
@@ -53,6 +54,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: Calendar, label: "Book Session", short: "Book", to: "/student/book" },
     { icon: CalendarClock, label: "My Schedule", short: "Schedule", to: "/student/schedule" },
     { icon: TrendingUp, label: "My Progress", short: "Progress", to: "/student/progress" },
+    { icon: Bot, label: "AI Tutor", short: "AI", to: "/student/ai-tutor" },
     { icon: GraduationCap, label: "Practice", to: "/student/practice" },
     { icon: Users, label: "Community", short: "Club", to: "/student/community" },
     { icon: FileBarChart, label: "Session Reports", short: "Reports", to: "/student/reports" },

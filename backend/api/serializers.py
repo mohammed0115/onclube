@@ -97,6 +97,7 @@ class PlanSerializer(serializers.Serializer):
     id = serializers.CharField()
     code = serializers.CharField()
     name = serializers.CharField()
+    kind = serializers.CharField(required=False, default="sessions")
     emoji = serializers.CharField(allow_null=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
     currency = serializers.CharField()
@@ -739,6 +740,15 @@ class _RecurringWindowInputSerializer(serializers.Serializer):
 
 class SetRecurringAvailabilityInputSerializer(serializers.Serializer):
     windows = _RecurringWindowInputSerializer(many=True)
+
+
+# ── AI tutor ────────────────────────────────────────────────────────────────────
+class StartAITutorInputSerializer(serializers.Serializer):
+    topic = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AITutorMessageInputSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=1000)
 
 
 # ── placement (Phase 8E) ───────────────────────────────────────────────────────
