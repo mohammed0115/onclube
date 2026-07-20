@@ -536,6 +536,10 @@ export function useLeaveSession() {
   return useMutation({ mutationFn: (id: string) => sessionsApi.leave(id) });
 }
 
+export function useStartSession() {
+  return useMutation({ mutationFn: (id: string) => sessionsApi.start(id) });
+}
+
 export { useVideoRoom } from "./useVideoRoom";
 export type { VideoRoomController } from "./useVideoRoom";
 export { useSessionChat } from "./useSessionChat";

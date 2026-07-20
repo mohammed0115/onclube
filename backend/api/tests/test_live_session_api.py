@@ -181,3 +181,22 @@ def test_end_session_is_idempotent():
     session.save(update_fields=["agora_channel"])
     result = EndSessionUseCase().execute(actor=booking.instructor.user, session_id=session.id)
     assert result.status == "completed"
+
+
+def test_completing_a_session_generates_the_ai_report():
+    """POST /sessions/<id>/end/ must produce a READY report (heuristic fallback)."""
+    from rest_framework.test import APIClient
+
+    from apps.ai_reports.models import AIReport
+    from apps.common.enums import AIReportStatus
+
+    booking, session = _session(days_ahead=0)
+    c = APIClient()
+    c.force_authenticate(user=booking.instructor.user)
+    r = c.post(f"/api/v1/sessions/{session.id}/end/")
+    assert r.status_code == 200, r.content
+
+    report = AIReport.objects.get(session=session)
+    assert report.status == AIReportStatus.READY
+    assert report.content is not None
+    assert report.overall_score is not None

@@ -183,7 +183,7 @@ export function VideoRoom({
               <div className="mb-3 text-lg font-semibold">{tx("Couldn’t join the room")}</div>
               <p className="mb-5 text-sm text-slate-300">{tx(ERROR_COPY[blockingError.code])}</p>
               <div className="flex justify-center gap-3">
-                <Button variant="soft" onClick={handleLeave}>{tx("Leave")}</Button>
+                <Button variant="soft" onClick={handleLeave}>{viewerRole === "instructor" ? tx("End session") : tx("Leave")}</Button>
                 <Button onClick={room.retry}>{tx("Try again")}</Button>
               </div>
             </div>
@@ -387,7 +387,8 @@ export function VideoRoom({
         </button>
         <button
           type="button"
-          aria-label={tx("Leave meeting")}
+          aria-label={viewerRole === "instructor" ? tx("End session") : tx("Leave meeting")}
+          title={viewerRole === "instructor" ? tx("End session") : tx("Leave meeting")}
           onClick={handleLeave}
           className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white transition-all hover:bg-red-600"
         >

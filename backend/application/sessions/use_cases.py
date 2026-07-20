@@ -6,6 +6,8 @@ JoinSessionUseCase NEVER mints tokens itself, and the current adapter is a stub
 (no real Agora). CompleteSessionUseCase prepares a PENDING AI report but does NOT
 call OpenAI; report content is filled later by GenerateSessionReportUseCase.
 """
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -28,6 +30,8 @@ from application.permissions import (
 )
 from domain import events as domain_events
 from domain.dtos import SessionResult, TranscriptResult, VideoJoinResult, WaitingRoomResult
+
+_logger = logging.getLogger("sessions.use_cases")
 from domain.exceptions import (
     DomainError,
     InvalidStateTransition,
@@ -332,17 +336,22 @@ class CompleteSessionUseCase:
 
         # A completed session must carry a channel (§2.6). Backfill a placeholder
         # if the room was never joined.
+        now = timezone.now()
         if not session.agora_channel:
             session.agora_channel = f"session-{session.id}"
+        # Backfill started_at so the chk_session_end_after_start constraint holds
+        # even when Start was never called (started == ended for a zero-length room).
+        if session.started_at is None:
+            session.started_at = now
         session.status = SessionStatus.COMPLETED
-        session.ended_at = timezone.now()
+        session.ended_at = now
         self.sessions.save(session)
 
         booking = session.booking
         booking.status = BookingStatus.COMPLETED
         booking.save(update_fields=["status", "updated_at"])
 
-        # Prepare (but do NOT generate) the AI report — no OpenAI call here.
+        # Prepare the AI report shell.
         AIReport.objects.get_or_create(
             session=session,
             defaults=dict(
@@ -363,6 +372,20 @@ class CompleteSessionUseCase:
                 ended_at=session.ended_at,
             )
         )
+
+        # Generate the report now (best-effort). The provider always degrades to the
+        # heuristic, so a report is produced from whatever transcript was persisted.
+        # Savepoint-isolated: a generation failure leaves the report PENDING (an
+        # instructor/admin can regenerate) but never rolls back the completion.
+        # (No Celery in this deployment, so generation is synchronous.)
+        try:
+            from application.ai_reports.use_cases import GenerateAISessionReportUseCase
+
+            with transaction.atomic():
+                GenerateAISessionReportUseCase().execute(actor=actor, session_id=session.id)
+        except Exception:  # noqa: BLE001 — report stays PENDING, completion stands
+            _logger.warning("AI report generation failed for session %s; left PENDING", session.id)
+
         return self._result(session, report_pending=True)
 
     @staticmethod

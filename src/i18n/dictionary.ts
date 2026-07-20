@@ -746,6 +746,7 @@ const PAIRS: [string, string][] = [
   ["Close files", "إغلاق الملفات"],
   ["Open files", "فتح الملفات"],
   ["Leave meeting", "مغادرة الاجتماع"],
+  ["End session", "إنهاء الجلسة"],
   ["Requesting permission to share your screen…", "جارٍ طلب الإذن لمشاركة شاشتك…"],
   ["Upload failed. Please try again.", "فشل الرفع. الرجاء المحاولة مرة أخرى."],
   ["Download failed. Please try again.", "فشل التنزيل. الرجاء المحاولة مرة أخرى."],

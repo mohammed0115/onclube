@@ -8,7 +8,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { VideoRoom } from "@/components/session/VideoRoom";
 import { mapRoomCredential } from "@/lib/video";
 import type { RoomCredential } from "@/lib/video";
-import { useWaitingRoom, useJoinSession, useLeaveSession } from "@/hooks";
+import { useWaitingRoom, useJoinSession, useLeaveSession, useStartSession, useEndSession } from "@/hooks";
 import { useI18n } from "@/i18n";
 import type { SessionPhase } from "@/api/types";
 
@@ -61,6 +61,8 @@ export function WaitingRoomPage() {
   const roomQuery = useWaitingRoom(id);
   const join = useJoinSession();
   const leave = useLeaveSession();
+  const startSession = useStartSession();
+  const endSession = useEndSession();
 
   // Device-check placeholders — local, non-functional toggles (real media is a
   // later sprint). They let the student rehearse the pre-join gesture.
@@ -89,6 +91,7 @@ export function WaitingRoomPage() {
   }
 
   const room = roomQuery.data;
+  const isInstructor = room.viewerRole === "instructor";
 
   // Once the server hands us a credential the waiting room becomes the live room.
   // The waiting room stays the sole entry point — the room is never reached
@@ -121,6 +124,8 @@ export function WaitingRoomPage() {
   async function onJoin() {
     try {
       const cred = await join.mutateAsync(id);
+      // The instructor starting the room transitions the session to LIVE.
+      if (isInstructor) await startSession.mutateAsync(id).catch(() => {});
       setCredential(mapRoomCredential(cred));
     } catch {
       /* surfaced inline below */
@@ -134,6 +139,17 @@ export function WaitingRoomPage() {
       /* leave the room regardless */
     }
     setCredential(null);
+    // The instructor ending the room completes the session, which generates the
+    // AI report; take them straight to it. Students just return to their dashboard.
+    if (isInstructor) {
+      try {
+        await endSession.mutateAsync(id);
+      } catch {
+        /* still navigate; the report can be generated/regenerated later */
+      }
+      navigate(`/student/report/${id}`);
+      return;
+    }
     navigate("/student");
   }
 
