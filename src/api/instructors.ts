@@ -1,5 +1,6 @@
 import { api } from "./client";
 import type {
+  AdminInstructor,
   OwnInstructorProfile,
   PublicInstructor,
   PublicInstructorProfile,
@@ -40,5 +41,25 @@ export const instructorsApi = {
   },
   replaceCertifications(items: InstructorCertificationInput[]): Promise<unknown> {
     return api.put("/instructor/certifications/", { items });
+  },
+
+  // ── admin controls ──
+  adminList(): Promise<AdminInstructor[]> {
+    return api.get<AdminInstructor[]>("/admin/instructors/");
+  },
+  adminApprove(id: string, approved: boolean): Promise<AdminInstructor> {
+    return api.patch<AdminInstructor>(`/admin/instructors/${id}/approve/`, { approved });
+  },
+  adminFeature(id: string, featured: boolean): Promise<AdminInstructor> {
+    return api.patch<AdminInstructor>(`/admin/instructors/${id}/feature/`, { featured });
+  },
+  adminVisibility(id: string, showOnLanding: boolean): Promise<AdminInstructor> {
+    return api.patch<AdminInstructor>(`/admin/instructors/${id}/visibility/`, { showOnLanding });
+  },
+  adminFounding(id: string, founding: boolean): Promise<AdminInstructor> {
+    return api.patch<AdminInstructor>(`/admin/instructors/${id}/founding/`, { founding });
+  },
+  adminDisplayOrder(id: string, displayOrder: number): Promise<AdminInstructor> {
+    return api.patch<AdminInstructor>(`/admin/instructors/${id}/display-order/`, { displayOrder });
   },
 };

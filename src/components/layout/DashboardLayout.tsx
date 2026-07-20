@@ -33,7 +33,7 @@ const NAV_KEY: Record<string, string> = {
   Community: "nav.community", "Session Reports": "nav.reports", Settings: "nav.settings",
   Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Public Profile": "nav.publicProfile", "Payment Approval": "nav.payments",
-  Members: "nav.members", Business: "nav.business", Platform: "nav.platform",
+  Members: "nav.members", Instructors: "nav.adminInstructors", Business: "nav.business", Platform: "nav.platform",
   "Audit log": "nav.audit", Teaching: "nav.teaching", Sessions: "nav.sessionsAll",
   Bookings: "nav.bookings", Plans: "nav.plans",
 };
@@ -76,6 +76,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: CalendarClock, label: "Sessions", to: "/admin/sessions" },
     { icon: Calendar, label: "Bookings", to: "/admin/bookings" },
     { icon: Users, label: "Members", to: "/admin/members" },
+    { icon: BadgeCheck, label: "Instructors", to: "/admin/instructors" },
     { icon: Wallet, label: "Plans", to: "/admin/plans" },
     { icon: BarChart3, label: "Business", short: "Business", to: "/admin/business" },
     { icon: Server, label: "Platform", short: "Platform", to: "/admin/platform" },

@@ -61,7 +61,18 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--avatar-url", default="")
+        parser.add_argument("--avatar-file", default="", help="Path to a photo; embedded as a base64 data URL.")
         parser.add_argument("--password", default="Instructor@12345")
+
+    @staticmethod
+    def _data_url(path):
+        import base64
+        import mimetypes
+
+        with open(path, "rb") as fh:
+            raw = fh.read()
+        mime = mimetypes.guess_type(path)[0] or "image/jpeg"
+        return f"data:{mime};base64,{base64.b64encode(raw).decode()}"
 
     @transaction.atomic
     def handle(self, *args, **opts):
@@ -93,6 +104,13 @@ class Command(BaseCommand):
         profile.rating = profile.rating or 5.0
         if opts["avatar_url"]:
             profile.avatar_url = opts["avatar_url"]
+        # Photo: explicit --avatar-file, else the bundled portrait asset.
+        import os
+        avatar_file = opts.get("avatar_file") or os.path.join(
+            os.path.dirname(__file__), "..", "..", "seed_assets", "hasaballah.jpg"
+        )
+        if os.path.exists(avatar_file):
+            profile.avatar_data = self._data_url(avatar_file)
         # Founding instructor — visible & featured on the landing page.
         profile.founding_instructor = True
         profile.profile_approved = True

@@ -158,6 +158,9 @@ class InstructorProfile(BaseModel, SoftDeleteModel):
     accent = models.CharField(max_length=60, null=True, blank=True)
     # Public teaching profile (shown to students; editable by the instructor).
     avatar_url = models.URLField(max_length=500, null=True, blank=True)
+    # Optional embedded avatar as a data URL (base64) — used when the teacher has
+    # no hosted image. Takes precedence over avatar_url when present.
+    avatar_data = models.TextField(null=True, blank=True)
     intro_video_url = models.URLField(max_length=500, null=True, blank=True)
     languages = models.JSONField(default=list, blank=True)  # e.g. ["English", "Arabic"]
     specialty = models.CharField(max_length=120, null=True, blank=True)

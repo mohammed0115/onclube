@@ -68,6 +68,6 @@ describe("Instructor CV builder", () => {
     await userEvent.click(screen.getAllByRole("button", { name: /^Save$/i })[0]);
 
     await waitFor(() => expect(sent).not.toBeNull());
-    expect((sent as Record<string, unknown>).jobTitle).toBe("Business English Coach");
+    expect(sent!.jobTitle).toBe("Business English Coach");
   });
 });

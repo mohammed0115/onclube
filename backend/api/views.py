@@ -761,7 +761,7 @@ class AITutorEndView(APIView):
 # ── Public instructor directory + profiles ────────────────────────────────────
 _PROFILE_KEY_MAP = {
     "jobTitle": "job_title", "yearsExperience": "years_experience",
-    "avatarUrl": "avatar_url", "coverPhotoUrl": "cover_photo_url",
+    "avatarUrl": "avatar_url", "avatarData": "avatar_data", "coverPhotoUrl": "cover_photo_url",
     "introVideoUrl": "intro_video_url", "specialization": "specialty",
     "headline": "headline", "bio": "bio", "country": "country", "city": "city",
     "nationality": "nationality", "specialty": "specialty", "languages": "languages",

@@ -279,6 +279,32 @@ export const useReplaceExperience = () =>
 export const useReplaceCertifications = () =>
   useOwnProfileMutation((items: import("@/api/types").InstructorCertificationInput[]) => instructorsApi.replaceCertifications(items));
 
+// ── admin instructor controls ──
+export const useAdminInstructors = () =>
+  useQuery({ queryKey: qk.adminInstructors, queryFn: instructorsApi.adminList });
+
+function useAdminInstructorMutation<A extends unknown[]>(fn: (...a: A) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: A) => fn(...args),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminInstructors });
+      qc.invalidateQueries({ queryKey: qk.publicInstructors });
+    },
+  });
+}
+
+export const useAdminApproveInstructor = () =>
+  useAdminInstructorMutation((id: string, approved: boolean) => instructorsApi.adminApprove(id, approved));
+export const useAdminFeatureInstructor = () =>
+  useAdminInstructorMutation((id: string, featured: boolean) => instructorsApi.adminFeature(id, featured));
+export const useAdminVisibilityInstructor = () =>
+  useAdminInstructorMutation((id: string, show: boolean) => instructorsApi.adminVisibility(id, show));
+export const useAdminFoundingInstructor = () =>
+  useAdminInstructorMutation((id: string, founding: boolean) => instructorsApi.adminFounding(id, founding));
+export const useAdminDisplayOrderInstructor = () =>
+  useAdminInstructorMutation((id: string, order: number) => instructorsApi.adminDisplayOrder(id, order));
+
 // ── AI tutor ──────────────────────────────────────────────────────────────────
 export const useAITutorStatus = () =>
   useQuery({ queryKey: qk.aiTutorStatus, queryFn: bookingApi.aiTutorStatus });

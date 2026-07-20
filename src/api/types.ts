@@ -623,6 +623,13 @@ export interface OwnInstructorProfile extends PublicInstructorProfile {
   };
 }
 
+export interface AdminInstructor extends PublicInstructor {
+  email: string;
+  showOnLanding: boolean;
+  profileApproved: boolean;
+  displayOrder: number;
+}
+
 export interface InstructorEducationInput { degree: string; institution: string; country?: string; startYear?: number | null; endYear?: number | null }
 export interface InstructorExperienceInput { company: string; position: string; description?: string; from?: string; to?: string }
 export interface InstructorCertificationInput { title: string; issuer?: string; issueDate?: string; credentialUrl?: string }

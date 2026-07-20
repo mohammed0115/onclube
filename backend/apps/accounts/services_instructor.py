@@ -56,7 +56,7 @@ def card_dto(instructor) -> dict:
         "headline": instructor.headline,
         "country": instructor.country,
         "flag": instructor.flag,
-        "avatarUrl": instructor.avatar_url,
+        "avatarUrl": instructor.avatar_data or instructor.avatar_url,
         "rating": float(instructor.rating),
         "sessionsHosted": instructor.sessions_hosted,
         "yearsExperience": instructor.years_experience,
@@ -164,8 +164,8 @@ def own_profile_dto(instructor) -> dict:
 # ── teacher self-service ──────────────────────────────────────────────────────
 _PROFILE_FIELDS = {
     "job_title", "headline", "bio", "country", "city", "nationality",
-    "years_experience", "specialty", "languages", "avatar_url", "cover_photo_url",
-    "intro_video_url",
+    "years_experience", "specialty", "languages", "avatar_url", "avatar_data",
+    "cover_photo_url", "intro_video_url",
 }
 _SETTINGS_FIELDS = {
     "show_on_landing", "accept_students",

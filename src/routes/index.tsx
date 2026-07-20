@@ -51,6 +51,7 @@ import { InstructorStudentDetailPage } from "@/pages/instructor/InstructorStuden
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { PaymentApprovalPage } from "@/pages/admin/PaymentApprovalPage";
 import { AdminMembersPage } from "@/pages/admin/AdminMembersPage";
+import { AdminInstructorsPage } from "@/pages/admin/AdminInstructorsPage";
 import { AdminAuditPage } from "@/pages/admin/AdminAuditPage";
 import { AdminSessionsPage } from "@/pages/admin/AdminSessionsPage";
 import { AdminBookingsPage } from "@/pages/admin/AdminBookingsPage";
@@ -113,6 +114,7 @@ export function AppRoutes() {
       <Route path="/admin" element={<RequireRole roles={["admin"]}><AdminDashboardPage /></RequireRole>} />
       <Route path="/admin/payments" element={<RequireRole roles={["admin"]}><PaymentApprovalPage /></RequireRole>} />
       <Route path="/admin/members" element={<RequireRole roles={["admin"]}><AdminMembersPage /></RequireRole>} />
+      <Route path="/admin/instructors" element={<RequireRole roles={["admin"]}><AdminInstructorsPage /></RequireRole>} />
       <Route path="/admin/sessions" element={<RequireRole roles={["admin"]}><AdminSessionsPage /></RequireRole>} />
       <Route path="/admin/bookings" element={<RequireRole roles={["admin"]}><AdminBookingsPage /></RequireRole>} />
       <Route path="/admin/plans" element={<RequireRole roles={["admin"]}><AdminPlansPage /></RequireRole>} />
