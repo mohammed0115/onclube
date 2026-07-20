@@ -200,3 +200,20 @@ def test_completing_a_session_generates_the_ai_report():
     assert report.status == AIReportStatus.READY
     assert report.content is not None
     assert report.overall_score is not None
+
+
+def test_completing_a_session_notifies_the_student_with_report_ready():
+    """Ending a session must create a REPORT_READY notification (emailed via signal)."""
+    from rest_framework.test import APIClient
+
+    from apps.notifications.models import Notification
+
+    booking, session = _session(days_ahead=0)
+    c = APIClient()
+    c.force_authenticate(user=booking.instructor.user)
+    assert c.post(f"/api/v1/sessions/{session.id}/end/").status_code == 200
+
+    n = Notification.objects.filter(user=booking.student.user, type="report_ready").first()
+    assert n is not None
+    assert "Great work" in n.title
+    assert n.data and "report_id" in n.data

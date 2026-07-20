@@ -203,6 +203,35 @@ class GenerateAISessionReportUseCase:
         report.generated_at = timezone.now()
         report.save()
 
+        # Congratulate the student and surface strengths + what to work on. The
+        # in-app notification shows immediately; the same Notification is emailed by
+        # the notifications post_save signal when NOTIFICATION_EMAILS_ENABLED is on.
+        # Gated on `not regenerate` so a forced re-run doesn't re-notify/re-email.
+        if not regenerate:
+            from django.conf import settings
+
+            from apps.common.enums import NotificationType
+            from apps.notifications.models import Notification
+
+            strengths = ", ".join(content.strengths[:2]) if content.strengths else ""
+            weaknesses = ", ".join(content.weaknesses[:2]) if content.weaknesses else ""
+            link = settings.FRONTEND_URL.rstrip("/") + f"/student/report/{report.id}"
+            body = (
+                f'Great work in "{booking.topic_title}"! Your confidence score is '
+                f"{content.confidence_score}/100. "
+                + (f"Strengths: {strengths}. " if strengths else "")
+                + (f"To work on: {weaknesses}. " if weaknesses else "")
+                + (f"Next focus: {content.next_lesson_focus} " if content.next_lesson_focus else "")
+                + f"See your full report: {link}"
+            )
+            Notification.objects.create(
+                user=booking.student.user,
+                type=NotificationType.REPORT_READY,
+                title="🎉 Great work! Your session report is ready",
+                body=body,
+                data={"report_id": str(report.id), "session_id": str(session.id)},
+            )
+
         self.events.publish(
             domain_events.AIReportGenerated(report_id=str(report.id), session_id=str(session.id))
         )
