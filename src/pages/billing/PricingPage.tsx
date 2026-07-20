@@ -34,7 +34,7 @@ export function PricingPage() {
     <div className="min-h-screen bg-surface-2 font-display">
       <MarketingNav />
       <section className="px-6 pb-24 pt-32 md:px-8">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-12 text-center">
             <span className="text-sm font-bold uppercase tracking-widest text-primary">{tx("Pricing")}</span>
             <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground">{tx("Pay for sessions, nothing else")}</h2>
@@ -48,16 +48,17 @@ export function PricingPage() {
 
           {plans && (
             <>
-              <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
+              <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {plans.map((plan) => {
                   const active = selected === plan.id;
+                  const perSession = plan.sessionsPerMonth > 0 ? Math.round(plan.price / plan.sessionsPerMonth) : plan.price;
                   return (
                     <button
                       key={plan.id}
                       onClick={() => setSelected(plan.id)}
                       className={cn(
-                        "relative flex flex-col rounded-3xl border-2 bg-card p-7 text-left transition-all",
-                        plan.recommended ? "md:-translate-y-2 shadow-lg shadow-blue-100" : "shadow-sm",
+                        "relative flex flex-col rounded-3xl border-2 bg-card p-6 text-left transition-all",
+                        plan.recommended ? "shadow-lg shadow-blue-100" : "shadow-sm",
                         active
                           ? "border-primary ring-4 ring-blue-100"
                           : "border-border hover:border-blue-200 hover:shadow-md"
@@ -68,14 +69,22 @@ export function PricingPage() {
                           {tx("✦ Most popular")}
                         </div>
                       )}
-                      <div className="mb-3 text-3xl">{plan.emoji}</div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="text-3xl">{plan.emoji}</div>
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-primary">
+                          {plan.sessionsPerMonth} {plan.sessionsPerMonth === 1 ? tx("session") : tx("sessions")}
+                        </span>
+                      </div>
                       <div className="text-lg font-bold text-foreground">{plan.name}</div>
                       <div className="mb-4 text-xs text-muted-foreground">{plan.description}</div>
-                      <div className="mb-5">
-                        <span className="text-4xl font-extrabold text-foreground">{plan.price}</span>
+                      <div className="mb-1">
+                        <span className="text-3xl font-extrabold text-foreground">{plan.price.toLocaleString()}</span>
                         <span className="text-sm text-muted-foreground"> {plan.currency} {plan.cadence}</span>
                       </div>
-                      <ul className="mb-7 flex-1 space-y-2.5">
+                      <div className="mb-5 text-xs text-muted-foreground">
+                        {perSession.toLocaleString()} {plan.currency} {tx("/ session")}
+                      </div>
+                      <ul className="mb-6 flex-1 space-y-2.5">
                         {plan.features.map((f) => (
                           <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
                             <CheckCircle size={15} className={cn("mt-0.5 flex-shrink-0", plan.recommended ? "text-primary" : "text-success")} />

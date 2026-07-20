@@ -25,28 +25,37 @@ GOALS = [
     ("confidence", "Speaking Confidence", "Overcome the fear of speaking out loud.", "Mic", "from-cyan-500 to-blue-600"),
 ]
 
+# Duration-based tiers at a flat 15,000 SDG per teaching session. A week is
+# 3 sessions (3/week); a month is 12 sessions (3 × 4). Price = sessions × 15,000.
+SESSION_PRICE = 15000
+
+
+def _plan(code, name, emoji, sessions, days, cadence, recommended=False):
+    per_week = " · 3 sessions / week" if sessions >= 3 else ""
+    return {
+        "code": code, "name": name, "emoji": emoji,
+        "price": str(sessions * SESSION_PRICE),
+        "cadence": cadence, "billing_period_days": days,
+        "sessions_per_month": sessions,
+        "description": f"{sessions} session{'s' if sessions != 1 else ''} · {SESSION_PRICE:,} SDG each",
+        "features": [
+            f"{sessions} live 1:1 session{'s' if sessions != 1 else ''}{per_week}",
+            f"{SESSION_PRICE:,} SDG per session",
+            "AI progress report after every session",
+            "Build your own weekly schedule",
+        ],
+        "recommended": recommended,
+    }
+
+
 PLANS = [
-    {
-        "code": "starter", "name": "Starter", "emoji": "🌱", "price": "15000",
-        "cadence": "/ month", "billing_period_days": 30, "sessions_per_month": 4,
-        "description": "Weekly practice to build a habit.",
-        "features": ["4 live sessions / month", "AI session reports", "Community group classes"],
-        "recommended": False,
-    },
-    {
-        "code": "growth", "name": "Growth", "emoji": "🚀", "price": "28000",
-        "cadence": "/ month", "billing_period_days": 30, "sessions_per_month": 8,
-        "description": "Twice-weekly sessions for faster progress.",
-        "features": ["8 live sessions / month", "AI session reports", "Priority booking", "Community group classes"],
-        "recommended": True,
-    },
-    {
-        "code": "intensive", "name": "Intensive", "emoji": "🔥", "price": "50000",
-        "cadence": "/ month", "billing_period_days": 30, "sessions_per_month": 16,
-        "description": "Daily-level immersion for rapid fluency.",
-        "features": ["16 live sessions / month", "AI session reports", "Priority booking", "1:1 progress reviews"],
-        "recommended": False,
-    },
+    _plan("session",   "Single Session", "✨", 1,   7,   "/ session"),
+    _plan("week",      "1 Week",         "🌱", 3,   7,   "/ week"),
+    _plan("two-weeks", "2 Weeks",        "📅", 6,   14,  "/ 2 weeks"),
+    _plan("month",     "1 Month",        "🚀", 12,  30,  "/ month", recommended=True),
+    _plan("quarter",   "3 Months",       "🔥", 36,  90,  "/ 3 months"),
+    _plan("half-year", "6 Months",       "💎", 72,  180, "/ 6 months"),
+    _plan("year",      "1 Year",         "👑", 144, 365, "/ year"),
 ]
 
 
