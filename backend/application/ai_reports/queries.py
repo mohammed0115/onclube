@@ -27,6 +27,41 @@ class GetStudentProgressUseCase:
         return compute_progress(reports)
 
 
+class GetStudentPlanUseCase:
+    """The student's personal learning plan — derived from their LATEST report so
+    it regenerates after every session (the 'Continuous Learning' pillar): what to
+    focus on next, homework to do, and topics to practise."""
+
+    def __init__(self, *, reports=None):
+        self.reports = reports or default_ai_report_repository()
+
+    def execute(self, *, actor) -> dict:
+        student = get_student_profile(actor)
+        reports = self.reports.list_for_student(student)  # ready, oldest → newest
+        if not reports:
+            return {
+                "hasPlan": False,
+                "nextFocus": None,
+                "homework": [],
+                "recommendedTopics": [],
+                "focusAreas": [],
+                "fromSession": None,
+            }
+        latest = reports[-1]
+        content = latest.content or {}
+        return {
+            "hasPlan": True,
+            "nextFocus": content.get("nextLessonFocus"),
+            "homework": list(content.get("homework", []) or []),
+            "recommendedTopics": list(content.get("recommendedTopics", []) or []),
+            "focusAreas": list(content.get("weaknesses", []) or []),
+            "fromSession": {
+                "topic": latest.topic_title,
+                "date": latest.session_date.isoformat() if latest.session_date else None,
+            },
+        }
+
+
 class GetAIReportDetailUseCase:
     """Full report rendering. Visible to the report's student, its instructor, or admin."""
 

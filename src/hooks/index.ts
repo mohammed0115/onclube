@@ -236,6 +236,9 @@ export const useWeeklyCalendar = (topicId: string, weekStart?: string) =>
 export const useStudentProgress = () =>
   useQuery({ queryKey: qk.studentProgress, queryFn: bookingApi.progress });
 
+export const useStudentPlan = () =>
+  useQuery({ queryKey: qk.studentPlan, queryFn: bookingApi.plan });
+
 // ── recurring weekly schedule (student-driven) ──────────────────────────────────
 export const useStudentSchedule = () =>
   useQuery({ queryKey: qk.studentSchedule, queryFn: bookingApi.schedule });

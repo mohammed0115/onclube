@@ -25,6 +25,15 @@ export function AdminBusinessPage() {
         <StatCard icon="Clock" value={`${d.teacherHours}h`} label="Teaching hours" tone="bg-teal-100 text-teal-600" />
       </div>
 
+      {/* Engagement & retention (Product Bible §2.7) */}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <StatCard icon="Users" value={`${d.activeStudents}`} label="Active students" tone="bg-blue-100 text-blue-600" />
+        <StatCard icon="TrendingUp" value={`${d.renewalRate}%`} label="Renewal rate" tone="bg-emerald-100 text-emerald-600" />
+        <StatCard icon="TrendingDown" value={`${d.churnRate}%`} label="Churn rate" tone="bg-rose-100 text-rose-600" />
+        <StatCard icon="Calendar" value={`${d.teacherUtilization}%`} label="Teacher utilization" tone="bg-amber-100 text-amber-600" />
+        <StatCard icon="Award" value={`${d.avgProgress}`} label="Avg progress score" tone="bg-violet-100 text-violet-600" />
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-6">
           <h3 className="mb-4 font-display font-bold text-foreground">{tx("Revenue by month")}</h3>

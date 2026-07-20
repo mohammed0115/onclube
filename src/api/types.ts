@@ -542,6 +542,15 @@ export interface StudentProgress {
   message: string;
 }
 
+export interface StudentPlan {
+  hasPlan: boolean;
+  nextFocus: string | null;
+  homework: string[];
+  recommendedTopics: string[];
+  focusAreas: string[];
+  fromSession: { topic: string; date: string | null } | null;
+}
+
 export interface AdminBookingItem {
   id: string;
   studentId: string;
@@ -608,6 +617,11 @@ export interface BusinessOverview {
   totalRevenue: number;
   currency: string;
   activeSubscriptions: number;
+  activeStudents: number;
+  renewalRate: number;
+  churnRate: number;
+  teacherUtilization: number;
+  avgProgress: number;
   completedSessions: number;
   teacherHours: number;
   plans: { name: string; revenue: number }[];

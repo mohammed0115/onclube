@@ -51,6 +51,7 @@ export const qk = {
   studentSchedule: ["student", "schedule"] as const,
   scheduleWindows: (key: string) => ["student", "schedule", "windows", key] as const,
   studentProgress: ["student", "progress"] as const,
+  studentPlan: ["student", "plan"] as const,
   adminBookings: ["admin", "bookings"] as const,
   adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,

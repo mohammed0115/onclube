@@ -15,9 +15,18 @@ class GetBusinessOverviewUseCase:
     """Business KPIs: revenue, subscriptions, teaching output, plan mix."""
 
     def execute(self, *, actor):
+        from collections import Counter
+
+        from apps.ai_reports.models import AIReport
         from apps.billing.models import PaymentProof, Subscription
-        from apps.scheduling.models import Booking
-        from apps.common.enums import BookingStatus, PaymentProofStatus, SubscriptionStatus
+        from apps.scheduling.models import AvailabilitySlot, Booking
+        from apps.common.enums import (
+            AIReportStatus,
+            BookingStatus,
+            PaymentProofStatus,
+            SlotStatus,
+            SubscriptionStatus,
+        )
 
         ensure_admin(actor)
         approved = list(PaymentProof.objects.filter(status=PaymentProofStatus.APPROVED))
@@ -26,6 +35,32 @@ class GetBusinessOverviewUseCase:
         active_subs = Subscription.objects.filter(status=SubscriptionStatus.ACTIVE).count()
         completed = list(Booking.objects.filter(status=BookingStatus.COMPLETED))
         teacher_hours = round(sum((b.duration_minutes or 45) for b in completed) / 60, 1)
+
+        # ── engagement / retention metrics (Product Bible 2.7) ──
+        active_student_ids = set(
+            Subscription.objects.filter(status=SubscriptionStatus.ACTIVE)
+            .values_list("student_id", flat=True)
+        )
+        active_students = len(active_student_ids)
+
+        proofs_by_student = Counter(p.student_id for p in approved)
+        ever_subscribed = set(proofs_by_student)
+        renewed = sum(1 for c in proofs_by_student.values() if c > 1)
+        renewal_rate = round(renewed / len(ever_subscribed) * 100, 1) if ever_subscribed else 0.0
+
+        churned = len([s for s in ever_subscribed if s not in active_student_ids])
+        churn_rate = round(churned / len(ever_subscribed) * 100, 1) if ever_subscribed else 0.0
+
+        booked = AvailabilitySlot.objects.filter(status=SlotStatus.BOOKED).count()
+        open_slots = AvailabilitySlot.objects.filter(status=SlotStatus.OPEN).count()
+        offered = booked + open_slots
+        teacher_utilization = round(booked / offered * 100, 1) if offered else 0.0
+
+        latest_score = {}
+        for r in AIReport.objects.filter(status=AIReportStatus.READY).order_by("student_id", "session_date"):
+            if r.overall_score is not None:
+                latest_score[r.student_id] = r.overall_score  # last write = latest session
+        avg_progress = round(sum(latest_score.values()) / len(latest_score), 1) if latest_score else 0.0
 
         plan_rev = {}
         for p in approved:
@@ -42,6 +77,11 @@ class GetBusinessOverviewUseCase:
             "totalRevenue": total_revenue,
             "currency": currency,
             "activeSubscriptions": active_subs,
+            "activeStudents": active_students,
+            "renewalRate": renewal_rate,
+            "churnRate": churn_rate,
+            "teacherUtilization": teacher_utilization,
+            "avgProgress": avg_progress,
             "completedSessions": len(completed),
             "teacherHours": teacher_hours,
             "plans": plans,

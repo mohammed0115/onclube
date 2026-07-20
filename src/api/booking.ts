@@ -11,6 +11,7 @@ import type {
   SchedulePickInput,
   SetScheduleResult,
   StudentDashboard,
+  StudentPlan,
   StudentProgress,
   StudentSchedule,
   WeeklyCalendar,
@@ -24,6 +25,11 @@ export const bookingApi = {
   /** Session-over-session progress (overall + per-skill, with deltas + series). */
   progress(): Promise<StudentProgress> {
     return api.get<StudentProgress>("/student/progress/");
+  },
+
+  /** Personal learning plan, regenerated from the latest report. */
+  plan(): Promise<StudentPlan> {
+    return api.get<StudentPlan>("/student/plan/");
   },
 
   /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */
