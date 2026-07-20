@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, MessageSquare, Mic, MicOff, MonitorUp, MonitorX, Paperclip, PenTool, PhoneOff, Wifi, WifiOff } from "lucide-react";
+import { Camera, CameraOff, ChevronLeft, ChevronRight, MessageSquare, MessageSquareQuote, Mic, MicOff, MonitorUp, MonitorX, Paperclip, PenTool, PhoneOff, Wifi, WifiOff, X } from "lucide-react";
 import { Logo } from "@/components/navigation/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -110,25 +110,108 @@ function SharedScreen({ share, attach }: { share: ScreenShareState; attach: (el:
   );
 }
 
+/**
+ * In-call discussion questions. The instructor drives the Q&A with a
+ * prev/next stepper (current question highlighted); the student sees the list.
+ */
+function QuestionsPanel({
+  questions,
+  canDrive,
+  onClose,
+}: {
+  questions: string[];
+  canDrive: boolean;
+  onClose: () => void;
+}) {
+  const { tx } = useI18n();
+  const [i, setI] = useState(0);
+  const cur = Math.min(i, questions.length - 1);
+  return (
+    <section className="flex h-full w-full flex-col bg-white text-slate-900" aria-label={tx("Discussion questions")}>
+      <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <span className="text-sm font-semibold">{tx("Discussion questions")}</span>
+        <button
+          type="button"
+          aria-label={tx("Close questions")}
+          onClick={onClose}
+          className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+        >
+          <X size={16} />
+        </button>
+      </header>
+
+      {canDrive && (
+        <div className="border-b border-indigo-100 bg-indigo-50 px-4 py-3">
+          <div className="mb-1 text-xs font-medium text-indigo-600">
+            {tx("Current question")} — {cur + 1}/{questions.length}
+          </div>
+          <p className="text-sm font-semibold leading-relaxed text-slate-900">{questions[cur]}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={cur === 0}
+              onClick={() => setI(cur - 1)}
+              className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40 hover:bg-white"
+            >
+              <ChevronLeft size={14} /> {tx("Previous")}
+            </button>
+            <button
+              type="button"
+              disabled={cur === questions.length - 1}
+              onClick={() => setI(cur + 1)}
+              className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40 hover:bg-indigo-700"
+            >
+              {tx("Next")} <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ol className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
+        {questions.map((q, idx) => (
+          <li
+            key={idx}
+            onClick={() => canDrive && setI(idx)}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-sm leading-relaxed",
+              idx === cur && canDrive ? "border-indigo-300 bg-indigo-50 font-medium" : "border-slate-200",
+              canDrive && "cursor-pointer hover:bg-slate-50",
+            )}
+          >
+            <span className="mr-2 text-xs font-bold text-indigo-500">{idx + 1}</span>
+            {q}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function VideoRoom({
   credential,
   displayName,
   topicTitle,
   onLeave,
   viewerRole = "student",
+  questions = [],
 }: {
   credential: RoomCredential;
   displayName: string;
   topicTitle: string;
   onLeave: () => void;
   viewerRole?: "student" | "instructor" | "admin";
+  questions?: string[];
 }) {
   const { tx } = useI18n();
   const room = useVideoRoom({ credential, displayName });
-  const [panel, setPanel] = useState<"none" | "chat" | "whiteboard" | "files">("none");
+  const [panel, setPanel] = useState<"none" | "chat" | "whiteboard" | "files" | "questions">(
+    // Open the questions panel by default so the instructor can drive the Q&A.
+    questions.length > 0 ? "questions" : "none",
+  );
   const chatOpen = panel === "chat";
   const boardOpen = panel === "whiteboard";
   const filesOpen = panel === "files";
+  const questionsOpen = panel === "questions";
   const conn = CONNECTION_COPY[room.connectionState] ?? CONNECTION_COPY.idle;
   const joining = room.connectionState === "connecting" && !room.error;
   const reconnecting = room.connectionState === "reconnecting";
@@ -303,6 +386,15 @@ export function VideoRoom({
             />
           </div>
         )}
+        {questionsOpen && questions.length > 0 && (
+          <div className="w-full max-w-sm flex-shrink-0 overflow-hidden border-l border-white/10">
+            <QuestionsPanel
+              questions={questions}
+              canDrive={viewerRole === "instructor"}
+              onClose={() => setPanel("none")}
+            />
+          </div>
+        )}
       </div>
 
       <footer className="flex items-center justify-center gap-3 border-t border-white/10 py-4">
@@ -373,6 +465,20 @@ export function VideoRoom({
         >
           <PenTool size={18} />
         </button>
+        {questions.length > 0 && (
+          <button
+            type="button"
+            aria-pressed={questionsOpen}
+            aria-label={questionsOpen ? tx("Close questions") : tx("Open questions")}
+            onClick={() => setPanel((p) => (p === "questions" ? "none" : "questions"))}
+            className={cn(
+              "flex h-12 w-12 items-center justify-center rounded-full transition-all",
+              questionsOpen ? "bg-primary text-white" : "bg-slate-800 text-white hover:bg-slate-700"
+            )}
+          >
+            <MessageSquareQuote size={18} />
+          </button>
+        )}
         <button
           type="button"
           aria-pressed={filesOpen}

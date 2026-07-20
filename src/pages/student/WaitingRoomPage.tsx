@@ -104,6 +104,7 @@ export function WaitingRoomPage() {
         topicTitle={room.topicTitle}
         onLeave={onLeave}
         viewerRole={room.viewerRole}
+        questions={room.questions ?? []}
       />
     );
   }

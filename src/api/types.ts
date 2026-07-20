@@ -635,6 +635,7 @@ export interface WaitingRoom {
   joinOpensAt: string;
   joinClosesAt: string;
   viewerRole: WaitingRoomViewerRole;
+  questions?: string[];
 }
 
 export interface VideoJoin {

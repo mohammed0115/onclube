@@ -121,6 +121,12 @@ class GetSessionUseCase:
             can_join = True
         except (PermissionDenied, DomainError):
             can_join = False
+        # The prepared discussion questions the instructor walks through in-call.
+        questions = tuple(
+            booking.topic.questions.filter(approved=True)
+            .order_by("sort_order")
+            .values_list("text", flat=True)
+        )
         return WaitingRoomResult(
             session_id=str(session.id),
             booking_id=str(session.booking_id),
@@ -133,6 +139,7 @@ class GetSessionUseCase:
             join_opens_at=opens_at,
             join_closes_at=closes_at,
             viewer_role=role or "admin",
+            questions=questions,
         )
 
 

@@ -475,6 +475,7 @@ class WaitingRoomSerializer(serializers.Serializer):
     joinOpensAt = serializers.DateTimeField(source="join_opens_at")
     joinClosesAt = serializers.DateTimeField(source="join_closes_at")
     viewerRole = serializers.CharField(source="viewer_role", allow_null=True)
+    questions = serializers.ListField(child=serializers.CharField(), required=False)
 
 
 class TranscriptSerializer(serializers.Serializer):

@@ -142,6 +142,7 @@ class WaitingRoomResult:
     join_opens_at: datetime
     join_closes_at: datetime
     viewer_role: Optional[str] = None  # student | instructor | admin
+    questions: tuple = ()  # approved discussion questions (texts) for the in-call panel
 
 
 @dataclass(frozen=True)
