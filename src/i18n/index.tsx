@@ -32,6 +32,7 @@ const TRANSLATIONS: Record<string, { en: string; ar: string }> = {
   "nav.aitutor": { en: "AI Tutor", ar: "المعلّم الذكي" },
   "nav.publicProfile": { en: "Public Profile", ar: "الملف العام" },
   "nav.adminInstructors": { en: "Instructors", ar: "المدرّسون" },
+  "nav.scheduling": { en: "Scheduling", ar: "طلبات الجدولة" },
   "nav.logout": { en: "Log out", ar: "تسجيل الخروج" },
   // common
   "common.save": { en: "Save", ar: "حفظ" },

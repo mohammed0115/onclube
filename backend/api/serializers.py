@@ -343,6 +343,23 @@ class AdminBookingUpdateInputSerializer(serializers.Serializer):
     forceCredit = serializers.BooleanField(required=False, allow_null=True, default=None)
 
 
+class AdminScheduleApproveInputSerializer(serializers.Serializer):
+    studentId = serializers.UUIDField()
+    slotIds = serializers.ListField(
+        child=serializers.UUIDField(), required=False, allow_empty=True, default=list
+    )
+
+
+class AdminScheduleRejectInputSerializer(serializers.Serializer):
+    slotId = serializers.UUIDField()
+    note = serializers.CharField(required=False, allow_blank=True, default="", max_length=300)
+
+
+class AdminScheduleReassignInputSerializer(serializers.Serializer):
+    slotId = serializers.UUIDField()
+    topicId = serializers.UUIDField()
+
+
 class RescheduleInputSerializer(serializers.Serializer):
     newSlotId = serializers.UUIDField()
 

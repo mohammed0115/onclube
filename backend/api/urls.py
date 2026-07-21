@@ -154,6 +154,11 @@ urlpatterns = [
     path("admin/bookings/", v.AdminBookingsListView.as_view()),
     path("admin/bookings/<uuid:booking_id>/", v.AdminBookingUpdateView.as_view()),
     path("admin/bookings/<uuid:booking_id>/cancel/", v.AdminCancelBookingView.as_view()),
+    # Student recurring-schedule review gate.
+    path("admin/schedule-requests/", v.AdminScheduleRequestsView.as_view()),
+    path("admin/schedule-requests/approve/", v.AdminScheduleApproveView.as_view()),
+    path("admin/schedule-requests/reject/", v.AdminScheduleRejectView.as_view()),
+    path("admin/schedule-requests/reassign/", v.AdminScheduleReassignView.as_view()),
 
     # ── Sessions ──
     path("sessions/<uuid:session_id>/", v.SessionDetailView.as_view()),

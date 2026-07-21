@@ -212,6 +212,9 @@ def schedule_pick_dto(pick) -> dict:
         "topicTitle": pick.topic.title,
         "instructorId": str(pick.instructor_id),
         "instructorName": pick.instructor.user.full_name,
+        "reviewStatus": pick.review_status,
+        "reviewNote": pick.review_note or "",
+        "reviewedAt": pick.reviewed_at.isoformat() if pick.reviewed_at else None,
     }
 
 
@@ -233,17 +236,28 @@ def _generated_summary(result) -> dict:
 
 
 class SetStudentScheduleUseCase:
-    """Replace the student's recurring weekly schedule, then materialise the next
-    couple of weeks of bookings from it. Returns the saved schedule plus a summary
-    of the bookings that were generated."""
+    """Save the student's recurring weekly schedule as picks awaiting admin review.
+    New/edited picks are PENDING and are NOT booked until an admin approves them;
+    already-approved, unchanged picks still materialise their upcoming bookings.
+    Returns the saved schedule, a summary of any bookings generated (from approved
+    picks), and the number of picks now awaiting review."""
 
     def execute(self, *, actor, picks) -> dict:
+        from apps.common.enums import ScheduleReviewStatus
+
         student = get_student_profile(actor)
         saved = scheduling_services.set_student_schedule(student, picks)
+        # Approved, unchanged picks may still have new upcoming occurrences to book.
         generated = scheduling_services.generate_bookings_from_schedule(student)
+        pending = [p for p in saved if p.review_status == ScheduleReviewStatus.PENDING]
+        if pending:
+            scheduling_services.notify_admins_of_schedule_submission(
+                student, pending_count=len(pending)
+            )
         return {
             "schedule": [schedule_pick_dto(p) for p in saved],
             "generated": _generated_summary(generated),
+            "pendingReview": len(pending),
         }
 
 
@@ -276,3 +290,76 @@ class SetRecurringAvailabilityUseCase:
             }
             for w in saved
         ]
+
+
+# ── Admin review gate for student recurring schedules ─────────────────────────
+
+class ListScheduleRequestsUseCase:
+    """Admin: pending student picks awaiting review, grouped by student."""
+
+    def execute(self, *, actor) -> list:
+        ensure_admin(actor)
+        slots = scheduling_services.list_pending_schedule_slots()
+        by_student = {}
+        for s in slots:
+            key = str(s.student_id)
+            g = by_student.get(key)
+            if g is None:
+                g = {
+                    "studentId": key,
+                    "studentName": s.student.user.full_name,
+                    "studentEmail": s.student.user.email,
+                    "picks": [],
+                }
+                by_student[key] = g
+            g["picks"].append(schedule_pick_dto(s))
+        return list(by_student.values())
+
+
+class ApproveStudentScheduleUseCase:
+    """Admin: approve a student's pending picks (all, or specific slot ids) and
+    materialise their bookings."""
+
+    def execute(self, *, actor, student_id, slot_ids=None) -> dict:
+        from apps.accounts.models import StudentProfile
+
+        ensure_admin(actor)
+        student = StudentProfile.objects.select_related("user").get(pk=student_id)
+        result = scheduling_services.approve_student_schedule(
+            student, actor=actor, slot_ids=slot_ids
+        )
+        return {
+            "approved": len(result["approved"]),
+            "generated": _generated_summary(result["generated"]),
+        }
+
+
+class RejectScheduleSlotUseCase:
+    """Admin: reject a single pending pick with an optional note."""
+
+    def execute(self, *, actor, slot_id, note="") -> dict:
+        from apps.scheduling.models import StudentScheduleSlot
+
+        ensure_admin(actor)
+        slot = StudentScheduleSlot.objects.select_related(
+            "student", "student__user", "topic", "instructor", "instructor__user"
+        ).get(pk=slot_id)
+        scheduling_services.reject_schedule_slot(slot, actor=actor, note=note)
+        return schedule_pick_dto(slot)
+
+
+class ReassignScheduleSlotUseCase:
+    """Admin: change the topic (and its instructor) on a pending pick."""
+
+    def execute(self, *, actor, slot_id, topic_id) -> dict:
+        from apps.scheduling.models import StudentScheduleSlot, Topic
+
+        ensure_admin(actor)
+        slot = StudentScheduleSlot.objects.select_related(
+            "student", "topic", "instructor", "instructor__user"
+        ).get(pk=slot_id)
+        topic = Topic.objects.select_related("instructor", "instructor__user").get(
+            pk=topic_id, published=True, deleted_at__isnull=True
+        )
+        scheduling_services.reassign_schedule_slot(slot, topic=topic, actor=actor)
+        return schedule_pick_dto(slot)

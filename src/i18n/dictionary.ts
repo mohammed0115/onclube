@@ -871,6 +871,28 @@ const PAIRS: [string, string][] = [
   ["Get started", "ابدأ الآن"],
   ["Online English Club Platform", "منصة نادي اللغة الإنجليزية عبر الإنترنت"],
 
+  // ── schedule review gate (student + admin) ──────────────────────────────
+  ["Review status", "حالة المراجعة"],
+  ["Pending review", "بانتظار المراجعة"],
+  ["Approved", "مقبول"],
+  ["Needs changes", "يحتاج تعديلاً"],
+  ["Approve all", "الموافقة على الكل"],
+  ["Approving…", "جارٍ الموافقة…"],
+  ["Reject", "رفض"],
+  ["Rejecting…", "جارٍ الرفض…"],
+  ["pending", "معلّق"],
+  ["No pending requests", "لا توجد طلبات معلّقة"],
+  ["Loading requests…", "جارٍ تحميل الطلبات…"],
+  ["Why is this pick being rejected? (the student sees this message)", "لماذا يُرفض هذا الاختيار؟ (سيرى الطالب هذه الرسالة)"],
+  ["pick(s) sent to the team for review. You'll be notified once they're approved.", "اختيار/اختيارات أُرسلت للفريق للمراجعة. سيصلك إشعار عند الموافقة."],
+  ["Mon", "الاثنين"],
+  ["Tue", "الثلاثاء"],
+  ["Wed", "الأربعاء"],
+  ["Thu", "الخميس"],
+  ["Fri", "الجمعة"],
+  ["Sat", "السبت"],
+  ["Sun", "الأحد"],
+
   // ── landing: live stats band + instructor spotlight ─────────────────────
   ["real instructors", "مُعلّمون حقيقيون"],
   ["Vetted instructors", "مُعلّمون مُدقَّقون"],

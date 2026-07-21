@@ -112,6 +112,15 @@ class AIReportStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
+class ScheduleReviewStatus(models.TextChoices):
+    """Admin review gate for a student's recurring weekly pick. A pick is only
+    materialised into concrete bookings once an admin APPROVES it."""
+
+    PENDING = "pending", "Pending review"
+    APPROVED = "approved", "Approved"
+    REJECTED = "rejected", "Rejected"
+
+
 class NotificationType(models.TextChoices):
     PAYMENT_APPROVED = "payment_approved", "Payment approved"
     PAYMENT_REJECTED = "payment_rejected", "Payment rejected"
@@ -121,6 +130,10 @@ class NotificationType(models.TextChoices):
     BOOKING_CANCELLED = "booking_cancelled", "Booking cancelled"
     SESSION_REMINDER = "session_reminder", "Session reminder"
     REPORT_READY = "report_ready", "Report ready"
+    SCHEDULE_SUBMITTED = "schedule_submitted", "Schedule submitted"   # → admin
+    SCHEDULE_APPROVED = "schedule_approved", "Schedule approved"      # → student
+    SCHEDULE_REJECTED = "schedule_rejected", "Schedule rejected"      # → student
+    SCHEDULE_ASSIGNED = "schedule_assigned", "Assigned to schedule"   # → instructor
 
 
 class AdminActionType(models.TextChoices):
@@ -132,6 +145,9 @@ class AdminActionType(models.TextChoices):
     SUBSCRIPTION_TOPUP = "subscription_topup", "Subscription top-up"
     REFUND_NOTE = "refund_note", "Refund note"
     BOOKING_CANCEL_OVERRIDE = "booking_cancel_override", "Booking cancel override"
+    SCHEDULE_APPROVE = "schedule_approve", "Schedule approve"
+    SCHEDULE_REJECT = "schedule_reject", "Schedule reject"
+    SCHEDULE_REASSIGN = "schedule_reassign", "Schedule reassign instructor"
     USER_STATUS_CHANGED = "user_status_changed", "User status changed"
     USER_ROLE_CHANGED = "user_role_changed", "User role changed"
     PLAN_CREATED = "plan_created", "Plan created"

@@ -513,6 +513,31 @@ export const useAdminSessions = () =>
 export const useAdminBookings = () =>
   useQuery({ queryKey: qk.adminBookings, queryFn: topicsApi.adminBookings });
 
+// ── admin: student recurring-schedule review gate ───────────────────────────
+export const useAdminScheduleRequests = () =>
+  useQuery({ queryKey: qk.adminScheduleRequests, queryFn: topicsApi.adminScheduleRequests });
+
+export function useApproveSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { studentId: string; slotIds?: string[] }) =>
+      topicsApi.adminApproveSchedule(input.studentId, input.slotIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminScheduleRequests });
+      qc.invalidateQueries({ queryKey: qk.adminBookings });
+    },
+  });
+}
+
+export function useRejectSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { slotId: string; note: string }) =>
+      topicsApi.adminRejectSchedule(input.slotId, input.note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.adminScheduleRequests }),
+  });
+}
+
 // ── instructor: topic builder (real AI suggestions) ─────────────────────────
 export function useCreateTopic() {
   return useMutation({

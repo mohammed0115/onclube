@@ -14,9 +14,20 @@ import {
   useScheduleWindows,
   useSetStudentSchedule,
 } from "@/hooks";
-import type { ScheduleGenerationSummary } from "@/api/types";
+import type { SetScheduleResult, ScheduleReviewStatus } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+
+const STATUS_TONE: Record<ScheduleReviewStatus, "amber" | "emerald" | "red"> = {
+  pending: "amber",
+  approved: "emerald",
+  rejected: "red",
+};
+const STATUS_LABEL: Record<ScheduleReviewStatus, string> = {
+  pending: "Pending review",
+  approved: "Approved",
+  rejected: "Needs changes",
+};
 
 // Backend weekday: 0 = Monday … 6 = Sunday.
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -66,7 +77,7 @@ export function WeeklySchedulePage() {
   const topics = topicsQuery.data ?? [];
   const [topicId, setTopicId] = useState<string>("");
   const [picks, setPicks] = useState<Pick[]>([]);
-  const [summary, setSummary] = useState<ScheduleGenerationSummary | null>(null);
+  const [result, setResult] = useState<SetScheduleResult | null>(null);
 
   // Default the topic selector to the first available topic.
   useEffect(() => {
@@ -108,7 +119,7 @@ export function WeeklySchedulePage() {
   const pickAt = (weekday: number, hour: number) => picks.find((p) => p.weekday === weekday && p.hour === hour);
 
   const toggleCell = (weekday: number, hour: number) => {
-    setSummary(null);
+    setResult(null);
     const existing = pickAt(weekday, hour);
     if (existing) {
       setPicks((prev) => prev.filter((p) => !(p.weekday === weekday && p.hour === hour)));
@@ -128,12 +139,12 @@ export function WeeklySchedulePage() {
   };
 
   const onSave = () => {
-    setSummary(null);
+    setResult(null);
     save.mutate(
       picks.map((p) => ({ weekday: p.weekday, startTime: hh(p.hour), topicId: p.topicId })),
       {
         onSuccess: (res) => {
-          setSummary(res.generated);
+          setResult(res);
           scheduleQuery.refetch();
         },
       }
@@ -161,7 +172,7 @@ export function WeeklySchedulePage() {
     <DashboardLayout>
       <PageHeader
         title="My weekly schedule"
-        subtitle="Choose a topic, then tap the times you want to practise it each week. We create your sessions automatically."
+        subtitle="Choose a topic, then tap the times you want to practise it each week. Your picks are sent to our team for approval, then your sessions are booked."
         action={
           <Button size="sm" onClick={onSave} disabled={save.isPending}>
             {save.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {tx("Save schedule")}
@@ -178,11 +189,20 @@ export function WeeklySchedulePage() {
         </div>
       )}
 
-      {summary && !save.isPending && (
-        <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
-          {tx("Saved ✓")} — {summary.created} {tx("upcoming session(s) booked")}
-          {summary.outOfCredits && <span className="ml-1 text-amber-700">· {tx("you've used all your credits")}</span>}
-        </p>
+      {result && !save.isPending && (
+        <div className="mb-4 space-y-2">
+          {result.pendingReview > 0 && (
+            <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700">
+              {tx("Saved ✓")} — {result.pendingReview} {tx("pick(s) sent to the team for review. You'll be notified once they're approved.")}
+            </p>
+          )}
+          {result.generated.created > 0 && (
+            <p className="rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
+              {result.generated.created} {tx("upcoming session(s) booked")}
+              {result.generated.outOfCredits && <span className="ml-1 text-amber-700">· {tx("you've used all your credits")}</span>}
+            </p>
+          )}
+        </div>
       )}
       {save.isError && (
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-600">
@@ -279,7 +299,34 @@ export function WeeklySchedulePage() {
             )}
           </Card>
 
-          {/* Upcoming sessions */}
+          {/* Review status + upcoming sessions */}
+          <div className="space-y-6">
+          {(scheduleQuery.data?.schedule.length ?? 0) > 0 && (
+            <Card className="p-5">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Check size={16} className="text-indigo-600" /> {tx("Review status")}
+              </div>
+              <div className="space-y-2">
+                {scheduleQuery.data!.schedule.map((p) => (
+                  <div key={p.id} className="flex items-start justify-between gap-2 rounded-xl border border-border p-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">{p.topicTitle}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {tx(WEEKDAYS[p.weekday] ?? "—")} · {p.startTime}
+                      </div>
+                      {p.reviewStatus === "rejected" && p.reviewNote && (
+                        <div className="mt-1 text-xs text-red-600">{p.reviewNote}</div>
+                      )}
+                    </div>
+                    <Badge tone={STATUS_TONE[p.reviewStatus]} className="flex-shrink-0">
+                      {tx(STATUS_LABEL[p.reviewStatus])}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           <Card className="p-5">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
               <CalendarClock size={16} className="text-indigo-600" /> {tx("Upcoming sessions")}
@@ -308,6 +355,7 @@ export function WeeklySchedulePage() {
               </div>
             )}
           </Card>
+          </div>
         </div>
       )}
     </DashboardLayout>

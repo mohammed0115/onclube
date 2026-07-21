@@ -444,6 +444,8 @@ export interface WeeklyCalendar {
 }
 
 // ── recurring weekly schedule (student-driven) ──────────────────────────────────
+export type ScheduleReviewStatus = "pending" | "approved" | "rejected";
+
 export interface SchedulePick {
   id: string;
   weekday: number; // 0=Mon … 6=Sun
@@ -453,6 +455,22 @@ export interface SchedulePick {
   topicTitle: string;
   instructorId: string;
   instructorName: string;
+  reviewStatus: ScheduleReviewStatus;
+  reviewNote: string;
+  reviewedAt: string | null;
+}
+
+// Admin review queue: pending picks grouped by student.
+export interface ScheduleRequestGroup {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  picks: SchedulePick[];
+}
+
+export interface ScheduleApproveResult {
+  approved: number;
+  generated: ScheduleGenerationSummary;
 }
 
 export interface GeneratedBooking {
@@ -486,6 +504,7 @@ export interface StudentSchedule {
 export interface SetScheduleResult {
   schedule: SchedulePick[];
   generated: ScheduleGenerationSummary;
+  pendingReview: number;
 }
 
 export interface SchedulePickInput {

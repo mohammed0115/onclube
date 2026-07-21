@@ -14,6 +14,7 @@ from apps.common.enums import (
     BookingStatus,
     CEFRLevel,
     GroupSessionStatus,
+    ScheduleReviewStatus,
     SlotStatus,
 )
 from apps.common.models import BaseModel, SoftDeleteModel, TimeStampedModel, UUIDModel
@@ -401,6 +402,24 @@ class StudentScheduleSlot(BaseModel, SoftDeleteModel):
     start_time = models.TimeField()
     duration_minutes = models.PositiveIntegerField(default=45)
     active = models.BooleanField(default=True)
+
+    # ── Admin review gate ────────────────────────────────────────────────────
+    # A pick is only materialised into bookings once an admin APPROVES it. A new
+    # or edited pick starts (or returns) to PENDING.
+    review_status = models.CharField(
+        max_length=16,
+        choices=ScheduleReviewStatus.choices,
+        default=ScheduleReviewStatus.PENDING,
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_schedule_slots",
+    )
+    review_note = models.CharField(max_length=300, blank=True, default="")
 
     class Meta:
         db_table = "student_schedule_slots"

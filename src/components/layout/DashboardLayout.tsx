@@ -9,6 +9,7 @@ import {
   Settings,
   GraduationCap,
   CalendarClock,
+  CalendarCheck,
   PenSquare,
   ShieldCheck,
   User,
@@ -35,7 +36,7 @@ const NAV_KEY: Record<string, string> = {
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Public Profile": "nav.publicProfile", "Payment Approval": "nav.payments",
   Members: "nav.members", Instructors: "nav.adminInstructors", Business: "nav.business", Platform: "nav.platform",
   "Audit log": "nav.audit", Teaching: "nav.teaching", Sessions: "nav.sessionsAll",
-  Bookings: "nav.bookings", Plans: "nav.plans",
+  Bookings: "nav.bookings", Plans: "nav.plans", Scheduling: "nav.scheduling",
 };
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
@@ -75,6 +76,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: Wallet, label: "Payment Approval", short: "Payments", to: "/admin/payments" },
     { icon: CalendarClock, label: "Sessions", to: "/admin/sessions" },
     { icon: Calendar, label: "Bookings", to: "/admin/bookings" },
+    { icon: CalendarCheck, label: "Scheduling", short: "Requests", to: "/admin/scheduling-requests" },
     { icon: Users, label: "Members", to: "/admin/members" },
     { icon: BadgeCheck, label: "Instructors", to: "/admin/instructors" },
     { icon: Wallet, label: "Plans", to: "/admin/plans" },

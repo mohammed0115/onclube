@@ -5,6 +5,9 @@ import type {
   AdminSession,
   AdminUser,
   AuditEntry,
+  ScheduleRequestGroup,
+  ScheduleApproveResult,
+  SchedulePick,
   BusinessOverview,
   PlatformStatus,
   AvailabilityException,
@@ -163,6 +166,19 @@ export const topicsApi = {
   },
   adminBookings(): Promise<AdminBookingItem[]> {
     return api.get<AdminBookingItem[]>("/admin/bookings/");
+  },
+  // ── Student recurring-schedule review gate ──
+  adminScheduleRequests(): Promise<ScheduleRequestGroup[]> {
+    return api.get<ScheduleRequestGroup[]>("/admin/schedule-requests/");
+  },
+  adminApproveSchedule(studentId: string, slotIds?: string[]): Promise<ScheduleApproveResult> {
+    return api.post<ScheduleApproveResult>("/admin/schedule-requests/approve/", {
+      studentId,
+      ...(slotIds && slotIds.length ? { slotIds } : {}),
+    });
+  },
+  adminRejectSchedule(slotId: string, note: string): Promise<SchedulePick> {
+    return api.post<SchedulePick>("/admin/schedule-requests/reject/", { slotId, note });
   },
   adminPlans(): Promise<Plan[]> {
     return api.get<Plan[]>("/admin/plans/");

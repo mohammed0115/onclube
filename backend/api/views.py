@@ -106,13 +106,17 @@ from application.scheduling.queries import (
     ListStudentBookingsUseCase,
 )
 from application.scheduling.use_cases import (
+    ApproveStudentScheduleUseCase,
     CancelBookingUseCase,
     CreateBookingUseCase,
     GenerateScheduleBookingsUseCase,
     JoinGroupSessionUseCase,
     LeaveGroupSessionUseCase,
     ListAvailableSlotsUseCase,
+    ListScheduleRequestsUseCase,
     RateSessionUseCase,
+    ReassignScheduleSlotUseCase,
+    RejectScheduleSlotUseCase,
     RescheduleBookingUseCase,
     SetRecurringAvailabilityUseCase,
     SetStudentScheduleUseCase,
@@ -1121,6 +1125,51 @@ class AdminBookingUpdateView(AdminAPIView):
             actor=request.user, booking_id=booking_id, force_credit=data.get("forceCredit")
         )
         return Response(s.CancellationSerializer(dto).data)
+
+
+# ── Admin: student schedule review gate ───────────────────────────────────────
+class AdminScheduleRequestsView(AdminAPIView):
+    """Pending student recurring-schedule picks awaiting admin review, grouped by
+    student."""
+
+    def get(self, request):
+        return Response(ListScheduleRequestsUseCase().execute(actor=request.user))
+
+
+class AdminScheduleApproveView(AdminAPIView):
+    """Approve a student's pending picks (all, or specific slotIds) → generates
+    the bookings and notifies the student + instructors."""
+
+    def post(self, request):
+        data = _validated(s.AdminScheduleApproveInputSerializer, request)
+        result = ApproveStudentScheduleUseCase().execute(
+            actor=request.user,
+            student_id=data["studentId"],
+            slot_ids=data.get("slotIds") or None,
+        )
+        return Response(result)
+
+
+class AdminScheduleRejectView(AdminAPIView):
+    """Reject a single pending pick with an optional note."""
+
+    def post(self, request):
+        data = _validated(s.AdminScheduleRejectInputSerializer, request)
+        dto = RejectScheduleSlotUseCase().execute(
+            actor=request.user, slot_id=data["slotId"], note=data.get("note", "")
+        )
+        return Response(dto)
+
+
+class AdminScheduleReassignView(AdminAPIView):
+    """Change the topic (and its instructor) on a pending pick before approval."""
+
+    def post(self, request):
+        data = _validated(s.AdminScheduleReassignInputSerializer, request)
+        dto = ReassignScheduleSlotUseCase().execute(
+            actor=request.user, slot_id=data["slotId"], topic_id=data["topicId"]
+        )
+        return Response(dto)
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────

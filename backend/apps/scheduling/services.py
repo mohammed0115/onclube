@@ -17,6 +17,7 @@ from apps.common.enums import (
     BookingStatus,
     GroupSessionStatus,
     NotificationType,
+    ScheduleReviewStatus,
     SlotStatus,
     SubscriptionStatus,
 )
@@ -625,7 +626,13 @@ def set_student_schedule(student, picks):
                 cur.duration_minutes = v["duration_minutes"]
                 fields.append("duration_minutes")
             if fields:
-                fields.append("updated_at")
+                # An edited pick must be re-reviewed by an admin before it
+                # generates any (further) bookings.
+                cur.review_status = ScheduleReviewStatus.PENDING
+                cur.reviewed_at = None
+                cur.reviewed_by = None
+                cur.review_note = ""
+                fields += ["review_status", "reviewed_at", "reviewed_by", "review_note", "updated_at"]
                 cur.save(update_fields=fields)
         result.append(cur)
 
@@ -649,7 +656,12 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
     tz = timezone.get_current_timezone()
     ref_date = timezone.localtime(now).date()
 
-    picks = list_student_schedule(student)
+    # Only APPROVED picks are materialised — pending/rejected picks wait for the
+    # admin review gate.
+    picks = [
+        p for p in list_student_schedule(student)
+        if p.review_status == ScheduleReviewStatus.APPROVED
+    ]
     created = []
     skipped = []
     out_of_credits = False
@@ -702,3 +714,155 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
             created.append(booking)
 
     return {"created": created, "skipped": skipped, "out_of_credits": out_of_credits}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Admin review gate for student recurring schedules
+#
+#  Flow: student saves picks (PENDING) → admin reviews on the Scheduling Requests
+#  page → admin APPROVES (materialises bookings, notifies student + instructor) or
+#  REJECTS a pick with a note. Only approved picks ever become real sessions.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def notify_admins_of_schedule_submission(student, *, pending_count):
+    """Let every admin know a student submitted a schedule awaiting review."""
+    from apps.accounts.models import User
+    from apps.common.enums import UserRole
+
+    admins = User.objects.filter(role=UserRole.ADMIN, status="active")
+    label = "pick" if pending_count == 1 else "picks"
+    Notification.objects.bulk_create([
+        Notification(
+            user=a,
+            type=NotificationType.SCHEDULE_SUBMITTED,
+            title="Schedule awaiting review",
+            body=f"{student.user.full_name} submitted {pending_count} {label} for review.",
+            data={"student_id": str(student.id)},
+        )
+        for a in admins
+    ])
+
+
+def list_pending_schedule_slots():
+    """All active, pending student picks across the platform — the admin queue."""
+    return list(
+        StudentScheduleSlot.objects.filter(
+            active=True,
+            deleted_at__isnull=True,
+            review_status=ScheduleReviewStatus.PENDING,
+        )
+        .select_related("student", "student__user", "topic", "instructor", "instructor__user")
+        .order_by("student__user__full_name", "weekday", "start_time")
+    )
+
+
+def list_student_schedule_all(student):
+    """Every active pick for one student (any review status), for the admin detail."""
+    return list(
+        StudentScheduleSlot.objects.filter(
+            student=student, active=True, deleted_at__isnull=True
+        )
+        .select_related("topic", "instructor", "instructor__user")
+        .order_by("weekday", "start_time")
+    )
+
+
+@transaction.atomic
+def reassign_schedule_slot(slot, *, topic, actor=None):
+    """Admin swaps the topic (and its instructor) on a pending pick before approval.
+    Validates the new topic covers the pick's weekday/time window."""
+    if slot.review_status == ScheduleReviewStatus.APPROVED:
+        raise BusinessRuleError("Approved picks can't be reassigned; cancel the bookings instead.", code="already_approved")
+    windows = [
+        (w.start_time, w.end_time)
+        for w in RecurringAvailability.objects.filter(
+            instructor_id=topic.instructor_id, weekday=slot.weekday
+        ).only("start_time", "end_time")
+    ]
+    has_any_window = RecurringAvailability.objects.filter(instructor_id=topic.instructor_id).exists()
+    if has_any_window and not time_within_windows(slot.start_time, windows):
+        raise BusinessRuleError("That time is outside the instructor's available hours.", code="outside_availability")
+    slot.topic = topic
+    slot.instructor = topic.instructor
+    slot.review_status = ScheduleReviewStatus.PENDING
+    slot.save(update_fields=["topic", "instructor", "review_status", "updated_at"])
+    if actor is not None:
+        AdminAction.objects.create(
+            admin=actor,
+            action_type=AdminActionType.SCHEDULE_REASSIGN,
+            target_table="student_schedule_slots",
+            target_id=slot.id,
+            reason=f"Reassigned to {topic.title} ({topic.instructor.user.full_name}).",
+        )
+    return slot
+
+
+@transaction.atomic
+def approve_student_schedule(student, *, actor, slot_ids=None, now=None):
+    """Approve the student's pending picks (all, or the given `slot_ids`), then
+    materialise their bookings. Notifies the student (summary) and each instructor
+    (per generated booking, via `create_booking`). Returns a summary dict."""
+    qs = StudentScheduleSlot.objects.filter(
+        student=student,
+        active=True,
+        deleted_at__isnull=True,
+        review_status=ScheduleReviewStatus.PENDING,
+    )
+    if slot_ids:
+        qs = qs.filter(id__in=slot_ids)
+    approved = list(qs)
+    now = now or timezone.now()
+    for slot in approved:
+        slot.review_status = ScheduleReviewStatus.APPROVED
+        slot.reviewed_at = now
+        slot.reviewed_by = actor
+        slot.review_note = ""
+        slot.save(update_fields=["review_status", "reviewed_at", "reviewed_by", "review_note", "updated_at"])
+        AdminAction.objects.create(
+            admin=actor,
+            action_type=AdminActionType.SCHEDULE_APPROVE,
+            target_table="student_schedule_slots",
+            target_id=slot.id,
+            reason=f"{slot.topic.title} · weekday {slot.weekday} {slot.start_time:%H:%M}",
+        )
+
+    generated = generate_bookings_from_schedule(student, now=now)
+
+    if approved:
+        n_created = len(generated["created"])
+        Notification.objects.create(
+            user=student.user,
+            type=NotificationType.SCHEDULE_APPROVED,
+            title="Schedule approved",
+            body=(
+                f"Your weekly schedule was approved. {n_created} upcoming "
+                f"session(s) have been booked."
+            ),
+            data={"created": n_created},
+        )
+    return {"approved": approved, "generated": generated}
+
+
+@transaction.atomic
+def reject_schedule_slot(slot, *, actor, note=""):
+    """Reject one pending pick with an optional reason; notify the student."""
+    slot.review_status = ScheduleReviewStatus.REJECTED
+    slot.reviewed_at = timezone.now()
+    slot.reviewed_by = actor
+    slot.review_note = note or ""
+    slot.save(update_fields=["review_status", "reviewed_at", "reviewed_by", "review_note", "updated_at"])
+    AdminAction.objects.create(
+        admin=actor,
+        action_type=AdminActionType.SCHEDULE_REJECT,
+        target_table="student_schedule_slots",
+        target_id=slot.id,
+        reason=note or "",
+    )
+    Notification.objects.create(
+        user=slot.student.user,
+        type=NotificationType.SCHEDULE_REJECTED,
+        title="A schedule pick needs changes",
+        body=(note or f"Your pick “{slot.topic.title}” wasn't approved. Please choose another time or topic."),
+        data={"slot_id": str(slot.id)},
+    )
+    return slot

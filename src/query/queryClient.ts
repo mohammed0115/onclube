@@ -58,6 +58,7 @@ export const qk = {
   ownPublicProfile: ["instructor", "public-profile"] as const,
   adminInstructors: ["admin", "instructors"] as const,
   adminBookings: ["admin", "bookings"] as const,
+  adminScheduleRequests: ["admin", "schedule-requests"] as const,
   adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,
   instructorProfile: ["instructor", "profile"] as const,
