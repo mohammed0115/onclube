@@ -66,6 +66,7 @@ export function AvailabilityPage() {
   const save = useSetRecurringAvailability();
   const [cells, setCells] = useState<Set<string> | null>(null);
   const [saved, setSaved] = useState(false);
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
 
   // Seed the editable grid once from the server's windows.
   useEffect(() => {
@@ -75,6 +76,7 @@ export function AvailabilityPage() {
   const set = cells ?? new Set<string>();
   const toggle = (wd: number, h: number) => {
     setSaved(false);
+    setConfirmEmpty(false);
     setCells((prev) => {
       const n = new Set(prev ?? []);
       const k = cellKey(wd, h);
@@ -84,7 +86,13 @@ export function AvailabilityPage() {
   };
   const onSave = () => {
     setSaved(false);
-    save.mutate(cellsToWindows(set), { onSuccess: () => setSaved(true) });
+    // An empty grid now means "unavailable" (you won't be matched with any student),
+    // not "available all week". Make the instructor confirm that on purpose.
+    if (set.size === 0 && !confirmEmpty) {
+      setConfirmEmpty(true);
+      return;
+    }
+    save.mutate(cellsToWindows(set), { onSuccess: () => { setSaved(true); setConfirmEmpty(false); } });
   };
 
   return (
@@ -104,6 +112,11 @@ export function AvailabilityPage() {
       )}
       {save.isError && (
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600">{tx("Could not save. Please try again.")}</p>
+      )}
+      {confirmEmpty && cells !== null && set.size === 0 && (
+        <p className="mb-4 rounded-xl bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+          {tx("You haven't selected any times, so no student can be matched with you. Press Save again to confirm you're unavailable.")}
+        </p>
       )}
 
       {q.isLoading || cells === null ? (

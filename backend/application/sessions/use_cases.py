@@ -348,24 +348,67 @@ class CompleteSessionUseCase:
         if not session_rules.can_complete(session.status):
             raise InvalidStateTransition("Only a scheduled/live session can complete.")
 
-        # A completed session must carry a channel (§2.6). Backfill a placeholder
-        # if the room was never joined.
         now = timezone.now()
+        booking = session.booking
+        self._finalize(session, booking, now)
+        self._make_report_shell(session, booking)
+        self.events.publish(
+            domain_events.SessionCompleted(
+                session_id=str(session.id),
+                booking_id=str(booking.id),
+                ended_at=session.ended_at,
+            )
+        )
+        self._generate_report(actor, session.id)
+
+        # Group sessions: every student at this instructor+time shares ONE room. When
+        # the room is completed we must finalize EACH student's own booking + session
+        # and produce EACH report — otherwise the other group members stay UPCOMING
+        # with no report even though their credit was already spent.
+        from apps.scheduling.models import Booking
+
+        siblings = Booking.objects.filter(
+            instructor_id=booking.instructor_id,
+            scheduled_at=booking.scheduled_at,
+            status=BookingStatus.UPCOMING,
+            deleted_at__isnull=True,
+        ).exclude(id=booking.id)
+        for sib in siblings:
+            sib_session = Session.objects.filter(booking=sib).order_by("created_at").first()
+            if sib_session is None:
+                # No room row for this member — still release them from UPCOMING limbo.
+                sib.status = BookingStatus.COMPLETED
+                sib.save(update_fields=["status", "updated_at"])
+                continue
+            if sib_session.status != SessionStatus.COMPLETED:
+                self._finalize(sib_session, sib, now)
+            self._make_report_shell(sib_session, sib)
+            self.events.publish(
+                domain_events.SessionCompleted(
+                    session_id=str(sib_session.id),
+                    booking_id=str(sib.id),
+                    ended_at=sib_session.ended_at,
+                )
+            )
+            self._generate_report(actor, sib_session.id)
+
+        return self._result(session, report_pending=True)
+
+    def _finalize(self, session, booking, now):
+        """Transition a session (and its booking) to COMPLETED, backfilling the
+        channel/started_at invariants a completed session must satisfy (§2.6)."""
         if not session.agora_channel:
             session.agora_channel = f"session-{session.id}"
-        # Backfill started_at so the chk_session_end_after_start constraint holds
-        # even when Start was never called (started == ended for a zero-length room).
-        if session.started_at is None:
+        if session.started_at is None:  # started == ended for a zero-length room
             session.started_at = now
         session.status = SessionStatus.COMPLETED
         session.ended_at = now
         self.sessions.save(session)
-
-        booking = session.booking
         booking.status = BookingStatus.COMPLETED
         booking.save(update_fields=["status", "updated_at"])
 
-        # Prepare the AI report shell.
+    @staticmethod
+    def _make_report_shell(session, booking):
         AIReport.objects.get_or_create(
             session=session,
             defaults=dict(
@@ -379,28 +422,19 @@ class CompleteSessionUseCase:
             ),
         )
 
-        self.events.publish(
-            domain_events.SessionCompleted(
-                session_id=str(session.id),
-                booking_id=str(booking.id),
-                ended_at=session.ended_at,
-            )
-        )
-
-        # Generate the report now (best-effort). The provider always degrades to the
-        # heuristic, so a report is produced from whatever transcript was persisted.
-        # Savepoint-isolated: a generation failure leaves the report PENDING (an
-        # instructor/admin can regenerate) but never rolls back the completion.
-        # (No Celery in this deployment, so generation is synchronous.)
+    def _generate_report(self, actor, session_id):
+        """Best-effort report generation. The provider degrades to the heuristic, so a
+        report is produced from whatever transcript exists. Savepoint-isolated: a
+        failure (or an actor who is not this session's participant, e.g. a groupmate)
+        leaves the report PENDING for an instructor/admin to regenerate, but never
+        rolls back the completion."""
         try:
             from application.ai_reports.use_cases import GenerateAISessionReportUseCase
 
             with transaction.atomic():
-                GenerateAISessionReportUseCase().execute(actor=actor, session_id=session.id)
+                GenerateAISessionReportUseCase().execute(actor=actor, session_id=session_id)
         except Exception:  # noqa: BLE001 — report stays PENDING, completion stands
-            _logger.warning("AI report generation failed for session %s; left PENDING", session.id)
-
-        return self._result(session, report_pending=True)
+            _logger.warning("AI report generation failed for session %s; left PENDING", session_id)
 
     @staticmethod
     def _result(session, report_pending=False):

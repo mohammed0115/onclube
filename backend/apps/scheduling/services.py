@@ -7,7 +7,7 @@ visibility gate.
 """
 from datetime import datetime, timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
@@ -34,6 +34,7 @@ from domain.exceptions import (
 from domain.rules.scheduling import (
     CANCELLATION_CREDIT_WINDOW,  # re-exported for backward compatibility
     cancellation_refunds_credit,
+    has_covering_window,
     is_covered_by_intervals,
     time_within_windows,
     upcoming_dates_for_weekday,
@@ -236,7 +237,7 @@ def lesson_visible_to_student(booking, now=None) -> bool:
 
 
 @transaction.atomic
-def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool = False) -> Booking:
+def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool = False, schedule_slot=None) -> Booking:
     """
     Book a slot for a student.
 
@@ -294,6 +295,10 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool
         raise InsufficientSessionCredits()
     subscription.refresh_from_db(fields=["sessions_remaining"])
 
+    # `schedule_slot` is set here (not after) so the per-occurrence unique
+    # constraint fires on INSERT — inside this atomic block — and a losing
+    # concurrent generation run rolls back its credit decrement instead of
+    # leaving a phantom booking with a spent credit.
     booking = Booking.objects.create(
         student=student,
         topic=topic,
@@ -305,6 +310,7 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool
         scheduled_at=slot.start_at,
         duration_minutes=slot.duration_minutes,
         status=BookingStatus.UPCOMING,
+        schedule_slot=schedule_slot,
     )
 
     # Group sessions keep the slot OPEN so more students can join (up to capacity);
@@ -571,9 +577,9 @@ def match_instructors_for(weekday, start_time):
     """Instructors available at a given weekday + time — the foundation for
     time-first matching (Product Bible stage 9): the student picks a time and the
     system offers whoever can teach it. An instructor qualifies when they have at
-    least one published topic AND their recurring availability covers the time (an
-    instructor with no windows at all counts as available all week). Returns
-    lightweight candidate dicts ordered by name."""
+    least one published topic AND an explicit recurring-availability window covering
+    that weekday+time (no window = unavailable). Returns lightweight candidate dicts
+    ordered by name."""
     from apps.accounts.models import InstructorProfile
 
     weekday = int(weekday)
@@ -588,7 +594,9 @@ def match_instructors_for(weekday, start_time):
             continue
         all_windows = list(ins.recurring_availability.all())
         windows = [(w.start_time, w.end_time) for w in all_windows if w.weekday == weekday]
-        if all_windows and not time_within_windows(start_time, windows):
+        # Availability-first: match only where the instructor explicitly opted in.
+        # No window on this weekday (or an empty grid) means unavailable, not 24/7.
+        if not has_covering_window(start_time, windows):
             continue
         candidates.append(
             {
@@ -602,8 +610,8 @@ def match_instructors_for(weekday, start_time):
 
 
 def available_instructors_at(weekday, start_time):
-    """InstructorProfiles whose recurring availability covers weekday+time (an
-    instructor with no windows counts as available all week), who accept students.
+    """InstructorProfiles whose recurring availability explicitly covers weekday+time
+    (no window = unavailable, never 'available all week'), who accept students.
     Ordered by current schedule load (fewest assigned picks first) then name — so
     'nearest available' distributes new students fairly. Topic-agnostic: in the
     availability-first flow the instructor authors each lesson, so no published
@@ -620,7 +628,9 @@ def available_instructors_at(weekday, start_time):
             continue
         all_windows = list(ins.recurring_availability.all())
         windows = [(w.start_time, w.end_time) for w in all_windows if w.weekday == weekday]
-        if all_windows and not time_within_windows(start_time, windows):
+        # Availability-first: match only where the instructor explicitly opted in.
+        # No window on this weekday (or an empty grid) means unavailable, not 24/7.
+        if not has_covering_window(start_time, windows):
             continue
         load = StudentScheduleSlot.objects.filter(
             instructor=ins, active=True, deleted_at__isnull=True
@@ -788,17 +798,20 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
                 continue
 
             try:
-                booking = create_booking(student, pick.topic, slot, group=True)
+                booking = create_booking(student, pick.topic, slot, group=True, schedule_slot=pick)
             except InsufficientSessionCredits:
                 skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "no_credits"})
                 out_of_credits = True
                 break
+            except IntegrityError:
+                # A concurrent generation run already created this occurrence; its
+                # atomic insert rolled ours back (no credit spent). Treat as handled.
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "duplicate"})
+                continue
             except (SlotAlreadyBooked, NoActiveSubscription, SubscriptionExpired, BusinessRuleError) as exc:
                 skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": getattr(exc, "code", "unavailable")})
                 continue
 
-            booking.schedule_slot = pick
-            booking.save(update_fields=["schedule_slot", "updated_at"])
             created.append(booking)
 
     return {"created": created, "skipped": skipped, "out_of_credits": out_of_credits}
@@ -870,8 +883,10 @@ def assign_schedule_slot_instructor(slot, *, instructor, actor=None):
             instructor_id=instructor.id, weekday=slot.weekday
         ).only("start_time", "end_time")
     ]
-    has_any_window = RecurringAvailability.objects.filter(instructor_id=instructor.id).exists()
-    if has_any_window and not time_within_windows(slot.start_time, windows):
+    # Availability-first: the instructor must have an explicit window covering this
+    # weekday+time. No window (empty grid) means unavailable, so an admin can't
+    # assign a pick to an instructor who never opted into that time.
+    if not has_covering_window(slot.start_time, windows):
         raise BusinessRuleError(
             "That instructor is not available at this time.", code="outside_availability"
         )
@@ -901,7 +916,12 @@ def approve_student_schedule(student, *, actor, slot_ids=None, now=None):
     )
     if slot_ids:
         qs = qs.filter(id__in=slot_ids)
-    approved = list(qs)
+    # A pick with no assigned instructor cannot materialise a booking. Approving it
+    # would silently strand the student (a green "approved" badge, but nothing booked,
+    # and the pick drops out of the review queue forever). Keep such picks PENDING so
+    # the admin must assign an instructor first.
+    approved = list(qs.filter(instructor__isnull=False))
+    skipped_unassigned = qs.filter(instructor__isnull=True).count()
     now = now or timezone.now()
     for slot in approved:
         slot.review_status = ScheduleReviewStatus.APPROVED
@@ -921,17 +941,27 @@ def approve_student_schedule(student, *, actor, slot_ids=None, now=None):
 
     if approved:
         n_created = len(generated["created"])
+        body = (
+            f"Your weekly schedule was approved. {n_created} upcoming "
+            f"session(s) have been booked."
+        )
+        if skipped_unassigned:
+            body += (
+                f" {skipped_unassigned} time(s) still need an instructor and are "
+                "awaiting assignment."
+            )
         Notification.objects.create(
             user=student.user,
             type=NotificationType.SCHEDULE_APPROVED,
             title="Schedule approved",
-            body=(
-                f"Your weekly schedule was approved. {n_created} upcoming "
-                f"session(s) have been booked."
-            ),
-            data={"created": n_created},
+            body=body,
+            data={"created": n_created, "skipped_unassigned": skipped_unassigned},
         )
-    return {"approved": approved, "generated": generated}
+    return {
+        "approved": approved,
+        "generated": generated,
+        "skipped_unassigned": skipped_unassigned,
+    }
 
 
 @transaction.atomic

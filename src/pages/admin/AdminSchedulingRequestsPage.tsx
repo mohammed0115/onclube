@@ -153,18 +153,31 @@ export function AdminSchedulingRequestsPage() {
         />
       ) : (
         <div className="space-y-4">
-          {groups.map((g) => (
+          {groups.map((g) => {
+            const unassigned = g.picks.filter((p) => !p.instructorId).length;
+            const assignable = g.picks.length - unassigned;
+            return (
             <Card key={g.studentId} className="overflow-hidden p-0">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 p-4">
                 <div className="min-w-0">
                   <div className="truncate font-display text-sm font-bold text-foreground">{g.studentName}</div>
                   <div className="truncate text-xs text-muted-foreground">{g.studentEmail}</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="amber" className="gap-1">
                     <Clock size={12} /> {g.picks.length} {tx("pending")}
                   </Badge>
-                  <Button size="sm" onClick={() => onApproveAll(g.studentId)} disabled={busy === g.studentId}>
+                  {unassigned > 0 && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+                      <AlertTriangle size={12} /> {unassigned} {tx("need an instructor")}
+                    </span>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => onApproveAll(g.studentId)}
+                    disabled={busy === g.studentId || assignable === 0}
+                    title={assignable === 0 ? tx("Assign an instructor first") : undefined}
+                  >
                     <Check size={15} /> {busy === g.studentId ? tx("Approving…") : tx("Approve all")}
                   </Button>
                 </div>
@@ -183,7 +196,8 @@ export function AdminSchedulingRequestsPage() {
                 ))}
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </DashboardLayout>

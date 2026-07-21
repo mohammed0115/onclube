@@ -58,12 +58,23 @@ def is_covered_by_intervals(dt, intervals) -> bool:
 # ── recurring weekly schedule (student-driven) ────────────────────────────────
 def time_within_windows(t: time, windows: Iterable[Tuple[time, time]]) -> bool:
     """True if `t` falls inside any half-open [start, end) time window. An empty
-    window list means "no restriction" (instructor available all day) and always
-    returns True — this is the "available all the time" default when an instructor
-    has published no recurring availability."""
+    window list means "no restriction" and always returns True. NOTE: this is a
+    permissive filter — for the availability-first matching rule (where an instructor
+    must have explicitly opted in) use `has_covering_window` instead."""
     windows = list(windows)
     if not windows:
         return True
+    return any(start <= t < end for start, end in windows)
+
+
+def has_covering_window(t: time, windows: Iterable[Tuple[time, time]]) -> bool:
+    """True only if `t` falls inside an explicit half-open [start, end) window.
+
+    Unlike `time_within_windows`, an empty list means NO availability (the
+    instructor has not declared this time) — not "available always". This is the
+    availability-first matching rule: an instructor is matched only at times they
+    explicitly opted into, so clearing the grid (or having no window on that
+    weekday) means "unavailable", never "available 24/7"."""
     return any(start <= t < end for start, end in windows)
 
 

@@ -341,6 +341,7 @@ class ApproveStudentScheduleUseCase:
         return {
             "approved": len(result["approved"]),
             "generated": _generated_summary(result["generated"]),
+            "skipped_unassigned": result["skipped_unassigned"],
         }
 
 

@@ -155,11 +155,12 @@ class AvailabilitySlot(BaseModel):
 class Booking(BaseModel, SoftDeleteModel):
     """
     A confirmed seat against a slot. `slot` is a ForeignKey so a slot can hold
-    a full booking history (an active booking plus any earlier cancelled ones),
-    while the partial unique constraint `uniq_active_booking_per_slot` keeps the
-    hard double-booking guard (§2.1): at most one UPCOMING booking per slot. A
-    cancelled booking keeps its slot reference (history is preserved) and no
-    longer blocks re-booking the released slot.
+    a full booking history and — in the availability-first flow — up to
+    PlatformSettings.group_capacity active bookings (a group session). The hard
+    guard that survives is at the *occurrence* level: the partial unique constraint
+    `uniq_active_booking_per_schedule_occurrence` allows at most one non-cancelled
+    booking per (schedule_slot, scheduled_at), so a rolling-generation race can
+    never create two bookings — and charge two credits — for the same student pick.
     """
 
     student = models.ForeignKey(
@@ -216,6 +217,19 @@ class Booking(BaseModel, SoftDeleteModel):
                 fields=["status"],
                 name="booking_upcoming_idx",
                 condition=models.Q(status=BookingStatus.UPCOMING),
+            ),
+        ]
+        constraints = [
+            # One non-cancelled booking per recurring-schedule occurrence. Group
+            # members do NOT collide here: each student has their own schedule_slot,
+            # and one-off manual bookings have schedule_slot=NULL (NULLs are distinct).
+            # This is what makes rolling generation safe against concurrent runs —
+            # a second insert for the same (schedule_slot, scheduled_at) is rejected
+            # instead of creating a duplicate booking and double-charging a credit.
+            models.UniqueConstraint(
+                fields=["schedule_slot", "scheduled_at"],
+                condition=~models.Q(status=BookingStatus.CANCELLED),
+                name="uniq_active_booking_per_schedule_occurrence",
             ),
         ]
 

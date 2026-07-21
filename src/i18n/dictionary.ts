@@ -920,6 +920,8 @@ const PAIRS: [string, string][] = [
   ["Select an instructor…", "اختر مدرّسًا…"],
   ["Assign", "إسناد"],
   ["Assign an instructor first", "أسند مدرّسًا أولًا"],
+  ["need an instructor", "بحاجة إلى مدرّس"],
+  ["You haven't selected any times, so no student can be matched with you. Press Save again to confirm you're unavailable.", "لم تختر أي أوقات، لذا لن يُطابق معك أي طالب. اضغط حفظ مرة أخرى لتأكيد أنك غير متاح."],
   // instructor lesson prep
   ["Prepared", "جاهز"],
   ["Not prepared", "غير جاهز"],

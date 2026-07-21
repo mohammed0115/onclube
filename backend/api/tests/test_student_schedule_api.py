@@ -37,7 +37,10 @@ def _tomorrow_weekday(now=None):
 
 
 def _world(sessions=4, with_window=False):
-    """One instructor (available all week unless with_window), one funded student."""
+    """One instructor, one funded student. By default the instructor has opted into
+    every day, all day (so any pick matches). `with_window=True` instead gives a
+    NARROW window (08:00–22:00 on tomorrow's weekday) for the no-match gap test —
+    an instructor with no declared availability is now unmatchable, not 24/7."""
     instructor = make_instructor()
     student = make_student()
     plan = make_plan(sessions_per_month=sessions)
@@ -47,7 +50,23 @@ def _world(sessions=4, with_window=False):
             instructor=instructor, weekday=_tomorrow_weekday(),
             start_time=time(8, 0), end_time=time(22, 0),
         )
+    else:
+        for d in range(7):
+            RecurringAvailability.objects.create(
+                instructor=instructor, weekday=d,
+                start_time=time(0, 0), end_time=time(23, 59),
+            )
     return student, instructor
+
+
+def _available_instructor(**kwargs):
+    """An instructor who has opted into every day, all day — matchable at any pick."""
+    ins = make_instructor(**kwargs)
+    for d in range(7):
+        RecurringAvailability.objects.create(
+            instructor=ins, weekday=d, start_time=time(0, 0), end_time=time(23, 59),
+        )
+    return ins
 
 
 def _put_availability(student, picks):
@@ -217,7 +236,7 @@ def test_admin_lists_pending_with_instructor_candidates():
 
 def test_admin_assigns_a_different_instructor():
     student, instructor = _world(sessions=4)
-    other = make_instructor()  # also available all week
+    other = _available_instructor()  # also available all week
     wd = _tomorrow_weekday()
     put = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
     slot_id = put.data["schedule"][0]["id"]
@@ -357,7 +376,7 @@ def test_students_at_same_time_form_a_group_sharing_room_and_lesson():
     from apps.sessions.models import Session
 
     s = PlatformSettings.current(); s.group_capacity = 2; s.save()
-    instructor = make_instructor()  # the only instructor → both students assigned to it
+    instructor = _available_instructor()  # the only instructor → both students assigned to it
     a, b = _funded_student(), _funded_student()
     wd = _tomorrow_weekday()
     _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
@@ -393,7 +412,7 @@ def test_group_capacity_limit_skips_extra_students():
     from apps.scheduling.models import PlatformSettings
 
     s = PlatformSettings.current(); s.group_capacity = 1; s.save()
-    make_instructor()
+    _available_instructor()
     a, b = _funded_student(), _funded_student()
     wd = _tomorrow_weekday()
     _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
@@ -452,3 +471,102 @@ def test_instructor_sets_and_reads_recurring_availability():
     got = c.get("/api/v1/instructor/recurring-availability/")
     assert got.status_code == 200
     assert [w["weekday"] for w in got.data] == [0, 2]
+
+
+# ── audit regression tests (HIGH fixes) ───────────────────────────────────────
+def test_completing_a_group_room_completes_every_member_with_a_report():
+    """HIGH-1: completing the shared room must finalize EACH group member's booking
+    and produce EACH student's report — not just the one the room was opened on."""
+    from apps.scheduling.models import PlatformSettings
+    from apps.sessions.models import Session
+    from apps.ai_reports.models import AIReport
+
+    s = PlatformSettings.current(); s.group_capacity = 3; s.save()
+    instructor = _available_instructor()
+    a, b = _funded_student(), _funded_student()
+    wd = _tomorrow_weekday()
+    _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
+    _put_availability(b, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(a); _approve(b)
+
+    ba = Booking.objects.filter(student=a, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    bb = Booking.objects.filter(student=b, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    assert ba.slot_id == bb.slot_id  # same group
+
+    # Instructor ends the shared room via student a's session.
+    sess_a = Session.objects.get(booking=ba)
+    resp = client_for(instructor.user).post(f"/api/v1/sessions/{sess_a.id}/end/")
+    assert resp.status_code == 200, resp.data
+
+    ba.refresh_from_db(); bb.refresh_from_db()
+    assert ba.status == BookingStatus.COMPLETED
+    assert bb.status == BookingStatus.COMPLETED          # the other member, not stranded
+    assert AIReport.objects.filter(booking=ba).exists()
+    assert AIReport.objects.filter(booking=bb).exists()  # each student gets a report
+
+
+def test_approve_all_skips_picks_without_an_instructor():
+    """HIGH-2: 'Approve all' must not approve a pick that has no instructor — it
+    would silently strand the student. Unassigned picks stay PENDING."""
+    student, instructor = _world(sessions=4, with_window=True)  # only free tomorrow 08–22
+    wd = _tomorrow_weekday()
+    _put_availability(student, [
+        {"weekday": wd, "startTime": "12:00"},   # matches → assigned
+        {"weekday": wd, "startTime": "23:00"},   # nobody free → unassigned
+    ])
+    ap = _approve(student)
+    assert ap.status_code == 200, ap.data
+    assert ap.data["generated"]["created"] == 2          # only the assigned pick (2 weeks)
+    assert ap.data["skipped_unassigned"] == 1
+
+    slots = {s.start_time.strftime("%H:%M"): s for s in StudentScheduleSlot.objects.filter(student=student)}
+    from apps.common.enums import ScheduleReviewStatus
+    assert slots["12:00"].review_status == ScheduleReviewStatus.APPROVED
+    assert slots["23:00"].review_status == ScheduleReviewStatus.PENDING  # still awaiting assignment
+
+
+def test_duplicate_occurrence_booking_is_blocked_by_constraint():
+    """HIGH-3: two non-cancelled bookings for the same (schedule_slot, scheduled_at)
+    are rejected at the DB level — the guard behind concurrency-safe generation."""
+    from django.db import IntegrityError, transaction
+
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    original = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Booking.objects.create(
+                student=student, topic=None, topic_title="",
+                instructor=original.instructor, instructor_name=original.instructor_name,
+                slot=original.slot, subscription=original.subscription,
+                scheduled_at=original.scheduled_at, duration_minutes=original.duration_minutes,
+                status=BookingStatus.UPCOMING, schedule_slot=original.schedule_slot,
+            )
+
+
+def test_instructor_with_no_availability_is_not_matched():
+    """HIGH-4: an instructor with no declared recurring availability is unmatchable
+    (empty grid means 'unavailable', never 'available 24/7')."""
+    student = make_student()
+    make_active_subscription(student, make_plan(sessions_per_month=4), sessions=4)
+    make_instructor()  # no recurring availability at all
+    wd = _tomorrow_weekday()
+    resp = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    assert resp.status_code == 200, resp.data
+    assert resp.data["schedule"][0]["instructorId"] is None   # nobody matched
+
+
+def test_availability_on_one_weekday_does_not_leak_to_another():
+    """HIGH-4: a window on Monday must not make the instructor available on Tuesday."""
+    student = make_student()
+    make_active_subscription(student, make_plan(sessions_per_month=4), sessions=4)
+    ins = make_instructor()
+    # Available only on weekday 0 (Monday).
+    RecurringAvailability.objects.create(instructor=ins, weekday=0, start_time=time(8, 0), end_time=time(22, 0))
+    other_wd = 2  # Wednesday — no window
+    resp = _put_availability(student, [{"weekday": other_wd, "startTime": "12:00"}])
+    assert resp.status_code == 200, resp.data
+    assert resp.data["schedule"][0]["instructorId"] is None
