@@ -64,8 +64,16 @@ export const bookingApi = {
       headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
       body: JSON.stringify({ clientSecret, sdp }),
     });
-    if (!res.ok) throw new Error(`sdp_relay_${res.status}`);
-    return res.text();
+    const text = await res.text();
+    if (!res.ok) {
+      // The backend passes OpenAI's own error body straight through — surface it
+      // so the UI can show *why* the handshake failed (e.g. model/endpoint 404).
+      const err = new Error(`sdp_relay_${res.status}`) as Error & { status?: number; detail?: string };
+      err.status = res.status;
+      err.detail = (text || "").slice(0, 300);
+      throw err;
+    }
+    return text;
   },
 
   /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */
