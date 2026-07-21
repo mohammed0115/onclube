@@ -115,7 +115,32 @@ def test_reminder_fires_once_per_band():
     assert send_due_reminders() == 0
     n = Notification.objects.filter(type=NotificationType.SESSION_REMINDER, user=booking.student.user)
     assert n.count() == 1
-    assert n.first().data["kind"] == "10min"
+    note = n.first()
+    assert note.data["kind"] == "10min"
+    # MED-14: neutral text — no empty "" title, and the lesson title is never leaked.
+    assert '""' not in note.body
+    assert booking.instructor_name in note.body
+
+
+def test_reminder_for_topic_less_booking_has_no_empty_quotes():
+    """A generated availability-first booking has an empty topic_title before prep;
+    the reminder must still read cleanly."""
+    from apps.scheduling.models import AvailabilitySlot, Booking
+
+    student = make_student()
+    sub = make_active_subscription(student, make_plan(), sessions=4)
+    instructor = make_instructor()
+    when = timezone.now() + timedelta(minutes=8)
+    slot = AvailabilitySlot.objects.create(instructor=instructor, start_at=when, duration_minutes=45)
+    Booking.objects.create(
+        student=student, topic=None, topic_title="",  # topic-less, not yet prepared
+        instructor=instructor, instructor_name=instructor.user.full_name,
+        slot=slot, subscription=sub, scheduled_at=when, duration_minutes=45,
+        status=BookingStatus.UPCOMING,
+    )
+    assert send_due_reminders() == 1
+    note = Notification.objects.filter(type=NotificationType.SESSION_REMINDER, user=student.user).first()
+    assert note is not None and '""' not in note.body
 
 
 def test_reminder_not_sent_for_far_future_session():

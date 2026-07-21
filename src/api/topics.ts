@@ -183,8 +183,8 @@ export const topicsApi = {
   adminGroupCapacity(): Promise<{ groupCapacity: number }> {
     return api.get<{ groupCapacity: number }>("/admin/group-capacity/");
   },
-  adminSetGroupCapacity(groupCapacity: number): Promise<{ groupCapacity: number }> {
-    return api.put<{ groupCapacity: number }>("/admin/group-capacity/", { groupCapacity });
+  adminSetGroupCapacity(groupCapacity: number): Promise<{ groupCapacity: number; groupsOverCapacity?: number }> {
+    return api.put<{ groupCapacity: number; groupsOverCapacity?: number }>("/admin/group-capacity/", { groupCapacity });
   },
   adminApproveSchedule(studentId: string, slotIds?: string[]): Promise<ScheduleApproveResult> {
     return api.post<ScheduleApproveResult>("/admin/schedule-requests/approve/", {

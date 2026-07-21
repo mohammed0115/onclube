@@ -52,12 +52,15 @@ def send_due_reminders(now=None) -> int:
         time_until = booking.scheduled_at - now
         for kind, upper, lower in BANDS:
             if lower < time_until <= upper and not _already_sent(booking, kind):
+                # Use a neutral label, not topic_title: it's empty for availability-
+                # first bookings before prep, and it snapshots the lesson title, which
+                # must not leak in a 24h reminder (before the ~1h reveal window).
                 Notification.objects.create(
                     user=booking.student.user,
                     type=NotificationType.SESSION_REMINDER,
                     title="⏰ Session reminder",
-                    body=f'"{booking.topic_title}" starts {_LABEL[kind]} '
-                    f"({booking.scheduled_at:%b %d, %H:%M}).",
+                    body=f"Your session with {booking.instructor_name} starts "
+                    f"{_LABEL[kind]} ({booking.scheduled_at:%b %d, %H:%M}).",
                     data={"booking_id": str(booking.pk), "kind": kind},
                 )
                 sent += 1

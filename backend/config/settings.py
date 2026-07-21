@@ -166,8 +166,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ── I18N / TZ (timezone-aware everywhere) ────────────────────────────────────
+# Storage stays UTC (USE_TZ=True); TIME_ZONE is the platform's operating timezone.
+# It's what a student's picked wall-clock time (e.g. "12:00") is interpreted in when
+# generating bookings, and what "today"/reminders are computed against — so the
+# platform runs on its learners' local time (Sudan) rather than server UTC.
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = env("TIME_ZONE", default="Africa/Khartoum")
 USE_I18N = True
 USE_TZ = True
 

@@ -504,6 +504,26 @@ def test_admin_sets_group_capacity():
     assert PlatformSettings.current().group_capacity == 4
 
 
+def test_lowering_capacity_reports_groups_that_now_exceed_it():
+    """LOW-17: shrinking capacity below an existing group's size reports how many
+    already-booked groups exceed the new limit (they still run as booked)."""
+    from apps.scheduling.models import PlatformSettings
+
+    admin = make_admin()
+    s = PlatformSettings.current(); s.group_capacity = 3; s.save()
+    instructor = _available_instructor()
+    a, b = _funded_student(), _funded_student()
+    wd = _tomorrow_weekday()
+    _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
+    _put_availability(b, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(a); _approve(b)  # a 2-student group forms
+
+    r = client_for(admin).put("/api/v1/admin/group-capacity/", {"groupCapacity": 1}, format="json")
+    assert r.status_code == 200
+    assert r.data["groupCapacity"] == 1
+    assert r.data["groupsOverCapacity"] >= 1
+
+
 # ── instructor recurring availability ─────────────────────────────────────────
 def test_instructor_sets_and_reads_recurring_availability():
     instructor = make_instructor()

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
-import { useSubscription, useStudentSchedule, useSetStudentSchedule } from "@/hooks";
+import { useSubscription, useStudentSchedule, useSetStudentSchedule, useCancelBooking } from "@/hooks";
 import type { SetScheduleResult, ScheduleReviewStatus } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -62,6 +62,14 @@ export function WeeklySchedulePage() {
   const sub = useSubscription();
   const scheduleQuery = useStudentSchedule();
   const save = useSetStudentSchedule();
+  const cancelBooking = useCancelBooking();
+
+  const onCancelBooking = (bookingId: string) => {
+    const ok = window.confirm(
+      tx("Cancel this session? If it's more than 24 hours away, your credit is returned."),
+    );
+    if (ok) cancelBooking.mutate(bookingId);
+  };
 
   const [cells, setCells] = useState<Cell[]>([]);
   const [result, setResult] = useState<SetScheduleResult | null>(null);
@@ -259,15 +267,26 @@ export function WeeklySchedulePage() {
             ) : (
               <div className="space-y-2">
                 {upcoming.map((b) => (
-                  <Link
+                  <div
                     key={b.bookingId}
-                    to={`/student/session/${b.bookingId}`}
-                    className="block rounded-xl border border-border p-3 transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
+                    className="rounded-xl border border-border p-3 transition-colors hover:border-indigo-200 hover:bg-indigo-50/40"
                   >
-                    <div className="text-sm font-semibold text-foreground">
-                      {b.lessonRevealed && b.lessonTitle ? b.lessonTitle : `${tx("Session with")} ${b.instructorName}`}
+                    <div className="flex items-start justify-between gap-3">
+                      <Link to={`/student/session/${b.bookingId}`} className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-foreground">
+                          {b.lessonRevealed && b.lessonTitle ? b.lessonTitle : `${tx("Session with")} ${b.instructorName}`}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">{fmtWhen(b.scheduledAt)}</div>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => onCancelBooking(b.bookingId)}
+                        disabled={cancelBooking.isPending}
+                        className="flex-shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {tx("Cancel")}
+                      </button>
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{fmtWhen(b.scheduledAt)}</div>
                     {b.lessonRevealed ? (
                       b.lessonQuestions.length > 0 && (
                         <ul className="mt-2 list-disc space-y-0.5 ps-4 text-xs text-slate-600">
@@ -284,7 +303,7 @@ export function WeeklySchedulePage() {
                           : tx("Your instructor will share the lesson before the session")}
                       </div>
                     )}
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}

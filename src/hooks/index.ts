@@ -375,6 +375,8 @@ export function useCancelBooking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.studentDashboard });
       qc.invalidateQueries({ queryKey: qk.bookings });
+      qc.invalidateQueries({ queryKey: qk.studentSchedule });
+      qc.invalidateQueries({ queryKey: qk.subscription });
     },
   });
 }

@@ -163,7 +163,9 @@ class SetGroupCapacityUseCase:
     """Admin: set how many students may share one instructor+time slot."""
 
     def execute(self, *, actor, capacity) -> dict:
-        from apps.scheduling.models import PlatformSettings
+        from django.db.models import Count
+        from apps.scheduling.models import Booking, PlatformSettings
+        from apps.common.enums import BookingStatus
 
         ensure_admin(actor)
         capacity = int(capacity)
@@ -173,4 +175,15 @@ class SetGroupCapacityUseCase:
         s = PlatformSettings.current()
         s.group_capacity = capacity
         s.save(update_fields=["group_capacity", "updated_at"])
-        return {"groupCapacity": s.group_capacity}
+
+        # Lowering capacity never retroactively splits a group that's already booked
+        # (those sessions run as-is); surface how many existing upcoming groups now
+        # exceed the new limit so the admin knows what they're changing.
+        groups_over = (
+            Booking.objects.filter(status=BookingStatus.UPCOMING, deleted_at__isnull=True)
+            .values("instructor_id", "scheduled_at")
+            .annotate(n=Count("id"))
+            .filter(n__gt=capacity)
+            .count()
+        )
+        return {"groupCapacity": s.group_capacity, "groupsOverCapacity": groups_over}

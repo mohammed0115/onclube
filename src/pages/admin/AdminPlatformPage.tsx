@@ -78,6 +78,7 @@ function GroupCapacityCard() {
   const save = useSetGroupCapacity();
   const [value, setValue] = useState<number>(1);
   const [saved, setSaved] = useState(false);
+  const [overCapacity, setOverCapacity] = useState(0);
 
   useEffect(() => {
     if (q.data) setValue(q.data.groupCapacity);
@@ -85,7 +86,10 @@ function GroupCapacityCard() {
 
   const onSave = () => {
     setSaved(false);
-    save.mutate(Math.max(1, Math.floor(value) || 1), { onSuccess: () => setSaved(true) });
+    setOverCapacity(0);
+    save.mutate(Math.max(1, Math.floor(value) || 1), {
+      onSuccess: (res) => { setSaved(true); setOverCapacity(res.groupsOverCapacity ?? 0); },
+    });
   };
 
   return (
@@ -114,6 +118,11 @@ function GroupCapacityCard() {
           {saved && <span className="text-xs font-medium text-emerald-600">{tx("Saved ✓")}</span>}
           {save.isError && <span className="text-xs text-red-600">{tx("Could not save. Please try again.")}</span>}
         </div>
+      )}
+      {saved && overCapacity > 0 && (
+        <p className="mt-3 rounded-xl bg-amber-50 px-4 py-2 text-xs font-medium text-amber-700">
+          {overCapacity} {tx("already-booked group(s) exceed the new size. They will run as booked; the new limit applies to future bookings only.")}
+        </p>
       )}
     </Card>
   );
