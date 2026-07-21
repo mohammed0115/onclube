@@ -100,6 +100,8 @@ urlpatterns = [
     path("student/progress/", v.StudentProgressView.as_view()),
     path("student/plan/", v.StudentPlanView.as_view()),
     path("student/ai-tutor/status/", v.AITutorStatusView.as_view()),
+    path("student/ai-tutor/realtime-session/", v.AITutorRealtimeSessionView.as_view()),
+    path("student/ai-tutor/realtime-sdp/", v.AITutorRealtimeSdpView.as_view()),
     path("student/ai-tutor/start/", v.AITutorStartView.as_view()),
     path("student/ai-tutor/<uuid:session_id>/message/", v.AITutorMessageView.as_view()),
     path("student/ai-tutor/<uuid:session_id>/end/", v.AITutorEndView.as_view()),

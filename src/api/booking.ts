@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, tokenStore } from "./client";
 import type {
   AvailabilitySlot,
   BookingDetail,
@@ -46,6 +46,26 @@ export const bookingApi = {
   },
   aiTutorEnd(sessionId: string): Promise<AITutorSession> {
     return api.post<AITutorSession>(`/student/ai-tutor/${sessionId}/end/`, {});
+  },
+
+  // ── AI tutor — live realtime voice call (OpenAI Realtime over WebRTC) ──
+  /** Mint a short-lived ephemeral token for a browser↔OpenAI WebRTC voice call. */
+  realtimeSession(voice?: string): Promise<{
+    clientSecret: string; sessionId: string; model: string; voice: string;
+    expiresAt: number | null; maxSeconds: number;
+  }> {
+    return api.post("/student/ai-tutor/realtime-session/", { voice });
+  },
+  /** Relay the browser's SDP offer to OpenAI; returns the SDP answer (text). */
+  async realtimeSdp(sdp: string, clientSecret: string): Promise<string> {
+    const access = tokenStore.access();
+    const res = await fetch("/api/v1/student/ai-tutor/realtime-sdp/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+      body: JSON.stringify({ clientSecret, sdp }),
+    });
+    if (!res.ok) throw new Error(`sdp_relay_${res.status}`);
+    return res.text();
   },
 
   /** Weekly (Mon–Sun) calendar of a topic's instructor slots. */

@@ -776,6 +776,44 @@ class AITutorEndView(APIView):
         return Response(EndAITutorSessionUseCase().execute(actor=request.user, session_id=session_id))
 
 
+class AITutorRealtimeSessionView(APIView):
+    """Mint an ephemeral OpenAI Realtime token for a live WebRTC voice call."""
+
+    def post(self, request):
+        from application.ai_tutor.use_cases import StartRealtimeCallUseCase
+
+        voice = (request.data or {}).get("voice") or "alloy"
+        try:
+            result = StartRealtimeCallUseCase().execute(actor=request.user, voice=voice)
+        except Exception as exc:  # noqa: BLE001
+            from apps.common.exceptions import BusinessRuleError
+
+            if isinstance(exc, BusinessRuleError):
+                raise
+            import logging
+
+            logging.getLogger("ai_tutor.realtime").exception("realtime session mint failed")
+            return Response(
+                {"code": "ai_unavailable", "detail": "The voice tutor is unavailable right now."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(result, status=status.HTTP_201_CREATED)
+
+
+class AITutorRealtimeSdpView(APIView):
+    """Relay the browser's SDP offer to OpenAI Realtime and return the SDP answer."""
+
+    def post(self, request):
+        from django.http import HttpResponse
+        from application.ai_tutor.use_cases import RelayRealtimeSdpUseCase
+
+        data = _validated(s.RealtimeSdpInputSerializer, request)
+        code, content, content_type = RelayRealtimeSdpUseCase().execute(
+            actor=request.user, client_secret=data["clientSecret"], sdp=data["sdp"]
+        )
+        return HttpResponse(content, status=code, content_type=content_type)
+
+
 # ── Public instructor directory + profiles ────────────────────────────────────
 _PROFILE_KEY_MAP = {
     "jobTitle": "job_title", "yearsExperience": "years_experience",

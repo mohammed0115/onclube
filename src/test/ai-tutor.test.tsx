@@ -53,35 +53,19 @@ describe("AI Tutor", () => {
     expect(screen.getByText("60,000")).toBeInTheDocument();
   });
 
-  it("starts a 5-minute practice and shows the tutor's opening message", async () => {
+  it("shows the live voice-call screen (start call + voice choice) when subscribed", async () => {
     const future = new Date(Date.now() + 300_000).toISOString();
     server.use(
       me(),
       http.get(`${B}/student/ai-tutor/status/`, () =>
         HttpResponse.json({ subscribed: true, subscription: { expiresAt: future }, sessionMinutes: 5, activeSession: null })
       ),
-      http.post(`${B}/student/ai-tutor/start/`, () =>
-        HttpResponse.json(
-          {
-            sessionId: "sess1",
-            topic: "Travel",
-            status: "active",
-            startedAt: new Date().toISOString(),
-            expiresAt: future,
-            remainingSeconds: 300,
-            messages: [{ role: "tutor", text: "Hi! Let's talk about travel. Where would you love to go?", at: "" }],
-          },
-          { status: 201 }
-        )
-      ),
       ...noise()
     );
     renderPage();
-    await waitFor(() => expect(screen.getByRole("button", { name: /Start practice/i })).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: /Start practice/i }));
-    // The tutor's line appears in the voice-stage caption (and the transcript).
-    await waitFor(() => expect(screen.getAllByText(/Where would you love to go/i).length).toBeGreaterThan(0));
-    // A typed-reply fallback is available (jsdom has no speech recognition).
-    expect(screen.getByPlaceholderText(/Type your reply/i)).toBeInTheDocument();
+    // The realtime call UI: a "Start voice call" button and a Female/Male voice choice.
+    await waitFor(() => expect(screen.getByRole("button", { name: /Start voice call/i })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /^Female$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Male$/i })).toBeInTheDocument();
   });
 });

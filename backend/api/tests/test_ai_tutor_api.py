@@ -115,3 +115,28 @@ def test_message_after_five_minutes_is_rejected():
     assert r.status_code == 422 and r.data["code"] == "session_ended"
     session.refresh_from_db()
     assert session.status == AITutorSessionStatus.ENDED
+
+
+# ── realtime voice call (OpenAI Realtime over WebRTC) ─────────────────────────
+def test_realtime_session_requires_active_ai_subscription():
+    student = make_student()  # no AI subscription
+    r = client_for(student.user).post("/api/v1/student/ai-tutor/realtime-session/", {"voice": "female"}, format="json")
+    assert r.status_code == 422
+    assert r.data["code"] == "no_ai_tutor_subscription"
+
+
+def test_realtime_session_mints_ephemeral_token_for_subscriber(monkeypatch):
+    student = make_student()
+    _active_ai_sub(student)
+
+    def _fake_session(*, system_prompt, voice="alloy"):
+        assert "voice call" in system_prompt.lower()  # spoken-mode prompt
+        return {"client_secret": "ek_test_123", "session_id": "sess_1",
+                "expires_at": 1234567890, "model": "gpt-realtime"}
+
+    monkeypatch.setattr("apps.ai_tutor.realtime.request_ephemeral_session", _fake_session)
+    r = client_for(student.user).post("/api/v1/student/ai-tutor/realtime-session/", {"voice": "male"}, format="json")
+    assert r.status_code == 201, r.data
+    assert r.data["clientSecret"] == "ek_test_123"
+    assert r.data["voice"] == "ash"          # 'male' → GA voice
+    assert r.data["maxSeconds"] >= 60

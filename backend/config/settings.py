@@ -39,6 +39,14 @@ RECEIPT_MAX_UPLOAD_BYTES = env.int("RECEIPT_MAX_UPLOAD_BYTES", default=5 * 1024 
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
 OPENAI_TIMEOUT_SECONDS = env.int("OPENAI_TIMEOUT_SECONDS", default=20)
+OPENAI_API_BASE = env("OPENAI_API_BASE", default="https://api.openai.com/v1")
+
+# ── AI Tutor — live voice call (OpenAI Realtime API over WebRTC) ───────────────
+# The browser holds a real-time WebRTC audio call directly with OpenAI using a
+# short-lived ephemeral token the server mints; the server never proxies audio.
+AI_REALTIME_MODEL = env("AI_REALTIME_MODEL", default="gpt-realtime")
+AI_REALTIME_VOICE = env("AI_REALTIME_VOICE", default="alloy")
+AI_REALTIME_MAX_SESSION_SECONDS = env.int("AI_REALTIME_MAX_SESSION_SECONDS", default=300)
 
 # ── Live-session provider selection (Sprint 10) ────────────────────────────────
 # Environment-based selection is read ONLY by the composition root (container.py).

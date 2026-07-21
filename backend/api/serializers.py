@@ -787,6 +787,11 @@ class AITutorMessageInputSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=1000)
 
 
+class RealtimeSdpInputSerializer(serializers.Serializer):
+    clientSecret = serializers.CharField()
+    sdp = serializers.CharField(trim_whitespace=False)
+
+
 # ── placement (Phase 8E) ───────────────────────────────────────────────────────
 # Output serializers read frozen DTOs only. `options` are the visible MCQ choices;
 # the answer key (`correct_answer`, `correct_index`, `scoring_rubric`) and any
