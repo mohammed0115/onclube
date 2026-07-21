@@ -1,21 +1,37 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Check, Loader2, Save } from "lucide-react";
+import { BookOpen, Check, Loader2, Save, Sparkles } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loading, EmptyState } from "@/components/states";
-import { useInstructorLessons, usePrepareLesson } from "@/hooks";
+import { useInstructorLessons, usePrepareLesson, useSuggestLessonQuestions } from "@/hooks";
 import type { InstructorLessonSession } from "@/api/types";
 import { useI18n } from "@/i18n";
 
 function LessonCard({ session }: { session: InstructorLessonSession }) {
   const { tx } = useI18n();
   const prepare = usePrepareLesson();
+  const suggest = useSuggestLessonQuestions();
   const [title, setTitle] = useState(session.lessonTitle);
   const [questions, setQuestions] = useState(session.lessonQuestions.join("\n"));
   const [saved, setSaved] = useState(false);
+
+  const onSuggest = () => {
+    if (!title.trim()) return;
+    suggest.mutate(title.trim(), {
+      onSuccess: (res) => {
+        setSaved(false);
+        // Append AI questions under whatever the instructor already wrote.
+        setQuestions((prev) => {
+          const existing = prev.split("\n").map((q) => q.trim()).filter(Boolean);
+          const merged = [...existing, ...res.questions.filter((q) => !existing.includes(q))];
+          return merged.join("\n");
+        });
+      },
+    });
+  };
 
   // Keep local fields in sync if the query refetches.
   useEffect(() => {
@@ -60,7 +76,18 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
         className="mb-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
       />
 
-      <label className="mb-1 block text-xs font-semibold text-foreground">{tx("Discussion questions (one per line)")}</label>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <label className="block text-xs font-semibold text-foreground">{tx("Discussion questions (one per line)")}</label>
+        <Button
+          variant="soft"
+          size="sm"
+          onClick={onSuggest}
+          disabled={!title.trim() || suggest.isPending}
+          title={!title.trim() ? tx("Write a lesson title first") : undefined}
+        >
+          {suggest.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {tx("Suggest with AI")}
+        </Button>
+      </div>
       <textarea
         value={questions}
         onChange={(e) => { setQuestions(e.target.value); setSaved(false); }}

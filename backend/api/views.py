@@ -117,6 +117,7 @@ from application.scheduling.use_cases import (
     ListInstructorUpcomingSessionsUseCase,
     ListScheduleRequestsUseCase,
     PrepareLessonUseCase,
+    SuggestLessonQuestionsUseCase,
     RateSessionUseCase,
     RejectScheduleSlotUseCase,
     RescheduleBookingUseCase,
@@ -1190,6 +1191,15 @@ class InstructorLessonView(APIView):
             title=data.get("title", ""),
             questions=data.get("questions", []),
         )
+        return Response(dto)
+
+
+class InstructorSuggestLessonQuestionsView(APIView):
+    """AI-assisted question suggestions from a free-form lesson title."""
+
+    def post(self, request):
+        data = _validated(s.SuggestLessonQuestionsInputSerializer, request)
+        dto = SuggestLessonQuestionsUseCase().execute(actor=request.user, title=data.get("title", ""))
         return Response(dto)
 
 

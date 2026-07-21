@@ -120,6 +120,7 @@ urlpatterns = [
     path("instructor/students/", v.InstructorStudentsView.as_view()),
     path("instructor/students/<uuid:student_id>/", v.InstructorStudentDetailView.as_view()),
     path("instructor/lessons/", v.InstructorLessonsView.as_view()),
+    path("instructor/lessons/suggest-questions/", v.InstructorSuggestLessonQuestionsView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/lesson/", v.InstructorLessonView.as_view()),
     path("instructor/bookings/", v.InstructorBookingsView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/cancel/", v.InstructorBookingCancelView.as_view()),

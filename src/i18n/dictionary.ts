@@ -930,6 +930,8 @@ const PAIRS: [string, string][] = [
   ["e.g. Job interviews", "مثال: مقابلات العمل"],
   ["Your", "خطتك"],
   ["Tell me about yourself.\nWhat are your strengths?", "حدّثني عن نفسك.\nما نقاط قوّتك؟"],
+  ["Suggest with AI", "اقترح بالذكاء الاصطناعي"],
+  ["Write a lesson title first", "اكتب عنوان الدرس أولًا"],
   ["pending", "معلّق"],
   ["No pending requests", "لا توجد طلبات معلّقة"],
   ["Loading requests…", "جارٍ تحميل الطلبات…"],

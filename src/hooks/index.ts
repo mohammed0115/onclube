@@ -560,6 +560,10 @@ export function usePrepareLesson() {
   });
 }
 
+export function useSuggestLessonQuestions() {
+  return useMutation({ mutationFn: (title: string) => topicsApi.suggestLessonQuestions(title) });
+}
+
 // ── instructor: topic builder (real AI suggestions) ─────────────────────────
 export function useCreateTopic() {
   return useMutation({

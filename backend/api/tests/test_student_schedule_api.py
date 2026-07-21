@@ -294,6 +294,19 @@ def test_instructor_prepares_lesson_and_student_sees_it_within_an_hour():
     assert lesson_visible_to_student(booking, now=near) is True
 
 
+def test_instructor_gets_ai_suggested_questions_from_a_title():
+    instructor = make_instructor()
+    resp = client_for(instructor.user).post(
+        "/api/v1/instructor/lessons/suggest-questions/",
+        {"title": "Job interviews"},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.data
+    assert isinstance(resp.data["questions"], list)
+    assert len(resp.data["questions"]) >= 1
+    assert all(isinstance(q, str) and q.strip() for q in resp.data["questions"])
+
+
 def test_instructor_cannot_prepare_others_session():
     student, instructor = _world(sessions=4)
     intruder = make_instructor()

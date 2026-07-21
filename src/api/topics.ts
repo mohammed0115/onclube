@@ -191,6 +191,9 @@ export const topicsApi = {
   prepareLesson(bookingId: string, title: string, questions: string[]): Promise<InstructorLessonSession> {
     return api.post<InstructorLessonSession>(`/instructor/bookings/${bookingId}/lesson/`, { title, questions });
   },
+  suggestLessonQuestions(title: string): Promise<{ questions: string[] }> {
+    return api.post<{ questions: string[] }>("/instructor/lessons/suggest-questions/", { title });
+  },
   adminPlans(): Promise<Plan[]> {
     return api.get<Plan[]>("/admin/plans/");
   },

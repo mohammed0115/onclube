@@ -405,6 +405,25 @@ class ListInstructorUpcomingSessionsUseCase:
         ]
 
 
+class SuggestLessonQuestionsUseCase:
+    """AI-assisted: suggest discussion questions from a free-form lesson title.
+    Returns strings only (nothing persisted) for the instructor to edit/keep. Uses
+    the same AI provider as the topic builder, which falls back to a deterministic
+    stub when OpenAI isn't configured — so it always returns something usable."""
+
+    def execute(self, *, actor, title) -> dict:
+        from application.permissions import get_instructor_profile
+        from infrastructure.container import default_ai_provider
+
+        get_instructor_profile(actor)  # instructors only
+        title = (title or "").strip()
+        if not title:
+            return {"questions": []}
+        ai = default_ai_provider()
+        qs = ai.generate_questions(topic_title=title, topic_description="")
+        return {"questions": [q.strip() for q in qs if isinstance(q, str) and q.strip()][:8]}
+
+
 class PrepareLessonUseCase:
     """Instructor writes/updates the lesson (title + questions) for one session."""
 
