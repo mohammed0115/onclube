@@ -59,6 +59,7 @@ export const qk = {
   adminInstructors: ["admin", "instructors"] as const,
   adminBookings: ["admin", "bookings"] as const,
   adminScheduleRequests: ["admin", "schedule-requests"] as const,
+  adminGroupCapacity: ["admin", "group-capacity"] as const,
   instructorLessons: ["instructor", "lessons"] as const,
   adminPlans: ["admin", "plans"] as const,
   instructorDashboard: ["instructor", "dashboard"] as const,

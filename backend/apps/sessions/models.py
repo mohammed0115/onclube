@@ -24,8 +24,10 @@ class Session(BaseModel, SoftDeleteModel):
     )
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
+    # NOT unique: group members (multiple students at the same instructor+time)
+    # share the same channel so they join one room.
     agora_channel = models.CharField(
-        max_length=64, null=True, blank=True, unique=True
+        max_length=64, null=True, blank=True
     )
     student_notes = models.TextField(null=True, blank=True)
     # Structured post-session notes written by the instructor:

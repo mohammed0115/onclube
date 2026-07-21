@@ -529,6 +529,17 @@ export const useAdminBookings = () =>
 export const useAdminScheduleRequests = () =>
   useQuery({ queryKey: qk.adminScheduleRequests, queryFn: topicsApi.adminScheduleRequests });
 
+export const useGroupCapacity = () =>
+  useQuery({ queryKey: qk.adminGroupCapacity, queryFn: topicsApi.adminGroupCapacity });
+
+export function useSetGroupCapacity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (groupCapacity: number) => topicsApi.adminSetGroupCapacity(groupCapacity),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.adminGroupCapacity }),
+  });
+}
+
 export function useApproveSchedule() {
   const qc = useQueryClient();
   return useMutation({

@@ -372,6 +372,10 @@ class SuggestLessonQuestionsInputSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=160, allow_blank=True, required=False, default="")
 
 
+class GroupCapacityInputSerializer(serializers.Serializer):
+    groupCapacity = serializers.IntegerField(min_value=1, max_value=50)
+
+
 class RescheduleInputSerializer(serializers.Serializer):
     newSlotId = serializers.UUIDField()
 

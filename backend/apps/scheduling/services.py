@@ -201,14 +201,26 @@ def set_booking_lesson(booking, *, instructor, title, questions, now=None):
             code="prep_not_open",
         )
     clean_qs = [q.strip() for q in (questions or []) if isinstance(q, str) and q.strip()]
-    booking.lesson_title = (title or "").strip()[:160]
-    booking.lesson_questions = clean_qs
-    booking.lesson_prepared_at = timezone.now()
-    if booking.lesson_title:
-        booking.topic_title = booking.lesson_title  # keep the snapshot label useful
-    booking.save(update_fields=[
-        "lesson_title", "lesson_questions", "lesson_prepared_at", "topic_title", "updated_at",
-    ])
+    title = (title or "").strip()[:160]
+    when = timezone.now()
+    # One lesson for the whole GROUP: apply to every upcoming booking the instructor
+    # has at this exact time, so a shared session is prepared once, not per student.
+    group = Booking.objects.filter(
+        instructor_id=instructor.id,
+        scheduled_at=booking.scheduled_at,
+        status=BookingStatus.UPCOMING,
+        deleted_at__isnull=True,
+    )
+    for b in group:
+        b.lesson_title = title
+        b.lesson_questions = clean_qs
+        b.lesson_prepared_at = when
+        if title:
+            b.topic_title = title
+        b.save(update_fields=[
+            "lesson_title", "lesson_questions", "lesson_prepared_at", "topic_title", "updated_at",
+        ])
+    booking.refresh_from_db()
     return booking
 
 
@@ -224,18 +236,22 @@ def lesson_visible_to_student(booking, now=None) -> bool:
 
 
 @transaction.atomic
-def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
+def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool = False) -> Booking:
     """
     Book a slot for a student.
 
     Rules enforced (all in one transaction):
-      §2.1  the slot must be OPEN; OneToOne(slot) + status flip prevent double booking.
       §2.2  student needs an active (approved) subscription.
       §2.4  subscription must not be expired.
       §2.3  sessions_remaining is decremented with a guarded update, never below 0.
+
+    group=True (availability-first): several students may share one slot as a group
+    session — the slot is NOT flipped to BOOKED and the OPEN check is skipped
+    (capacity is enforced by the caller). All members share one room (channel) and
+    one instructor-authored lesson, but each still consumes one credit.
     """
     slot = AvailabilitySlot.objects.select_for_update().get(pk=slot.pk)
-    if slot.status != SlotStatus.OPEN:
+    if not group and slot.status != SlotStatus.OPEN:
         raise SlotAlreadyBooked()
 
     # A slot that has already PASSED can't be booked (it would be born "Missed").
@@ -291,22 +307,24 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
         status=BookingStatus.UPCOMING,
     )
 
-    slot.status = SlotStatus.BOOKED
-    slot.save(update_fields=["status", "updated_at"])
+    # Group sessions keep the slot OPEN so more students can join (up to capacity);
+    # solo/legacy bookings flip it to BOOKED.
+    if not group:
+        slot.status = SlotStatus.BOOKED
+        slot.save(update_fields=["status", "updated_at"])
 
     # Keep the student mirror in sync.
     if student.active_subscription_id == subscription.pk:
         student.sessions_remaining = subscription.sessions_remaining
         student.save(update_fields=["sessions_remaining", "updated_at"])
 
-    # A booking always has exactly one live-session room. Create it eagerly
-    # (status=scheduled) so the student/instructor can join straight from the
-    # dashboard. The session repository resolves either a session id or a
-    # booking id, so the dashboard's booking-id links open this room.
+    # A booking gets a live-session room. Members of the same group (same
+    # instructor + start time) share ONE channel so they join the same room.
     from apps.sessions.models import Session
     from apps.common.enums import SessionStatus
 
-    Session.objects.create(booking=booking, status=SessionStatus.SCHEDULED)
+    channel = f"grp-{slot.instructor_id}-{int(slot.start_at.timestamp())}"[:64]
+    Session.objects.create(booking=booking, status=SessionStatus.SCHEDULED, agora_channel=channel)
 
     label = topic.title if topic else "your session"
     Notification.objects.create(
@@ -720,6 +738,8 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
         p for p in list_student_schedule(student)
         if p.review_status == ScheduleReviewStatus.APPROVED
     ]
+    from apps.scheduling.models import PlatformSettings
+    capacity = PlatformSettings.current().group_capacity
     created = []
     skipped = []
     out_of_credits = False
@@ -760,12 +780,15 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
                 start_at=start_at,
                 defaults={"duration_minutes": pick.duration_minutes, "status": SlotStatus.OPEN},
             )
-            if slot.status == SlotStatus.BOOKED:
-                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "slot_taken"})
+            # A slot is a GROUP: it holds up to `capacity` active students. Skip
+            # only when the group is already full.
+            active_on_slot = Booking.objects.filter(slot=slot, status=BookingStatus.UPCOMING).count()
+            if active_on_slot >= capacity:
+                skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "group_full"})
                 continue
 
             try:
-                booking = create_booking(student, pick.topic, slot)
+                booking = create_booking(student, pick.topic, slot, group=True)
             except InsufficientSessionCredits:
                 skipped.append({"pick_id": str(pick.id), "start_at": start_at, "reason": "no_credits"})
                 out_of_credits = True

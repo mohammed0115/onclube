@@ -507,10 +507,11 @@ export interface ScheduleUpcomingItem {
   lessonQuestions: string[];
 }
 
-// Instructor-authored per-session lesson (title + questions).
+// Instructor-authored per-session lesson (title + questions). Students who share
+// the same time are grouped into one session.
 export interface InstructorLessonSession {
   bookingId: string;
-  studentName: string;
+  studentNames: string[];
   scheduledAt: string;
   durationMinutes: number;
   lessonTitle: string;

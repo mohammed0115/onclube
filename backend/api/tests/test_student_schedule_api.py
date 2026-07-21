@@ -345,6 +345,76 @@ def test_instructor_cannot_prepare_others_session():
     assert resp.data["code"] == "not_your_session"
 
 
+# ── group sessions (admin-configured capacity) ────────────────────────────────
+def _funded_student(sessions=4):
+    st = make_student()
+    make_active_subscription(st, make_plan(sessions_per_month=sessions), sessions=sessions)
+    return st
+
+
+def test_students_at_same_time_form_a_group_sharing_room_and_lesson():
+    from apps.scheduling.models import PlatformSettings
+    from apps.sessions.models import Session
+
+    s = PlatformSettings.current(); s.group_capacity = 2; s.save()
+    instructor = make_instructor()  # the only instructor → both students assigned to it
+    a, b = _funded_student(), _funded_student()
+    wd = _tomorrow_weekday()
+    _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
+    _put_availability(b, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(a); _approve(b)
+
+    ba = Booking.objects.filter(student=a, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    bb = Booking.objects.filter(student=b, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    assert ba.scheduled_at == bb.scheduled_at
+    assert ba.slot_id == bb.slot_id                     # same group slot
+    assert ba.instructor_id == bb.instructor_id == instructor.id
+    # Shared room: identical channel.
+    assert Session.objects.get(booking=ba).agora_channel == Session.objects.get(booking=bb).agora_channel
+    # Each student charged one credit per occurrence (2 weeks → 2 each).
+    a.refresh_from_db(); b.refresh_from_db()
+    assert a.sessions_remaining == 2 and b.sessions_remaining == 2
+
+    # Instructor lesson prep shows ONE grouped entry with both students.
+    ic = client_for(instructor.user)
+    lst = ic.get("/api/v1/instructor/lessons/").data
+    grp = min(lst, key=lambda x: x["scheduledAt"])
+    assert sorted(grp["studentNames"]) == sorted([a.user.full_name, b.user.full_name])
+
+    # Preparing once applies the lesson to BOTH students.
+    ic.post(f"/api/v1/instructor/bookings/{grp['bookingId']}/lesson/",
+            {"title": "Money", "questions": ["Why save money?"]}, format="json")
+    ba.refresh_from_db(); bb.refresh_from_db()
+    assert ba.lesson_title == bb.lesson_title == "Money"
+    assert ba.lesson_questions == bb.lesson_questions == ["Why save money?"]
+
+
+def test_group_capacity_limit_skips_extra_students():
+    from apps.scheduling.models import PlatformSettings
+
+    s = PlatformSettings.current(); s.group_capacity = 1; s.save()
+    make_instructor()
+    a, b = _funded_student(), _funded_student()
+    wd = _tomorrow_weekday()
+    _put_availability(a, [{"weekday": wd, "startTime": "12:00"}])
+    _put_availability(b, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(a); _approve(b)
+    # Capacity 1: the group is full after the first student; the second gets none.
+    assert Booking.objects.filter(student=a, status=BookingStatus.UPCOMING).exists()
+    assert not Booking.objects.filter(student=b, status=BookingStatus.UPCOMING).exists()
+
+
+def test_admin_sets_group_capacity():
+    admin = make_admin()
+    r = client_for(admin).get("/api/v1/admin/group-capacity/")
+    assert r.status_code == 200
+    assert r.data["groupCapacity"] == 1  # default
+    r2 = client_for(admin).put("/api/v1/admin/group-capacity/", {"groupCapacity": 4}, format="json")
+    assert r2.status_code == 200 and r2.data["groupCapacity"] == 4
+    from apps.scheduling.models import PlatformSettings
+    assert PlatformSettings.current().group_capacity == 4
+
+
 # ── instructor recurring availability ─────────────────────────────────────────
 def test_instructor_sets_and_reads_recurring_availability():
     instructor = make_instructor()

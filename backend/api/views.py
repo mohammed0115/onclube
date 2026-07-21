@@ -165,7 +165,9 @@ from application.admin_ops.queries import (
 from application.admin_ops.use_cases import (
     ChangeUserRoleUseCase,
     CreatePlanUseCase,
+    GetGroupCapacityUseCase,
     ListPlansAdminUseCase,
+    SetGroupCapacityUseCase,
     SetUserStatusUseCase,
     UpdatePlanUseCase,
 )
@@ -330,6 +332,17 @@ class AdminPlatformView(AdminAPIView):
 
     def get(self, request):
         return Response(GetPlatformStatusUseCase().execute(actor=request.user))
+
+
+class AdminGroupCapacityView(AdminAPIView):
+    """Admin-controlled group-session capacity (students per instructor+time slot)."""
+
+    def get(self, request):
+        return Response(GetGroupCapacityUseCase().execute(actor=request.user))
+
+    def put(self, request):
+        data = _validated(s.GroupCapacityInputSerializer, request)
+        return Response(SetGroupCapacityUseCase().execute(actor=request.user, capacity=data["groupCapacity"]))
 
 
 class InstructorProfileView(APIView):

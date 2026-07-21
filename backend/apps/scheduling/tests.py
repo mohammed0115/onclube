@@ -140,30 +140,25 @@ def test_cancelled_slot_can_be_rebooked():
     assert exc.value.code == "slot_unavailable"
 
 
-def test_db_constraint_blocks_two_active_bookings_per_slot():
+def test_group_bookings_allow_multiple_students_per_slot():
     """
-    The partial unique constraint `uniq_active_booking_per_slot` is the DB-level
-    backstop for §2.1: two UPCOMING bookings on one slot are rejected even if the
-    service-layer slot-status guard were bypassed.
+    Group sessions: a slot can hold multiple UPCOMING bookings (the old
+    one-booking-per-slot unique constraint was removed). create_booking(group=True)
+    keeps the slot OPEN and gives group members a shared session channel.
     """
-    from django.db import IntegrityError
+    from apps.common.factories import make_student, make_active_subscription, make_plan
+    from apps.sessions.models import Session
 
     student, instructor, topic, slot, sub = _booked_world(sessions=4, days_ahead=5)
-    first = create_booking(student, topic, slot)
+    other = make_student()
+    make_active_subscription(other, make_plan(sessions_per_month=4), sessions=4)
 
-    with pytest.raises(IntegrityError):
-        Booking.objects.create(
-            student=first.student,
-            topic=topic,
-            topic_title=topic.title,
-            instructor=first.instructor,
-            instructor_name=first.instructor_name,
-            slot=slot,
-            subscription=first.subscription,
-            scheduled_at=slot.start_at,
-            duration_minutes=slot.duration_minutes,
-            status=BookingStatus.UPCOMING,
-        )
+    b1 = create_booking(student, topic, slot, group=True)
+    b2 = create_booking(other, topic, slot, group=True)  # same slot, second student
+    assert b1.slot_id == b2.slot_id
+    slot.refresh_from_db()
+    assert slot.status == SlotStatus.OPEN  # group slots stay open for more members
+    assert Session.objects.get(booking=b1).agora_channel == Session.objects.get(booking=b2).agora_channel
 
 
 def test_cancel_before_24h_returns_credit():

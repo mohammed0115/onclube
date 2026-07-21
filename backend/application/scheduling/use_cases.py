@@ -394,20 +394,26 @@ class ListInstructorUpcomingSessionsUseCase:
             .filter(instructor=instructor, status=BookingStatus.UPCOMING, deleted_at__isnull=True)
             .order_by("scheduled_at")
         )
-        return [
-            {
-                "bookingId": str(b.id),
-                "studentName": b.student.user.full_name,
-                "scheduledAt": b.scheduled_at.isoformat(),
-                "durationMinutes": b.duration_minutes,
-                "lessonTitle": b.lesson_title or "",
-                "lessonQuestions": b.lesson_questions or [],
-                "lessonPrepared": b.lesson_prepared_at is not None,
-                "prepOpen": scheduling_services.lesson_prep_open(b, now),
-                "prepOpensAt": scheduling_services.lesson_prep_opens_at(b).isoformat(),
-            }
-            for b in bookings
-        ]
+        # Group students who share the same time into ONE session, so the
+        # instructor prepares a single lesson per group instead of per student.
+        groups = {}
+        for b in bookings:
+            g = groups.get(b.scheduled_at)
+            if g is None:
+                g = {
+                    "bookingId": str(b.id),  # a representative booking to prepare against
+                    "scheduledAt": b.scheduled_at.isoformat(),
+                    "durationMinutes": b.duration_minutes,
+                    "studentNames": [],
+                    "lessonTitle": b.lesson_title or "",
+                    "lessonQuestions": b.lesson_questions or [],
+                    "lessonPrepared": b.lesson_prepared_at is not None,
+                    "prepOpen": scheduling_services.lesson_prep_open(b, now),
+                    "prepOpensAt": scheduling_services.lesson_prep_opens_at(b).isoformat(),
+                }
+                groups[b.scheduled_at] = g
+            g["studentNames"].append(b.student.user.full_name)
+        return list(groups.values())
 
 
 class SuggestLessonQuestionsUseCase:

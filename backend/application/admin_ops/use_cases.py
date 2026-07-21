@@ -147,3 +147,30 @@ class UpdatePlanUseCase:
             _audit_plan(actor, AdminActionType.PLAN_UPDATED, plan, f"updated {', '.join(changed)}",
                         extra={"changed": changed})
         return plan
+
+
+class GetGroupCapacityUseCase:
+    """Admin: read the current group-session capacity (students per slot)."""
+
+    def execute(self, *, actor) -> dict:
+        from apps.scheduling.models import PlatformSettings
+
+        ensure_admin(actor)
+        return {"groupCapacity": PlatformSettings.current().group_capacity}
+
+
+class SetGroupCapacityUseCase:
+    """Admin: set how many students may share one instructor+time slot."""
+
+    def execute(self, *, actor, capacity) -> dict:
+        from apps.scheduling.models import PlatformSettings
+
+        ensure_admin(actor)
+        capacity = int(capacity)
+        if capacity < 1:
+            from apps.common.exceptions import BusinessRuleError
+            raise BusinessRuleError("Capacity must be at least 1.", code="invalid_capacity")
+        s = PlatformSettings.current()
+        s.group_capacity = capacity
+        s.save(update_fields=["group_capacity", "updated_at"])
+        return {"groupCapacity": s.group_capacity}

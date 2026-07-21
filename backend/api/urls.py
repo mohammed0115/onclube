@@ -143,6 +143,7 @@ urlpatterns = [
     path("admin/sessions/", v.AdminSessionsView.as_view()),
     path("admin/business/", v.AdminBusinessView.as_view()),
     path("admin/platform/", v.AdminPlatformView.as_view()),
+    path("admin/group-capacity/", v.AdminGroupCapacityView.as_view()),
     path("admin/payment-proofs/", v.AdminPaymentProofListView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/", v.AdminPaymentProofDetailView.as_view()),
     path("admin/payment-proofs/<uuid:proof_id>/approve/", v.AdminApprovePaymentView.as_view()),

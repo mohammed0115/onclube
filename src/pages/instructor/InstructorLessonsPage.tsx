@@ -60,8 +60,15 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
     <Card className="p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="font-display text-sm font-bold text-foreground">{session.studentName}</div>
+          <div className="font-display text-sm font-bold text-foreground">
+            {session.studentNames.length > 1
+              ? `${tx("Group")} · ${session.studentNames.length} ${tx("students")}`
+              : session.studentNames[0] ?? tx("Session")}
+          </div>
           <div className="text-xs text-muted-foreground">{when} · {session.durationMinutes} {tx("min")}</div>
+          {session.studentNames.length > 1 && (
+            <div className="mt-0.5 text-xs text-muted-foreground">{session.studentNames.join("، ")}</div>
+          )}
         </div>
         {session.lessonPrepared ? (
           <Badge tone="emerald" className="gap-1"><Check size={12} /> {tx("Prepared")}</Badge>

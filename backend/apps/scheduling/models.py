@@ -205,16 +205,10 @@ class Booking(BaseModel, SoftDeleteModel):
 
     class Meta:
         db_table = "bookings"
-        constraints = [
-            # §2.1 double-booking guard: at most one *active* (upcoming) booking
-            # per slot. Cancelled/completed bookings keep their slot reference for
-            # history but do not block re-booking the released slot.
-            models.UniqueConstraint(
-                fields=["slot"],
-                condition=models.Q(status=BookingStatus.UPCOMING),
-                name="uniq_active_booking_per_slot",
-            ),
-        ]
+        # A slot can now hold up to PlatformSettings.group_capacity active bookings
+        # (a group session): multiple students at the same instructor+time share one
+        # room and one lesson. Capacity is enforced in the service, not by a DB
+        # unique constraint.
         indexes = [
             models.Index(fields=["student", "-scheduled_at"]),
             models.Index(fields=["instructor", "scheduled_at"]),
@@ -456,3 +450,24 @@ class StudentScheduleSlot(BaseModel, SoftDeleteModel):
 
     def __str__(self):
         return f"StudentScheduleSlot<{self.student_id} d{self.weekday} {self.start_time} {self.topic_id}>"
+
+
+class PlatformSettings(BaseModel):
+    """Singleton platform-wide settings the admin controls. Currently holds the
+    group-session capacity: how many students may share one instructor+time slot.
+    Default 1 = solo sessions (previous behaviour) until an admin raises it."""
+
+    group_capacity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        db_table = "platform_settings"
+
+    @classmethod
+    def current(cls):
+        obj = cls.objects.order_by("created_at").first()
+        if obj is None:
+            obj = cls.objects.create()
+        return obj
+
+    def __str__(self):
+        return f"PlatformSettings<group_capacity={self.group_capacity}>"

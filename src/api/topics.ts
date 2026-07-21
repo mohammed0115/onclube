@@ -180,6 +180,12 @@ export const topicsApi = {
   adminScheduleRequests(): Promise<ScheduleRequestGroup[]> {
     return api.get<ScheduleRequestGroup[]>("/admin/schedule-requests/");
   },
+  adminGroupCapacity(): Promise<{ groupCapacity: number }> {
+    return api.get<{ groupCapacity: number }>("/admin/group-capacity/");
+  },
+  adminSetGroupCapacity(groupCapacity: number): Promise<{ groupCapacity: number }> {
+    return api.put<{ groupCapacity: number }>("/admin/group-capacity/", { groupCapacity });
+  },
   adminApproveSchedule(studentId: string, slotIds?: string[]): Promise<ScheduleApproveResult> {
     return api.post<ScheduleApproveResult>("/admin/schedule-requests/approve/", {
       studentId,

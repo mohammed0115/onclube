@@ -1,10 +1,12 @@
-import { Server, Cpu } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Server, Cpu, Users, Loader2, Save } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Loading, ErrorState } from "@/components/states";
-import { useAdminPlatform } from "@/hooks";
+import { useAdminPlatform, useGroupCapacity, useSetGroupCapacity } from "@/hooks";
 import { useI18n } from "@/i18n";
 
 const OK = new Set(["live", "redis"]);
@@ -25,7 +27,9 @@ export function AdminPlatformPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Platform" subtitle="Provider health and the AI report queue." />
+      <PageHeader title="Platform" subtitle="Provider health, the AI report queue, and session settings." />
+
+      <div className="mb-6"><GroupCapacityCard /></div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-6">
@@ -64,5 +68,53 @@ export function AdminPlatformPage() {
         </Card>
       </div>
     </DashboardLayout>
+  );
+}
+
+/** Admin control: how many students may share one instructor+time (group session). */
+function GroupCapacityCard() {
+  const { tx } = useI18n();
+  const q = useGroupCapacity();
+  const save = useSetGroupCapacity();
+  const [value, setValue] = useState<number>(1);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (q.data) setValue(q.data.groupCapacity);
+  }, [q.data]);
+
+  const onSave = () => {
+    setSaved(false);
+    save.mutate(Math.max(1, Math.floor(value) || 1), { onSuccess: () => setSaved(true) });
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="mb-1 flex items-center gap-2 font-display font-bold text-foreground">
+        <Users size={18} className="text-indigo-600" /> {tx("Group session size")}
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        {tx("Maximum students who can share one instructor at the same time. 1 = one-to-one sessions.")}
+      </p>
+      {q.isLoading ? (
+        <Loading label="Loading…" />
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={value}
+            onChange={(e) => { setValue(Number(e.target.value)); setSaved(false); }}
+            className="w-24 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+          />
+          <Button size="sm" onClick={onSave} disabled={save.isPending}>
+            {save.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {tx("Save")}
+          </Button>
+          {saved && <span className="text-xs font-medium text-emerald-600">{tx("Saved ✓")}</span>}
+          {save.isError && <span className="text-xs text-red-600">{tx("Could not save. Please try again.")}</span>}
+        </div>
+      )}
+    </Card>
   );
 }
