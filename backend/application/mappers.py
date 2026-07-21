@@ -256,7 +256,7 @@ def group_session(gs, *, student_id) -> dtos.GroupSessionResult:
 def booking_detail(b) -> dtos.BookingDetailResult:
     return dtos.BookingDetailResult(
         id=str(b.id),
-        topic_id=str(b.topic_id),
+        topic_id=str(b.topic_id) if b.topic_id else "",  # availability-first bookings have no topic
         topic_title=b.topic_title,
         instructor_id=str(b.instructor_id),
         instructor_name=b.instructor_name,

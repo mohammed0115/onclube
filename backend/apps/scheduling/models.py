@@ -469,9 +469,9 @@ class StudentScheduleSlot(BaseModel, SoftDeleteModel):
 class PlatformSettings(BaseModel):
     """Singleton platform-wide settings the admin controls. Currently holds the
     group-session capacity: how many students may share one instructor+time slot.
-    Default 1 = solo sessions (previous behaviour) until an admin raises it."""
+    Default 10 — the admin can raise or lower it on the Platform settings page."""
 
-    group_capacity = models.PositiveIntegerField(default=1)
+    group_capacity = models.PositiveIntegerField(default=10)
 
     class Meta:
         db_table = "platform_settings"

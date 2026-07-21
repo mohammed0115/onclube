@@ -390,9 +390,20 @@ class ListInstructorUpcomingSessionsUseCase:
 
         instructor = get_instructor_profile(actor)
         now = timezone.now()
+        # Only genuinely-upcoming sessions belong in Lesson prep. A small grace keeps
+        # a session that just started visible; a stale past-but-not-yet-completed
+        # booking must not sit at the top claiming to be prepared "now".
+        from datetime import timedelta
+
+        cutoff = now - timedelta(hours=1)
         bookings = (
             Booking.objects.select_related("student", "student__user")
-            .filter(instructor=instructor, status=BookingStatus.UPCOMING, deleted_at__isnull=True)
+            .filter(
+                instructor=instructor,
+                status=BookingStatus.UPCOMING,
+                deleted_at__isnull=True,
+                scheduled_at__gte=cutoff,
+            )
             .order_by("scheduled_at")
         )
         # Group students who share the same time into ONE session, so the

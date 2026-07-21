@@ -425,7 +425,8 @@ def test_group_capacity_limit_skips_extra_students():
 
 def test_topic_less_waiting_room_uses_lesson_questions_no_crash():
     """A generated (topic-less) booking's waiting room must not crash on the null
-    topic and should surface the instructor-authored lesson questions."""
+    topic. The instructor always sees the lesson; the student does NOT until the
+    reveal window (~1h before), so a far-out session is hidden from the student."""
     from apps.sessions.models import Session
 
     student, instructor = _world(sessions=4)
@@ -438,16 +439,65 @@ def test_topic_less_waiting_room_uses_lesson_questions_no_crash():
         {"title": "Money", "questions": ["Why save?", "Budgeting tips?"]}, format="json",
     )
     sess = Session.objects.get(booking=booking)
-    resp = client_for(student.user).get(f"/api/v1/sessions/{sess.id}/waiting-room/")
+    # Instructor: sees the prepared lesson, and the null topic doesn't crash.
+    ir = client_for(instructor.user).get(f"/api/v1/sessions/{sess.id}/waiting-room/")
+    assert ir.status_code == 200, ir.data
+    assert list(ir.data["questions"]) == ["Why save?", "Budgeting tips?"]
+    # Student: the session is ~a week+ out, so the lesson is not revealed yet.
+    sr = client_for(student.user).get(f"/api/v1/sessions/{sess.id}/waiting-room/")
+    assert sr.status_code == 200, sr.data
+    assert list(sr.data["questions"]) == []          # MED-5: hidden before reveal
+    assert sr.data["topicTitle"] != "Money"          # lesson title not leaked early
+
+
+def test_late_group_joiner_inherits_the_prepared_lesson():
+    """MED-6: a student who joins the group after the instructor prepared the shared
+    lesson inherits its title + questions (so they don't sit in the room empty)."""
+    from apps.scheduling.models import PlatformSettings
+
+    s = PlatformSettings.current(); s.group_capacity = 3; s.save()
+    instructor = _available_instructor()
+    a, b = _funded_student(), _funded_student()
+    wd = _tomorrow_weekday()
+    _put_availability(a, [{"weekday": wd, "startTime": "12:00"}]); _approve(a)
+    ba = Booking.objects.filter(student=a, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    client_for(instructor.user).post(
+        f"/api/v1/instructor/bookings/{ba.id}/lesson/",
+        {"title": "Money", "questions": ["Why save?"]}, format="json",
+    )
+    # b joins the same slot AFTER prep.
+    _put_availability(b, [{"weekday": wd, "startTime": "12:00"}]); _approve(b)
+    bb = Booking.objects.filter(
+        student=b, status=BookingStatus.UPCOMING, scheduled_at=ba.scheduled_at
+    ).first()
+    assert bb is not None
+    assert bb.lesson_title == "Money"
+    assert bb.lesson_questions == ["Why save?"]
+
+
+def test_cancelling_a_booking_cancels_its_live_session():
+    """MED-10: cancelling a booking cancels its Session so nobody can open the dead
+    room afterwards."""
+    from apps.sessions.models import Session
+    from apps.common.enums import SessionStatus
+
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    booking = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    sess = Session.objects.get(booking=booking)
+    resp = client_for(instructor.user).post(f"/api/v1/instructor/bookings/{booking.id}/cancel/")
     assert resp.status_code == 200, resp.data
-    assert list(resp.data["questions"]) == ["Why save?", "Budgeting tips?"]
+    sess.refresh_from_db()
+    assert sess.status == SessionStatus.CANCELLED
 
 
 def test_admin_sets_group_capacity():
     admin = make_admin()
     r = client_for(admin).get("/api/v1/admin/group-capacity/")
     assert r.status_code == 200
-    assert r.data["groupCapacity"] == 1  # default
+    assert r.data["groupCapacity"] == 10  # default
     r2 = client_for(admin).put("/api/v1/admin/group-capacity/", {"groupCapacity": 4}, format="json")
     assert r2.status_code == 200 and r2.data["groupCapacity"] == 4
     from apps.scheduling.models import PlatformSettings

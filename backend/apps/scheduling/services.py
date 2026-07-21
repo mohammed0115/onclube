@@ -255,6 +255,16 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool
     if not group and slot.status != SlotStatus.OPEN:
         raise SlotAlreadyBooked()
 
+    # Group capacity is enforced HERE, under the slot's row lock, so two concurrent
+    # generation runs can't both slip past a pre-check and overfill the group by one.
+    if group:
+        from apps.scheduling.models import PlatformSettings
+
+        capacity = PlatformSettings.current().group_capacity
+        taken = Booking.objects.filter(slot=slot, status=BookingStatus.UPCOMING).count()
+        if taken >= capacity:
+            raise BusinessRuleError("This group session is full.", code="group_full")
+
     # A slot that has already PASSED can't be booked (it would be born "Missed").
     # A grace window keeps a session that is starting now / just started bookable
     # (it's still joinable) — only clearly-past slots are rejected.
@@ -318,6 +328,30 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot, *, group: bool
     if not group:
         slot.status = SlotStatus.BOOKED
         slot.save(update_fields=["status", "updated_at"])
+    else:
+        # A student who joins the group AFTER the instructor already prepared the
+        # shared lesson inherits it — otherwise the late joiner would sit in the same
+        # room with no title/questions while groupmates have them.
+        prepared = (
+            Booking.objects.filter(
+                instructor_id=slot.instructor_id,
+                scheduled_at=slot.start_at,
+                status=BookingStatus.UPCOMING,
+                lesson_prepared_at__isnull=False,
+                deleted_at__isnull=True,
+            )
+            .exclude(pk=booking.pk)
+            .first()
+        )
+        if prepared is not None:
+            booking.lesson_title = prepared.lesson_title
+            booking.lesson_questions = list(prepared.lesson_questions)
+            booking.lesson_prepared_at = prepared.lesson_prepared_at
+            if prepared.lesson_title:
+                booking.topic_title = prepared.lesson_title
+            booking.save(update_fields=[
+                "lesson_title", "lesson_questions", "lesson_prepared_at", "topic_title", "updated_at",
+            ])
 
     # Keep the student mirror in sync.
     if student.active_subscription_id == subscription.pk:
@@ -380,6 +414,15 @@ def cancel_booking(booking: Booking, *, now=None, admin=None, force_credit=None)
     slot = booking.slot
     slot.status = SlotStatus.OPEN
     slot.save(update_fields=["status", "updated_at"])
+
+    # Cancel the live room too, so nobody (student OR instructor) can still open the
+    # now-dead session — _ensure_joinable rejects a CANCELLED session for every role.
+    from apps.sessions.models import Session as _Session
+    from apps.common.enums import SessionStatus as _SessionStatus
+
+    _Session.objects.filter(booking=booking).exclude(
+        status__in=[_SessionStatus.COMPLETED, _SessionStatus.CANCELLED]
+    ).update(status=_SessionStatus.CANCELLED)
 
     if refund:
         Subscription.objects.filter(pk=booking.subscription_id).update(

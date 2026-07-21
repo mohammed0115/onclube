@@ -319,13 +319,24 @@ class GetStudentDashboardUseCase:
             now=timezone.now(),
         )
 
+        # The instructor-authored lesson is revealed to the student only ~1h before
+        # the session. topic_title snapshots that lesson title at prep time, so blank
+        # it on the "Next session" card until the reveal window opens.
+        next_dto = mappers.booking_list_item(next_b) if next_b else None
+        if next_dto is not None and next_b.lesson_prepared_at is not None:
+            from apps.scheduling.services import lesson_visible_to_student
+            import dataclasses
+
+            if not lesson_visible_to_student(next_b, timezone.now()):
+                next_dto = dataclasses.replace(next_dto, topic_title="Your session")
+
         return StudentDashboardResult(
             sessions_remaining=student.sessions_remaining,
             sessions_completed=len(completed),
             payment_status=student.payment_status,
             level=student.level,
             latest_score=latest_score,
-            next_session=mappers.booking_list_item(next_b) if next_b else None,
+            next_session=next_dto,
             recent_sessions=[mappers.booking_list_item(b) for b in bookings[:5]],
             progress_trend=progress,
             gamification=board,
@@ -456,6 +467,14 @@ class GetInstructorDashboardUseCase:
         cancelled = [b for b in bookings if b.status == BookingStatus.CANCELLED]
         topics = self.topics.list_for_instructor(instructor)
 
+        # "Today's sessions" = actually today, soonest first (list_for_instructor is
+        # newest-first across all dates, which would otherwise bury today's session).
+        today = timezone.localdate()
+        todays = sorted(
+            (b for b in upcoming if timezone.localtime(b.scheduled_at).date() == today),
+            key=lambda b: b.scheduled_at,
+        )
+
         teaching_hours = round(sum((b.duration_minutes or 45) for b in completed) / 60, 1)
         total = len(bookings)
         cancellation_rate = round(len(cancelled) / total * 100, 1) if total else 0.0
@@ -468,7 +487,7 @@ class GetInstructorDashboardUseCase:
             completed_sessions=len(completed),
             teaching_hours=teaching_hours,
             cancellation_rate=cancellation_rate,
-            today_sessions=[mappers.booking_list_item(b) for b in upcoming],
+            today_sessions=[mappers.booking_list_item(b) for b in todays],
             topics=[
                 {
                     "id": str(t.id),

@@ -121,10 +121,23 @@ class GetSessionUseCase:
             can_join = True
         except (PermissionDenied, DomainError):
             can_join = False
+        # An instructor-authored lesson (title + questions) is revealed to the student
+        # only within LESSON_REVEAL_MINUTES before the session. The instructor and
+        # admin always see it. Before the reveal window we hide BOTH the questions and
+        # the lesson title (the title is snapshotted into topic_title at prep time, so
+        # it would otherwise leak the lesson early).
+        from apps.scheduling.services import lesson_visible_to_student
+
+        lesson_prepared = booking.lesson_prepared_at is not None
+        hide_lesson = (
+            role == "student" and lesson_prepared and not lesson_visible_to_student(booking, now)
+        )
         # The prepared discussion questions the instructor walks through in-call.
         # Availability-first bookings carry the instructor-authored lesson questions
         # (no topic); legacy topic bookings fall back to approved topic questions.
-        if booking.lesson_questions:
+        if hide_lesson:
+            questions = ()
+        elif booking.lesson_questions:
             questions = tuple(booking.lesson_questions)
         elif booking.topic_id:
             questions = tuple(
@@ -134,10 +147,11 @@ class GetSessionUseCase:
             )
         else:
             questions = ()
+        topic_title = "Your session" if hide_lesson else booking.topic_title
         return WaitingRoomResult(
             session_id=str(session.id),
             booking_id=str(session.booking_id),
-            topic_title=booking.topic_title,
+            topic_title=topic_title,
             instructor_name=booking.instructor_name,
             scheduled_at=booking.scheduled_at,
             duration_minutes=booking.duration_minutes,

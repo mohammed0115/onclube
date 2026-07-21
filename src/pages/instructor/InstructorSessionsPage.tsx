@@ -50,26 +50,50 @@ function groupBookings(bookings: BookingListItem[]): SessionGroup[] {
     g.bookingIds.push(b.id);
     if (b.studentName) g.studentNames.push(b.studentName);
   }
-  // Preserve the newest-first order the API returns.
   return Array.from(map.values());
+}
+
+const ms = (iso: string) => new Date(iso).getTime();
+
+/** Upcoming sessions first, soonest at the top; past/cancelled history after,
+ *  most-recent first. The API returns newest-first across all statuses, which
+ *  buries the next session under later-dated ones — this fixes that. */
+function splitSessions(groups: SessionGroup[]): { upcoming: SessionGroup[]; history: SessionGroup[] } {
+  const upcoming = groups.filter((g) => g.status === "upcoming").sort((a, b) => ms(a.scheduledAt) - ms(b.scheduledAt));
+  const history = groups.filter((g) => g.status !== "upcoming").sort((a, b) => ms(b.scheduledAt) - ms(a.scheduledAt));
+  return { upcoming, history };
 }
 
 export function InstructorSessionsPage() {
   const { data, isLoading } = useInstructorBookings();
   const { tx } = useI18n();
-  const groups = groupBookings(data ?? []);
+  const { upcoming, history } = splitSessions(groupBookings(data ?? []));
+  const isEmpty = upcoming.length === 0 && history.length === 0;
 
   return (
     <DashboardLayout>
-      <PageHeader title="My sessions" subtitle="Your booked sessions, grouped by time. Prepare each lesson in Lesson prep." />
+      <PageHeader title="My sessions" subtitle="Your upcoming sessions come first. Prepare each lesson in Lesson prep." />
       <div className="mx-auto max-w-3xl">
         {isLoading ? (
           <Loading label="Loading your sessions…" />
-        ) : groups.length === 0 ? (
+        ) : isEmpty ? (
           <EmptyState icon={<CalendarClock size={26} className="text-muted-foreground" />} title="No sessions yet" description="Sessions assigned to you will appear here." />
         ) : (
-          <div className="space-y-3">
-            {groups.map((g) => <SessionRow key={g.key} g={g} tx={tx} />)}
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tx("Upcoming")}</h3>
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{tx("No upcoming sessions.")}</p>
+              ) : (
+                upcoming.map((g) => <SessionRow key={g.key} g={g} tx={tx} />)
+              )}
+            </div>
+            {history.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tx("Past sessions")}</h3>
+                {history.map((g) => <SessionRow key={g.key} g={g} tx={tx} />)}
+              </div>
+            )}
           </div>
         )}
       </div>

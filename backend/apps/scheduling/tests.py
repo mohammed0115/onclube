@@ -148,6 +148,10 @@ def test_group_bookings_allow_multiple_students_per_slot():
     """
     from apps.common.factories import make_student, make_active_subscription, make_plan
     from apps.sessions.models import Session
+    from apps.scheduling.models import PlatformSettings
+
+    # Grouping requires the admin to allow more than one seat per slot.
+    ps = PlatformSettings.current(); ps.group_capacity = 2; ps.save()
 
     student, instructor, topic, slot, sub = _booked_world(sessions=4, days_ahead=5)
     other = make_student()
