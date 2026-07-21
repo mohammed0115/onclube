@@ -69,7 +69,6 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: Calendar, label: "My Sessions", short: "Sessions", to: "/instructor/sessions" },
     { icon: BookOpen, label: "Lesson prep", short: "Lessons", to: "/instructor/lessons" },
     { icon: Users, label: "My Students", short: "Students", to: "/instructor/students" },
-    { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
     { icon: BadgeCheck, label: "Public Profile", short: "CV", to: "/instructor/public-profile" },
     { icon: User, label: "My Profile", short: "Profile", to: "/instructor/profile" },
   ],
@@ -88,7 +87,7 @@ const NAV: Record<Role, NavItem[]> = {
     // Admins can also teach (same account acts as instructor).
     { icon: GraduationCap, label: "Teaching", short: "Teach", to: "/instructor" },
     { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },
-    { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
+    { icon: BookOpen, label: "Lesson prep", short: "Lessons", to: "/instructor/lessons" },
     { icon: User, label: "My Profile", short: "Profile", to: "/instructor/profile" },
   ],
 };
