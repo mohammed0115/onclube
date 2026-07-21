@@ -61,20 +61,17 @@ function useTTS() {
     u.pitch = opts.pitch;
     u.rate = opts.rate;
     u.lang = v?.lang ?? "en-US";
-    // Chrome cuts long utterances after ~15s; a periodic resume() keeps it going.
-    let keepAlive = 0;
+    // NOTE: do NOT call speechSynthesis.resume() on a timer to "keep alive" — on
+    // Chrome that restarts the utterance from the beginning, which made the tutor
+    // read its reply, cut, and read it again repeatedly. Single-fire onend guard.
     let ended = false;
     const finish = () => {
       if (ended) return;
       ended = true;
-      if (keepAlive) window.clearInterval(keepAlive);
       setSpeaking(false);
       onEnd?.();
     };
-    u.onstart = () => {
-      setSpeaking(true);
-      keepAlive = window.setInterval(() => { try { window.speechSynthesis.resume(); } catch { /* noop */ } }, 9000);
-    };
+    u.onstart = () => setSpeaking(true);
     u.onend = finish;
     u.onerror = finish;
     window.speechSynthesis.speak(u);
@@ -287,13 +284,11 @@ export function AITutorPage() {
   const speech = useSpeechRecognition();
   const lastSpokenRef = useRef<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Refs so the deferred TTS-onEnd callback always reads the latest state (avoids
-  // stale closures in the continuous-call loop).
-  const callOnRef = useRef(callOn); callOnRef.current = callOn;
   const sessionRef = useRef(session); sessionRef.current = session;
+  const callOnRef = useRef(callOn); callOnRef.current = callOn;
   const maybeListenRef = useRef<() => void>(() => {});
-  const lastTutorTextRef = useRef<string>(""); // for echo detection
+  const echoStrikesRef = useRef(0); // consecutive echo/noise captures
+  const lastTutorTextRef = useRef<string>(""); // for echo filtering
 
   // Adopt an in-progress session returned by /status.
   useEffect(() => {
@@ -330,8 +325,9 @@ export function AITutorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // Speak the latest tutor message, then (hands-free) resume listening for the
-  // student's next turn — this is what keeps the "call" going until it's ended.
+  // Speak each new tutor message once, then hands-free resume listening for the
+  // student's next turn (no tapping). Echo is filtered separately so the tutor
+  // doesn't reply to its own voice.
   useEffect(() => {
     const msgs = session?.messages ?? [];
     const last = [...msgs].reverse().find((m) => m.role === "tutor");
@@ -340,6 +336,7 @@ export function AITutorPage() {
     if (key === lastSpokenRef.current) return;
     lastSpokenRef.current = key;
     lastTutorTextRef.current = last.text; // remember it to filter echo from the mic
+    echoStrikesRef.current = 0;
     if (muted || !tts.supported) {
       maybeListenRef.current();
       return;
@@ -380,28 +377,27 @@ export function AITutorPage() {
 
   const onSend = () => { sendText(draft); setDraft(""); };
 
-  // Open the mic for the student's turn. Drops the tutor's own voice picked up from
-  // the speakers (echo) and too-short noise, re-listening instead of replying to it.
+  // Open the mic for the student's turn. Drops the tutor's own voice echoed from the
+  // speakers and stray noise; after a few consecutive echo/noise captures it stops
+  // auto-listening (circuit breaker) so it can never loop — the student taps to talk.
   const startListening = () => {
     if (!speech.supported || speech.listening) return;
     speech.start((finalText) => {
       const t = finalText.trim();
       if (t.length < 2 || isLikelyEcho(t, lastTutorTextRef.current)) {
-        maybeListenRef.current(); // ignore echo/noise; keep waiting for the student
-        return;
+        echoStrikesRef.current += 1;
+        if (echoStrikesRef.current < 3) maybeListenRef.current(); // ignore, keep waiting
+        return; // 3 strikes → stop; the mic button lets the student talk manually
       }
+      echoStrikesRef.current = 0;
       sendText(t);
     });
   };
 
-  // Resume listening for the next turn — only when it's genuinely the student's turn
-  // (call on, session active, tutor not still speaking). A short delay lets the
-  // speaker audio settle so the mic doesn't capture the tutor's tail.
+  // Hands-free: resume listening after the tutor finishes speaking. A short delay lets
+  // the speaker audio settle so the mic doesn't capture the tutor's tail.
   const maybeListen = () => {
-    if (!callOnRef.current || sessionRef.current?.status !== "active") return;
-    if (!speech.supported) return;
-    // maybeListen only runs after the tutor finished speaking; a short delay lets the
-    // speaker audio settle so the mic doesn't capture the tutor's tail as echo.
+    if (!callOnRef.current || sessionRef.current?.status !== "active" || !speech.supported) return;
     window.setTimeout(() => {
       if (!callOnRef.current || sessionRef.current?.status !== "active") return;
       startListening();
@@ -418,6 +414,7 @@ export function AITutorPage() {
       tts.stop();
     } else {
       setCallOn(true);
+      echoStrikesRef.current = 0;
       startListening();
     }
   };
@@ -631,7 +628,7 @@ export function AITutorPage() {
 
               <div className="min-h-[1.25rem] text-center">
                 {speech.listening ? (
-                  <span className="text-sm font-semibold text-rose-600">{tx("Listening…")}</span>
+                  <span className="text-sm font-semibold text-rose-600">{tx("Listening… just speak")}</span>
                 ) : sendMsg.isPending ? (
                   <span className="text-sm font-semibold text-indigo-600">{tx("Thinking…")}</span>
                 ) : tts.speaking ? (

@@ -994,6 +994,7 @@ const PAIRS: [string, string][] = [
   ["Voice input isn't supported in this browser — type your reply below.", "إدخال الصوت غير مدعوم في هذا المتصفّح — اكتب ردّك في الأسفل."],
   ["Show transcript", "عرض النص"],
   ["Speaking…", "يتحدّث…"],
+  ["Listening… just speak", "أستمع… تحدّث الآن"],
   ["Paused — tap to resume", "متوقّف — اضغط للاستئناف"],
   ["Your turn — just speak", "دورك — تحدّث الآن"],
   ["Pause", "إيقاف مؤقّت"],
