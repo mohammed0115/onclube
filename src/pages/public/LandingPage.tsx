@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Star,
@@ -20,6 +20,9 @@ import {
   Quote,
   Award,
   BadgeCheck,
+  Users,
+  Briefcase,
+  GraduationCap,
 } from "lucide-react";
 import { MarketingNav } from "@/components/layout/MarketingNav";
 import { Button } from "@/components/ui/button";
@@ -97,9 +100,41 @@ const FAQ = [
   { q: "What happens in a session?", a: "You join a live video call, talk through prepared questions with your instructor, and receive an AI report with scores and next steps afterwards." },
 ];
 
+const SPECIALIZATIONS = [
+  { key: "conversation" as const, icon: MessagesSquare, label: "Conversation", tint: "bg-blue-50 text-blue-700" },
+  { key: "business" as const, icon: Briefcase, label: "Business English", tint: "bg-emerald-50 text-emerald-700" },
+  { key: "ielts" as const, icon: GraduationCap, label: "IELTS prep", tint: "bg-purple-50 text-purple-700" },
+];
+
 export function LandingPage() {
   const { tx } = useI18n();
   const { data: instructors = [] } = usePublicInstructors();
+
+  // Everything below is derived from the live instructor directory — no more
+  // hardcoded counts, ratings or specialization claims.
+  const stats = useMemo(() => {
+    const rated = instructors.filter((i) => i.rating > 0);
+    const avgRating = rated.length ? rated.reduce((s, i) => s + i.rating, 0) / rated.length : 0;
+    const totalSessions = instructors.reduce((s, i) => s + (i.sessionsHosted || 0), 0);
+    const maxYears = instructors.reduce((m, i) => Math.max(m, i.yearsExperience || 0), 0);
+    const offers = {
+      conversation: instructors.some((i) => i.availableFor?.conversation),
+      business: instructors.some((i) => i.availableFor?.business),
+      ielts: instructors.some((i) => i.availableFor?.ielts),
+    };
+    return {
+      count: instructors.length,
+      avgRating,
+      totalSessions,
+      maxYears,
+      offers,
+      specializations: SPECIALIZATIONS.filter((s) => offers[s.key]),
+    };
+  }, [instructors]);
+
+  const founder = instructors.find((i) => i.foundingInstructor);
+  const ratingLabel = stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "5.0";
+
   return (
     <div className="min-h-screen bg-white font-sans text-foreground">
       <MarketingNav />
@@ -162,7 +197,10 @@ export function LandingPage() {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">{tx("Real instructors")}</span> {tx("· vetted & rated")}
+                  <span className="font-semibold text-foreground">
+                    {stats.count > 0 ? `${stats.count} ${tx("real instructors")}` : tx("Real instructors")}
+                  </span>{" "}
+                  {tx("· vetted & rated")}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -171,7 +209,7 @@ export function LandingPage() {
                     <Star key={i} size={15} className="fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <span className="text-sm text-muted-foreground">4.9/5</span>
+                <span className="text-sm text-muted-foreground">{ratingLabel}/5</span>
               </div>
             </div>
 
@@ -202,6 +240,51 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── 1b. Live stats band ───────────────────────────────── */}
+      {stats.count > 0 && (
+        <section className="border-y border-blue-100/70 bg-white">
+          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-6 py-10 md:grid-cols-4 md:px-8">
+            {[
+              { icon: Users, value: `${stats.count}`, label: "Vetted instructors" },
+              { icon: Star, value: `${ratingLabel}`, label: "Average rating" },
+              {
+                icon: CalendarCheck,
+                value: stats.totalSessions > 0 ? `${stats.totalSessions}+` : "New",
+                label: "Sessions delivered",
+              },
+              {
+                icon: Award,
+                value: stats.maxYears > 0 ? `${stats.maxYears}+` : "—",
+                label: "Years of experience",
+              },
+            ].map((s) => (
+              <div key={s.label} className="flex flex-col items-center text-center">
+                <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  <s.icon size={20} />
+                </div>
+                <div className="font-display text-2xl font-extrabold text-foreground sm:text-3xl">{s.value}</div>
+                <div className="mt-0.5 text-xs font-medium text-muted-foreground">{tx(s.label)}</div>
+              </div>
+            ))}
+          </div>
+          {stats.specializations.length > 0 && (
+            <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-2 px-6 pb-8 md:px-8">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {tx("Practise for")}:
+              </span>
+              {stats.specializations.map((s) => (
+                <span
+                  key={s.key}
+                  className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold", s.tint)}
+                >
+                  <s.icon size={13} /> {tx(s.label)}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── 2. Why OneClub ────────────────────────────────────── */}
       <Section id="why">
@@ -338,11 +421,63 @@ export function LandingPage() {
           title={tx("Real people lead every session")}
           subtitle={tx("AI prepares and analyses — but the conversation is always with a friendly, vetted human.")}
         />
+
+        {/* Founding instructor spotlight — driven entirely by seeded profile data. */}
+        {founder && (
+          <div className="mt-12 overflow-hidden rounded-[2rem] border border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-6 shadow-sm md:p-8">
+            <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left rtl:md:text-right">
+              {founder.avatarUrl ? (
+                <img
+                  src={founder.avatarUrl}
+                  alt={founder.fullName}
+                  className="h-28 w-28 flex-shrink-0 rounded-full object-cover shadow-md ring-4 ring-white"
+                />
+              ) : (
+                <div className={cn("flex h-28 w-28 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-3xl font-bold text-white shadow-md ring-4 ring-white", accentFor(founder.slug ?? founder.id))}>
+                  {initialsOf(founder.fullName)}
+                </div>
+              )}
+              <div className="flex-1">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+                  <Award size={11} /> {tx("Founding instructor")}
+                </span>
+                <h3 className="mt-2 font-display text-xl font-extrabold text-foreground sm:text-2xl">{founder.fullName}</h3>
+                <div className="text-sm font-medium text-primary">{founder.jobTitle}</div>
+                {founder.headline && <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{founder.headline}</p>}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs md:justify-start">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                    <Star size={12} className="fill-amber-500 text-amber-500" /> {founder.rating.toFixed(1)}
+                  </span>
+                  {founder.sessionsHosted > 0 && (
+                    <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-600 shadow-sm">{founder.sessionsHosted} {tx("sessions")}</span>
+                  )}
+                  {founder.yearsExperience > 0 && (
+                    <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-600 shadow-sm">{founder.yearsExperience}+ {tx("yrs")}</span>
+                  )}
+                  {founder.flag && (
+                    <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-600 shadow-sm">{founder.flag} {founder.country}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-shrink-0 flex-col gap-2">
+                {founder.slug && (
+                  <Button asChild variant="soft" size="sm">
+                    <Link to={`/instructors/${founder.slug}`}>{tx("View Profile")}</Link>
+                  </Button>
+                )}
+                <Button asChild size="sm">
+                  <Link to="/register">{tx("Book Session")}</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {instructors.length === 0 ? (
           <p className="mt-10 text-center text-sm text-muted-foreground">{tx("Our instructors will appear here soon.")}</p>
         ) : (
           <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {instructors.map((i) => (
+            {instructors.filter((i) => i.id !== founder?.id).map((i) => (
               <div
                 key={i.id}
                 className="group relative flex flex-col rounded-3xl border border-border bg-card p-6 text-center shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/60"
@@ -386,6 +521,18 @@ export function LandingPage() {
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">{i.yearsExperience}+ {tx("yrs")}</span>
                   )}
                 </div>
+                {SPECIALIZATIONS.some((s) => i.availableFor?.[s.key]) && (
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                    {SPECIALIZATIONS.filter((s) => i.availableFor?.[s.key]).map((s) => (
+                      <span
+                        key={s.key}
+                        className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold", s.tint)}
+                      >
+                        <s.icon size={11} /> {tx(s.label)}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-5 flex flex-1 items-end justify-center gap-2">
                   {i.slug && (
                     <Button asChild variant="soft" size="sm">

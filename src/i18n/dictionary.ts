@@ -865,6 +865,18 @@ const PAIRS: [string, string][] = [
   ["Couldn’t load your report", "تعذّر تحميل تقريرك"],
   ["Notifications", "الإشعارات"],
   ["You're all caught up 🎉", "أنت على اطّلاع بكل شيء 🎉"],
+
+  // ── landing: live stats band + instructor spotlight ─────────────────────
+  ["real instructors", "مُعلّمون حقيقيون"],
+  ["Vetted instructors", "مُعلّمون مُدقَّقون"],
+  ["Average rating", "متوسّط التقييم"],
+  ["Sessions delivered", "جلسات مُقدَّمة"],
+  ["Years of experience", "سنوات الخبرة"],
+  ["Practise for", "تدرّب من أجل"],
+  ["Conversation", "المحادثة"],
+  ["Business English", "إنجليزية الأعمال"],
+  ["IELTS prep", "تحضير IELTS"],
+  ["Founding instructor", "المُعلّم المؤسّس"],
 ];
 
 export const BY_TEXT: Record<string, string> = Object.fromEntries(PAIRS);
