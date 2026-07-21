@@ -404,6 +404,26 @@ def test_group_capacity_limit_skips_extra_students():
     assert not Booking.objects.filter(student=b, status=BookingStatus.UPCOMING).exists()
 
 
+def test_topic_less_waiting_room_uses_lesson_questions_no_crash():
+    """A generated (topic-less) booking's waiting room must not crash on the null
+    topic and should surface the instructor-authored lesson questions."""
+    from apps.sessions.models import Session
+
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    booking = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+    client_for(instructor.user).post(
+        f"/api/v1/instructor/bookings/{booking.id}/lesson/",
+        {"title": "Money", "questions": ["Why save?", "Budgeting tips?"]}, format="json",
+    )
+    sess = Session.objects.get(booking=booking)
+    resp = client_for(student.user).get(f"/api/v1/sessions/{sess.id}/waiting-room/")
+    assert resp.status_code == 200, resp.data
+    assert list(resp.data["questions"]) == ["Why save?", "Budgeting tips?"]
+
+
 def test_admin_sets_group_capacity():
     admin = make_admin()
     r = client_for(admin).get("/api/v1/admin/group-capacity/")

@@ -122,11 +122,18 @@ class GetSessionUseCase:
         except (PermissionDenied, DomainError):
             can_join = False
         # The prepared discussion questions the instructor walks through in-call.
-        questions = tuple(
-            booking.topic.questions.filter(approved=True)
-            .order_by("sort_order")
-            .values_list("text", flat=True)
-        )
+        # Availability-first bookings carry the instructor-authored lesson questions
+        # (no topic); legacy topic bookings fall back to approved topic questions.
+        if booking.lesson_questions:
+            questions = tuple(booking.lesson_questions)
+        elif booking.topic_id:
+            questions = tuple(
+                booking.topic.questions.filter(approved=True)
+                .order_by("sort_order")
+                .values_list("text", flat=True)
+            )
+        else:
+            questions = ()
         return WaitingRoomResult(
             session_id=str(session.id),
             booking_id=str(session.booking_id),

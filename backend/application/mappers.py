@@ -295,7 +295,7 @@ def session_detail(session, questions) -> dtos.SessionDetailResult:
         started_at=session.started_at,
         ended_at=session.ended_at,
         questions=[question_full(q) for q in questions],
-        vocabulary=booking.topic.vocabulary,
+        vocabulary=(booking.topic.vocabulary if booking.topic_id else []),
         student_notes=session.student_notes,
     )
 

@@ -71,7 +71,7 @@ class GetAIReportDetailUseCase:
     def execute(self, *, actor, report_id) -> AIReportDetailResult:
         report = self.reports.get(report_id)
         ensure_report_viewer(actor, report)
-        vocabulary = report.booking.topic.vocabulary
+        vocabulary = report.booking.topic.vocabulary if report.booking.topic_id else []
         return mappers.ai_report_detail(report, vocabulary=vocabulary)
 
 
@@ -94,5 +94,5 @@ class GetSessionReportUseCase:
             from apps.ai_reports.models import AIReport
 
             raise AIReport.DoesNotExist("No report exists for this session yet.")
-        vocabulary = session.booking.topic.vocabulary
+        vocabulary = session.booking.topic.vocabulary if session.booking.topic_id else []
         return mappers.ai_report_detail(report, vocabulary=vocabulary)

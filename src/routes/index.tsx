@@ -25,7 +25,6 @@ import { StudentDashboardPage } from "@/pages/student/StudentDashboardPage";
 import { WeeklySchedulePage } from "@/pages/student/WeeklySchedulePage";
 import { ProgressPage } from "@/pages/student/ProgressPage";
 import { AITutorPage } from "@/pages/student/AITutorPage";
-import { QuestionsPreviewPage } from "@/pages/student/QuestionsPreviewPage";
 import { WaitingRoomPage } from "@/pages/student/WaitingRoomPage";
 import { AIReportPage } from "@/pages/student/AIReportPage";
 import { SessionReportsPage } from "@/pages/student/SessionReportsPage";
@@ -85,7 +84,6 @@ export function AppRoutes() {
       <Route path="/student/schedule" element={<RequireRole roles={["student"]}><WeeklySchedulePage /></RequireRole>} />
       <Route path="/student/progress" element={<RequireRole roles={["student"]}><ProgressPage /></RequireRole>} />
       <Route path="/student/ai-tutor" element={<RequireRole roles={["student"]}><AITutorPage /></RequireRole>} />
-      <Route path="/student/questions/:id" element={<RequireRole roles={["student"]}><QuestionsPreviewPage /></RequireRole>} />
       {/* Session room is shared by the booked student and the assigned instructor. */}
       <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><WaitingRoomPage /></RequireRole>} />
       <Route path="/student/report/:id" element={<RequireRole roles={["student", "instructor", "admin"]}><AIReportPage /></RequireRole>} />

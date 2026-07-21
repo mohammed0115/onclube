@@ -160,7 +160,7 @@ export function StudentDashboardPage() {
               <div className="space-y-4 p-5">
                 <div className="text-sm font-semibold text-foreground">{d.nextSession.instructorName}</div>
                 <div className="flex items-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs text-purple-700">
-                  <Sparkles size={13} /> {tx("Your discussion questions are ready to preview.")}
+                  <Sparkles size={13} /> {tx("Your instructor shares the lesson 1 hour before the session.")}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button asChild variant="ghost" size="sm">
@@ -175,9 +175,9 @@ export function StudentDashboardPage() {
           ) : null}
 
           <Card className="p-5">
-            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Book your next session")}</h3>
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Set your weekly availability")}</h3>
             <p className="mb-4 text-xs text-muted-foreground">
-              {tx("Pick a topic, preview the questions, then choose a time with an instructor.")}
+              {tx("Choose the times you're free; we match you with an instructor and book your sessions.")}
             </p>
             {canBook ? (
               <Button asChild className="w-full">
