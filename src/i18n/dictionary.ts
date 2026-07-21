@@ -951,6 +951,8 @@ const PAIRS: [string, string][] = [
   ["Cancel this session? If it's more than 24 hours away, your credit is returned.", "إلغاء هذه الجلسة؟ إذا كان موعدها بعد أكثر من ٢٤ ساعة، يُعاد رصيدك."],
   ["Upcoming", "القادمة"],
   ["Past sessions", "الجلسات السابقة"],
+  ["No sessions match this filter.", "لا توجد جلسات مطابقة لهذا الفلتر."],
+  ["Filter by status; sessions are ordered from the first to the last.", "صنّف حسب الحالة؛ الجلسات مرتّبة من الأولى إلى الأخيرة."],
   ["Assigned sessions will appear here for you to prepare.", "ستظهر الجلسات المُسنَدة إليك هنا لتحضيرها."],
   ["e.g. Job interviews", "مثال: مقابلات العمل"],
   ["Your", "خطتك"],
