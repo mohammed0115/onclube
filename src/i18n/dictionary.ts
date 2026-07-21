@@ -895,6 +895,7 @@ const PAIRS: [string, string][] = [
   ["Set the weekly times you can teach. Students who choose these times are matched to you.", "حدّد الأوقات الأسبوعية التي يمكنك التدريس فيها. الطلاب الذين يختارون هذه الأوقات يُسنَدون إليك."],
   ["Tap the weekly times you can teach", "اضغط الأوقات الأسبوعية التي يمكنك التدريس فيها"],
   ["weekly hour(s) available", "ساعة/ساعات أسبوعية متاحة"],
+  ["Session", "جلسة"],
   ["Tap to remove", "اضغط للإزالة"],
   ["Assigning an instructor…", "جارٍ إسناد مدرّس…"],
   ["Pick some times and save — your sessions appear here after review.", "اختر بعض الأوقات واحفظ — ستظهر جلساتك هنا بعد المراجعة."],

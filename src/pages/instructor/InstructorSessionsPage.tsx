@@ -61,8 +61,8 @@ function SessionRow({ b }: { b: BookingListItem }) {
     <Card className="p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-sm font-semibold text-foreground">{b.topicTitle}</div>
-          <div className="text-xs text-muted-foreground">{fmt(b.scheduledAt)} · {b.durationMinutes} min</div>
+          <div className="text-sm font-semibold text-foreground">{b.topicTitle || tx("Session")}</div>
+          <div className="text-xs text-muted-foreground">{fmt(b.scheduledAt)} · {b.durationMinutes} {tx("min")}</div>
         </div>
         <div className="flex items-center gap-2">
           <Badge tone={STATUS_TONE[b.status] ?? "muted"} className="capitalize">{b.status}</Badge>
