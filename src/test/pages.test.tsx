@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import { server } from "./server";
 import { renderPage } from "./utils";
 
-import { BookSessionPage } from "@/pages/student/BookSessionPage";
 import { PaymentApprovalPage as AdminPaymentApprovalPage } from "@/pages/admin/PaymentApprovalPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { RequireRole } from "@/auth/guards";
@@ -27,20 +26,6 @@ function asAdmin() {
     )
   );
 }
-
-describe("Book Session page", () => {
-  it("shows the lock screen when there is no active subscription", async () => {
-    renderPage(<BookSessionPage />);
-    await waitFor(() => expect(screen.getByText(/Booking is locked/i)).toBeInTheDocument());
-  });
-
-  it("lists topics when the subscription is active", async () => {
-    server.use(http.get("*/api/v1/student/subscription/", () => HttpResponse.json(ACTIVE_SUB)));
-    renderPage(<BookSessionPage />);
-    await waitFor(() => expect(screen.getByText("Job Interview Practice")).toBeInTheDocument());
-    expect(screen.getByText(/Payment approved/i)).toBeInTheDocument();
-  });
-});
 
 describe("Admin payment approval", () => {
   it("renders the pending queue from the API", async () => {

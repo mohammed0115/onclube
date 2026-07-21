@@ -69,27 +69,6 @@ def test_plan_empty_for_new_student():
     assert resp.data["homework"] == []
 
 
-# ── Gap 3: time-first matching ────────────────────────────────────────────────
-def test_candidates_lists_available_instructor_and_excludes_out_of_hours():
-    student = make_student()
-    ins = make_instructor()
-    make_topic(ins)  # published
-    RecurringAvailability.objects.create(instructor=ins, weekday=1, start_time=time(8, 0), end_time=time(20, 0))
-
-    ok = client_for(student.user).get("/api/v1/student/schedule/candidates/?weekday=1&startTime=12:00")
-    assert ok.status_code == 200
-    assert any(c["instructorId"] == str(ins.id) for c in ok.data["candidates"])
-
-    out = client_for(student.user).get("/api/v1/student/schedule/candidates/?weekday=1&startTime=22:00")
-    assert all(c["instructorId"] != str(ins.id) for c in out.data["candidates"])
-
-
-def test_candidates_requires_valid_params():
-    student = make_student()
-    r = client_for(student.user).get("/api/v1/student/schedule/candidates/?weekday=9&startTime=12:00")
-    assert r.status_code == 400
-
-
 # ── Gap 4: timed reminders ────────────────────────────────────────────────────
 def _upcoming_booking(minutes_ahead):
     student = make_student()

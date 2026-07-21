@@ -97,7 +97,6 @@ urlpatterns = [
     path("student/schedule/", v.StudentScheduleView.as_view()),
     path("student/schedule/generate/", v.StudentScheduleGenerateView.as_view()),
     path("student/schedule/windows/", v.StudentScheduleWindowsView.as_view()),
-    path("student/schedule/candidates/", v.StudentScheduleCandidatesView.as_view()),
     path("student/progress/", v.StudentProgressView.as_view()),
     path("student/plan/", v.StudentPlanView.as_view()),
     path("student/ai-tutor/status/", v.AITutorStatusView.as_view()),

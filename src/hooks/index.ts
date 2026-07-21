@@ -200,38 +200,11 @@ export const useStudentDashboard = () =>
 export const usePractice = () =>
   useQuery({ queryKey: qk.practice, queryFn: topicsApi.practice });
 
-export const useStudentTopics = (category?: string) =>
-  useQuery({ queryKey: qk.studentTopics(category), queryFn: () => topicsApi.studentTopics(category) });
-
-export const useStudentTopic = (id: string) =>
-  useQuery({ queryKey: qk.studentTopic(id), queryFn: () => topicsApi.studentTopic(id), enabled: !!id });
-
-export const useTopicQuestions = (id: string, enabled = true) =>
-  useQuery({
-    queryKey: qk.topicQuestions(id),
-    queryFn: () => topicsApi.studentTopicQuestions(id),
-    enabled: !!id && enabled,
-  });
-
 export const useMyBookings = () =>
   useQuery({ queryKey: qk.bookings, queryFn: bookingApi.myBookings });
 
 export const useBooking = (id: string) =>
   useQuery({ queryKey: qk.booking(id), queryFn: () => bookingApi.booking(id), enabled: !!id });
-
-export const useOpenSlots = (instructorId: string) =>
-  useQuery({
-    queryKey: qk.openSlots(instructorId),
-    queryFn: () => bookingApi.openSlots(instructorId),
-    enabled: !!instructorId,
-  });
-
-export const useWeeklyCalendar = (topicId: string, weekStart?: string) =>
-  useQuery({
-    queryKey: qk.calendar(topicId, weekStart),
-    queryFn: () => bookingApi.calendar(topicId, weekStart),
-    enabled: !!topicId,
-  });
 
 // ── progress dashboard ──────────────────────────────────────────────────────────
 export const useStudentProgress = () =>
@@ -351,18 +324,6 @@ export function useSetStudentSchedule() {
       qc.invalidateQueries({ queryKey: qk.studentSchedule });
       qc.invalidateQueries({ queryKey: qk.bookings });
       qc.invalidateQueries({ queryKey: qk.studentDashboard });
-      qc.invalidateQueries({ queryKey: qk.subscription });
-    },
-  });
-}
-
-export function useCreateBooking() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { topicId: string; slotId: string }) => bookingApi.create(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.studentDashboard });
-      qc.invalidateQueries({ queryKey: qk.bookings });
       qc.invalidateQueries({ queryKey: qk.subscription });
     },
   });

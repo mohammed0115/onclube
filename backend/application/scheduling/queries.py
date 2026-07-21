@@ -165,19 +165,6 @@ class GetInstructorWindowsUseCase:
         }
 
 
-class MatchInstructorsForTimeUseCase:
-    """Time-first matching: which instructors can teach at a given weekday + time.
-    Foundation for supporting multiple instructors (the student picks a slot, the
-    system offers whoever is available)."""
-
-    def execute(self, *, actor, weekday, start_time) -> dict:
-        from apps.scheduling import services as scheduling_services
-
-        get_student_profile(actor)  # student action
-        candidates = scheduling_services.match_instructors_for(weekday, start_time)
-        return {"weekday": int(weekday), "candidates": candidates}
-
-
 class GetRecurringAvailabilityUseCase:
     """The instructor's own recurring weekly availability windows."""
 

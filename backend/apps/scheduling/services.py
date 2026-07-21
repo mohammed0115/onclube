@@ -616,40 +616,6 @@ def set_instructor_recurring_availability(instructor, windows, *, actor=None):
     return list_instructor_recurring_availability(instructor)
 
 
-def match_instructors_for(weekday, start_time):
-    """Instructors available at a given weekday + time — the foundation for
-    time-first matching (Product Bible stage 9): the student picks a time and the
-    system offers whoever can teach it. An instructor qualifies when they have at
-    least one published topic AND an explicit recurring-availability window covering
-    that weekday+time (no window = unavailable). Returns lightweight candidate dicts
-    ordered by name."""
-    from apps.accounts.models import InstructorProfile
-
-    weekday = int(weekday)
-    candidates = []
-    instructors = (
-        InstructorProfile.objects.select_related("user")
-        .prefetch_related("topics", "recurring_availability")
-    )
-    for ins in instructors:
-        published = [t for t in ins.topics.all() if t.published and t.deleted_at is None]
-        if not published:
-            continue
-        all_windows = list(ins.recurring_availability.all())
-        windows = [(w.start_time, w.end_time) for w in all_windows if w.weekday == weekday]
-        # Availability-first: match only where the instructor explicitly opted in.
-        # No window on this weekday (or an empty grid) means unavailable, not 24/7.
-        if not has_covering_window(start_time, windows):
-            continue
-        candidates.append(
-            {
-                "instructorId": str(ins.id),
-                "instructorName": ins.user.full_name,
-                "topicCount": len(published),
-            }
-        )
-    candidates.sort(key=lambda c: c["instructorName"])
-    return candidates
 
 
 def available_instructors_at(weekday, start_time):

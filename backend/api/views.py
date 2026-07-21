@@ -95,7 +95,6 @@ from application.scheduling.queries import (
     GetTopicPreviewOrFullUseCase,
     GetWeeklyCalendarUseCase,
     ListAdminBookingsUseCase,
-    MatchInstructorsForTimeUseCase,
     GetInstructorStudentUseCase,
     ListCommunitySessionsUseCase,
     ListInstructorBookingsUseCase,
@@ -953,31 +952,6 @@ class StudentScheduleWindowsView(APIView):
         return Response(
             GetInstructorWindowsUseCase().execute(
                 actor=request.user, topic_id=topic_id, instructor_id=instructor_id
-            )
-        )
-
-
-class StudentScheduleCandidatesView(APIView):
-    """Which instructors can teach at a given weekday + time (time-first matching)."""
-
-    def get(self, request):
-        from datetime import time as _time
-
-        weekday = request.query_params.get("weekday")
-        raw_time = request.query_params.get("startTime")
-        try:
-            weekday_int = int(weekday)
-            assert 0 <= weekday_int <= 6
-            hh, mm = (int(p) for p in raw_time.split(":")[:2])
-            start_time = _time(hh, mm)
-        except (TypeError, ValueError, AssertionError):
-            return Response(
-                {"code": "validation_error", "detail": "weekday (0-6) and startTime (HH:MM) are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            MatchInstructorsForTimeUseCase().execute(
-                actor=request.user, weekday=weekday_int, start_time=start_time
             )
         )
 
