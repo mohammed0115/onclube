@@ -272,6 +272,26 @@ def test_topup_regenerates_approved_schedule():
     assert Booking.objects.filter(student=student).count() == 2
 
 
+def test_cancelled_recurring_occurrence_is_not_recreated():
+    """A student cancelling one recurring occurrence must not see it recreated
+    (and re-charged) by the next rolling generation run."""
+    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
+    from apps.scheduling.services import cancel_booking
+
+    student, instructor, topic = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
+    _approve(student)
+    bookings = list(
+        Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at")
+    )
+    assert len(bookings) == 2
+
+    cancel_booking(bookings[0])
+    generate_all()  # rolling run must NOT resurrect the cancelled occurrence
+    assert Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).count() == 1
+
+
 def test_rolling_generation_command_is_idempotent():
     from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
 
@@ -283,6 +303,32 @@ def test_rolling_generation_command_is_idempotent():
     result = generate_all()
     assert result["students"] >= 1
     assert Booking.objects.filter(student=student).count() == n  # no duplicates
+
+
+def test_admin_reassign_pick_changes_topic_and_instructor():
+    student, instructor, topic = _world(sessions=4)
+    other_ins = make_instructor()
+    other_topic = make_topic(other_ins)
+    wd = _tomorrow_weekday()
+    put = _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
+    slot_id = put.data["schedule"][0]["id"]
+
+    admin = make_admin()
+    # The admin topics picker lists published topics.
+    tl = client_for(admin).get("/api/v1/admin/topics/")
+    assert tl.status_code == 200
+    ids = {t["id"] for t in tl.data}
+    assert {str(topic.id), str(other_topic.id)} <= ids
+
+    resp = client_for(admin).post(
+        "/api/v1/admin/schedule-requests/reassign/",
+        {"slotId": slot_id, "topicId": str(other_topic.id)},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.data
+    assert resp.data["topicId"] == str(other_topic.id)
+    assert resp.data["instructorId"] == str(other_ins.id)
+    assert resp.data["reviewStatus"] == "pending"
 
 
 def test_admin_approve_only_specific_slots():

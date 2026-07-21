@@ -8,6 +8,7 @@ import type {
   ScheduleRequestGroup,
   ScheduleApproveResult,
   SchedulePick,
+  AdminTopicOption,
   BusinessOverview,
   PlatformStatus,
   AvailabilityException,
@@ -179,6 +180,12 @@ export const topicsApi = {
   },
   adminRejectSchedule(slotId: string, note: string): Promise<SchedulePick> {
     return api.post<SchedulePick>("/admin/schedule-requests/reject/", { slotId, note });
+  },
+  adminReassignSchedule(slotId: string, topicId: string): Promise<SchedulePick> {
+    return api.post<SchedulePick>("/admin/schedule-requests/reassign/", { slotId, topicId });
+  },
+  adminTopics(): Promise<AdminTopicOption[]> {
+    return api.get<AdminTopicOption[]>("/admin/topics/");
   },
   adminPlans(): Promise<Plan[]> {
     return api.get<Plan[]>("/admin/plans/");

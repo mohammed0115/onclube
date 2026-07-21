@@ -538,6 +538,18 @@ export function useRejectSchedule() {
   });
 }
 
+export const useAdminTopics = () =>
+  useQuery({ queryKey: qk.adminTopics, queryFn: topicsApi.adminTopics });
+
+export function useReassignSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { slotId: string; topicId: string }) =>
+      topicsApi.adminReassignSchedule(input.slotId, input.topicId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.adminScheduleRequests }),
+  });
+}
+
 // ── instructor: topic builder (real AI suggestions) ─────────────────────────
 export function useCreateTopic() {
   return useMutation({

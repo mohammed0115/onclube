@@ -881,6 +881,7 @@ const PAIRS: [string, string][] = [
   ["Approving…", "جارٍ الموافقة…"],
   ["Reject", "رفض"],
   ["Rejecting…", "جارٍ الرفض…"],
+  ["Reassign", "إعادة تعيين"],
   ["pending", "معلّق"],
   ["No pending requests", "لا توجد طلبات معلّقة"],
   ["Loading requests…", "جارٍ تحميل الطلبات…"],

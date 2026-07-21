@@ -473,6 +473,14 @@ export interface ScheduleApproveResult {
   generated: ScheduleGenerationSummary;
 }
 
+// Admin reassign picker: published topics with their instructor.
+export interface AdminTopicOption {
+  id: string;
+  title: string;
+  instructorId: string;
+  instructorName: string;
+}
+
 export interface GeneratedBooking {
   bookingId: string;
   topicTitle: string;

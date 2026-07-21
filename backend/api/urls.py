@@ -159,6 +159,7 @@ urlpatterns = [
     path("admin/schedule-requests/approve/", v.AdminScheduleApproveView.as_view()),
     path("admin/schedule-requests/reject/", v.AdminScheduleRejectView.as_view()),
     path("admin/schedule-requests/reassign/", v.AdminScheduleReassignView.as_view()),
+    path("admin/topics/", v.AdminTopicsListView.as_view()),
 
     # ── Sessions ──
     path("sessions/<uuid:session_id>/", v.SessionDetailView.as_view()),

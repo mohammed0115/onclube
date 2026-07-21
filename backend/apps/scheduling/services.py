@@ -678,11 +678,13 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
             if start_at < now:
                 continue  # occurrence already in the past
 
-            already = (
-                Booking.objects.filter(schedule_slot=pick, scheduled_at=start_at)
-                .exclude(status=BookingStatus.CANCELLED)
-                .exists()
-            )
+            # ANY booking for this exact occurrence (including a CANCELLED one)
+            # means it was already handled. A student who cancels a recurring
+            # occurrence must not have it silently recreated — and re-charged —
+            # on the next rolling generation run.
+            already = Booking.objects.filter(
+                schedule_slot=pick, scheduled_at=start_at
+            ).exists()
             if already:
                 continue
 

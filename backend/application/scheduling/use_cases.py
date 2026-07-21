@@ -363,3 +363,26 @@ class ReassignScheduleSlotUseCase:
         )
         scheduling_services.reassign_schedule_slot(slot, topic=topic, actor=actor)
         return schedule_pick_dto(slot)
+
+
+class ListAdminTopicsUseCase:
+    """Admin: every published topic with its instructor — the reassign picker."""
+
+    def execute(self, *, actor) -> list:
+        from apps.scheduling.models import Topic
+
+        ensure_admin(actor)
+        topics = (
+            Topic.objects.select_related("instructor", "instructor__user")
+            .filter(published=True, deleted_at__isnull=True)
+            .order_by("title")
+        )
+        return [
+            {
+                "id": str(t.id),
+                "title": t.title,
+                "instructorId": str(t.instructor_id),
+                "instructorName": t.instructor.user.full_name,
+            }
+            for t in topics
+        ]

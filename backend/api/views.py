@@ -112,6 +112,7 @@ from application.scheduling.use_cases import (
     GenerateScheduleBookingsUseCase,
     JoinGroupSessionUseCase,
     LeaveGroupSessionUseCase,
+    ListAdminTopicsUseCase,
     ListAvailableSlotsUseCase,
     ListScheduleRequestsUseCase,
     RateSessionUseCase,
@@ -1170,6 +1171,13 @@ class AdminScheduleReassignView(AdminAPIView):
             actor=request.user, slot_id=data["slotId"], topic_id=data["topicId"]
         )
         return Response(dto)
+
+
+class AdminTopicsListView(AdminAPIView):
+    """All published topics with their instructor — powers the reassign picker."""
+
+    def get(self, request):
+        return Response(ListAdminTopicsUseCase().execute(actor=request.user))
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────
