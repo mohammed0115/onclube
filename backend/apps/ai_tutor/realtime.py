@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 
-import requests
+import httpx
 from django.conf import settings
 
 logger = logging.getLogger("ai_tutor.realtime")
@@ -122,13 +122,17 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
             },
         }
     }
-    resp = requests.post(
-        f"{base}/realtime/client_secrets",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json=payload,
-        timeout=10,
-    )
-    if not resp.ok:
+    try:
+        resp = httpx.post(
+            f"{base}/realtime/client_secrets",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=10,
+        )
+    except httpx.HTTPError as exc:
+        logger.error("realtime client_secrets transport error — %s", exc)
+        raise RealtimeUpstreamError(0, f"Could not reach OpenAI: {exc}") from exc
+    if resp.is_error:
         logger.error("realtime client_secrets %s — %s", resp.status_code, resp.text[:600])
         raise RealtimeUpstreamError(resp.status_code, resp.text)
     body = resp.json()
@@ -146,12 +150,16 @@ def relay_sdp(*, client_secret: str, sdp: str):
     Keeping this server-side avoids CORS/CSP issues and surfaces upstream errors.
     Returns (status_code, content_bytes, content_type)."""
     base = getattr(settings, "OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
-    upstream = requests.post(
-        f"{base}/realtime/calls",
-        data=sdp,
-        headers={"Authorization": f"Bearer {client_secret}", "Content-Type": "application/sdp"},
-        timeout=15,
-    )
-    if not upstream.ok:
+    try:
+        upstream = httpx.post(
+            f"{base}/realtime/calls",
+            content=sdp,  # raw SDP body (httpx uses ``content=`` for a non-form body)
+            headers={"Authorization": f"Bearer {client_secret}", "Content-Type": "application/sdp"},
+            timeout=15,
+        )
+    except httpx.HTTPError as exc:
+        logger.error("realtime SDP relay transport error — %s", exc)
+        return 502, f"Could not reach OpenAI: {exc}".encode(), "text/plain"
+    if upstream.is_error:
         logger.error("realtime SDP relay %s — %s", upstream.status_code, upstream.text[:400])
     return upstream.status_code, upstream.content, upstream.headers.get("Content-Type", "application/sdp")

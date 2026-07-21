@@ -780,9 +780,23 @@ class AITutorRealtimeSessionView(APIView):
     """Mint an ephemeral OpenAI Realtime token for a live WebRTC voice call."""
 
     def post(self, request):
-        from application.ai_tutor.use_cases import StartRealtimeCallUseCase
+        import logging
+
         from apps.common.exceptions import BusinessRuleError
-        from apps.ai_tutor.realtime import RealtimeNotConfigured, RealtimeUpstreamError
+
+        # Import the realtime module up front but guarded: if an optional dependency
+        # (e.g. httpx) is missing from the build, surface a clean, diagnosable error
+        # instead of a bare 500 "An unexpected error occurred."
+        try:
+            from application.ai_tutor.use_cases import StartRealtimeCallUseCase
+            from apps.ai_tutor.realtime import RealtimeNotConfigured, RealtimeUpstreamError
+        except ImportError as exc:
+            logging.getLogger("ai_tutor.realtime").exception("realtime module import failed")
+            return Response(
+                {"code": "ai_not_configured",
+                 "detail": f"The voice tutor isn't available on this server build ({exc})."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         voice = (request.data or {}).get("voice") or "alloy"
         try:
@@ -802,8 +816,6 @@ class AITutorRealtimeSessionView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         except Exception:  # noqa: BLE001
-            import logging
-
             logging.getLogger("ai_tutor.realtime").exception("realtime session mint failed")
             return Response(
                 {"code": "ai_unavailable", "detail": "The voice tutor is unavailable right now."},

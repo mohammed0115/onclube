@@ -8,6 +8,7 @@ gunicorn==22.0.0                # WSGI server (production)
 whitenoise==6.7.0               # Static file serving from the app process
 redis==5.0.8                    # Optional cache/broker (used when REDIS_URL is set)
 openai==1.109.1                 # OpenAI SDK — placement assessment + session reports (heuristic fallback if unset)
+httpx==0.28.1                    # HTTP client for the Realtime API (client_secrets + SDP relay); also pulled in by openai
 sentry-sdk==2.14.0              # Error monitoring — no-op unless SENTRY_DSN is set
 agora_token_builder==1.0.0     # Agora RTC token minting (optional; stub fallback if unset)
 
