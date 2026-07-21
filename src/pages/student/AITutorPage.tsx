@@ -38,6 +38,7 @@ const TOPICS = ["Daily life", "Travel", "Job interview", "Free talk", "Hobbies",
 // ── Text-to-speech (Web Speech API) ─────────────────────────────────────────────
 function useTTS() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [speaking, setSpeaking] = useState(false);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => {
@@ -49,7 +50,9 @@ function useTTS() {
     return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
   }, [supported]);
 
-  const speak = (text: string, opts: { voiceURI?: string; pitch: number; rate: number }) => {
+  // `onEnd` lets the caller chain the next turn (resume listening) once the tutor
+  // has finished speaking — the basis of the hands-free continuous call.
+  const speak = (text: string, opts: { voiceURI?: string; pitch: number; rate: number }, onEnd?: () => void) => {
     if (!supported || !text) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -58,10 +61,13 @@ function useTTS() {
     u.pitch = opts.pitch;
     u.rate = opts.rate;
     u.lang = v?.lang ?? "en-US";
+    u.onstart = () => setSpeaking(true);
+    u.onend = () => { setSpeaking(false); onEnd?.(); };
+    u.onerror = () => { setSpeaking(false); onEnd?.(); };
     window.speechSynthesis.speak(u);
   };
-  const stop = () => supported && window.speechSynthesis.cancel();
-  return { supported, voices, speak, stop };
+  const stop = () => { if (supported) window.speechSynthesis.cancel(); setSpeaking(false); };
+  return { supported, voices, speak, stop, speaking };
 }
 
 /** Rank voices so the default sounds natural, not robotic. Prefers the modern
@@ -75,8 +81,9 @@ function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | u
     if (/google/.test(n)) s += 40;                           // Google voices are smooth
     if (/samantha|aria|jenny|ava|emma|libby|sonia/.test(n)) s += 30;
     if (/female|zira|susan|karen|serena/.test(n)) s += 10;
-    if (v.lang.toLowerCase() === "en-us") s += 8;
-    else if (v.lang.toLowerCase().startsWith("en-gb")) s += 6;
+    // Strongly prefer an American accent (en-US) by default.
+    if (v.lang.toLowerCase() === "en-us") s += 60;
+    else if (v.lang.toLowerCase().startsWith("en-gb")) s -= 20;
     if (v.localService) s += 1;
     return s;
   };
@@ -98,7 +105,9 @@ function pickVoiceByGender(voices: SpeechSynthesisVoice[], gender: "female" | "m
     if (avoid.test(n)) s -= 100;
     if (/natural|neural|online/.test(n)) s += 40;
     if (/google/.test(n)) s += 20;
-    if (v.lang.toLowerCase() === "en-us") s += 6;
+    // Prefer an American accent (en-US).
+    if (v.lang.toLowerCase() === "en-us") s += 50;
+    else if (v.lang.toLowerCase().startsWith("en-gb")) s -= 20;
     return s;
   };
   const ranked = [...voices].sort((a, b) => score(b) - score(a));
@@ -235,9 +244,16 @@ export function AITutorPage() {
   const [rate, setRate] = useState(0.9); // a touch slower than default — clearer, less robotic
   const [showControls, setShowControls] = useState(false);
   const [textMode, setTextMode] = useState(false); // fallback to typing
+  const [callOn, setCallOn] = useState(true); // hands-free: auto-listen after each turn
   const speech = useSpeechRecognition();
   const lastSpokenRef = useRef<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Refs so the deferred TTS-onEnd callback always reads the latest state (avoids
+  // stale closures in the continuous-call loop).
+  const callOnRef = useRef(callOn); callOnRef.current = callOn;
+  const sessionRef = useRef(session); sessionRef.current = session;
+  const maybeListenRef = useRef<() => void>(() => {});
 
   // Adopt an in-progress session returned by /status.
   useEffect(() => {
@@ -261,23 +277,33 @@ export function AITutorPage() {
     const tick = () => {
       const left = Math.max(0, Math.round((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       setRemaining(left);
-      if (left <= 0) setSession((s) => (s ? { ...s, status: "ended" } : s));
+      if (left <= 0) {
+        // Time's up — end the call cleanly (stop mic + voice).
+        speech.stop();
+        tts.stop();
+        setSession((s) => (s ? { ...s, status: "ended" } : s));
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // Speak the latest tutor message when it changes.
+  // Speak the latest tutor message, then (hands-free) resume listening for the
+  // student's next turn — this is what keeps the "call" going until it's ended.
   useEffect(() => {
     const msgs = session?.messages ?? [];
     const last = [...msgs].reverse().find((m) => m.role === "tutor");
-    if (!last || muted) return;
+    if (!last) return;
     const key = `${session?.sessionId}:${msgs.length}:${last.text}`;
-    if (key !== lastSpokenRef.current) {
-      lastSpokenRef.current = key;
-      tts.speak(last.text, { voiceURI, pitch, rate });
+    if (key === lastSpokenRef.current) return;
+    lastSpokenRef.current = key;
+    if (muted || !tts.supported) {
+      maybeListenRef.current();
+      return;
     }
+    tts.speak(last.text, { voiceURI, pitch, rate }, () => maybeListenRef.current());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.messages, muted, voiceURI, pitch, rate]);
 
@@ -291,19 +317,21 @@ export function AITutorPage() {
 
   const onStart = () => {
     tts.stop();
+    setCallOn(true);
     start.mutate(topic, { onSuccess: (s) => { setSession(s); lastSpokenRef.current = ""; } });
   };
 
   const sendText = (raw: string) => {
     const text = raw.trim();
-    if (!text || !session || session.status !== "active" || sendMsg.isPending) return;
+    const s = sessionRef.current;
+    if (!text || !s || s.status !== "active" || sendMsg.isPending) return;
     tts.stop();
     // optimistic append of the student's line
-    setSession((s) => (s ? { ...s, messages: [...s.messages, { role: "student", text, at: "" }] } : s));
+    setSession((prev) => (prev ? { ...prev, messages: [...prev.messages, { role: "student", text, at: "" }] } : prev));
     sendMsg.mutate(
-      { sessionId: session.sessionId, text },
+      { sessionId: s.sessionId, text },
       {
-        onSuccess: (s) => setSession(s),
+        onSuccess: (next) => setSession(next),
         onError: () => status.refetch(),
       }
     );
@@ -311,23 +339,52 @@ export function AITutorPage() {
 
   const onSend = () => { sendText(draft); setDraft(""); };
 
-  // Tap-to-talk: start listening; the final transcript is spoken back by the tutor.
-  const onTalk = () => {
+  // Resume listening for the next turn if the call is still on and it's the
+  // student's turn (not while the tutor is speaking/thinking). Assigned to a ref so
+  // the TTS-onEnd callback always calls the freshest version.
+  const maybeListen = () => {
+    if (!callOnRef.current) return;
+    if (sessionRef.current?.status !== "active") return;
+    if (!speech.supported || speech.listening) return;
+    speech.start((finalText) => sendText(finalText));
+  };
+  maybeListenRef.current = maybeListen;
+
+  // Big button: pause / resume the hands-free call (not the session).
+  const toggleCall = () => {
     if (!session || session.status !== "active") return;
-    if (speech.listening) { speech.stop(); return; }
-    tts.stop();
-    speech.start((finalText) => { speech.stop(); sendText(finalText); });
+    if (callOn) {
+      setCallOn(false);
+      speech.stop();
+      tts.stop();
+    } else {
+      setCallOn(true);
+      if (speech.supported && !speech.listening) speech.start((finalText) => sendText(finalText));
+    }
   };
 
   const onEnd = () => {
+    setCallOn(false);
     tts.stop();
     speech.stop();
     if (session) endSession.mutate(session.sessionId, { onSuccess: (s) => setSession(s) });
   };
 
+  // Speak a short sample so voice/pitch/speed changes are heard immediately.
+  const previewVoice = (o: { voiceURI?: string; pitch?: number; rate?: number }) => {
+    tts.speak("Hi! This is how I sound.", {
+      voiceURI: o.voiceURI ?? voiceURI,
+      pitch: o.pitch ?? pitch,
+      rate: o.rate ?? rate,
+    });
+  };
+
   const setGender = (g: "female" | "male") => {
     const v = pickVoiceByGender(tts.voices, g);
-    if (v) setVoiceURI(v.voiceURI);
+    if (v) {
+      setVoiceURI(v.voiceURI);
+      previewVoice({ voiceURI: v.voiceURI }); // hear the change right away
+    }
   };
 
   if (status.isLoading) {
@@ -395,7 +452,7 @@ export function AITutorPage() {
               {tx("Voice")}
               <select
                 value={voiceURI}
-                onChange={(e) => setVoiceURI(e.target.value)}
+                onChange={(e) => { setVoiceURI(e.target.value); previewVoice({ voiceURI: e.target.value }); }}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
               >
                 {tts.voices.length === 0 && <option>{tx("Default")}</option>}
@@ -406,11 +463,21 @@ export function AITutorPage() {
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
               {tx("Pitch")} · {pitch.toFixed(1)}
-              <input type="range" min={0} max={2} step={0.1} value={pitch} onChange={(e) => setPitch(Number(e.target.value))} className="accent-indigo-600" />
+              <input
+                type="range" min={0} max={2} step={0.1} value={pitch}
+                onChange={(e) => setPitch(Number(e.target.value))}
+                onPointerUp={(e) => previewVoice({ pitch: Number((e.target as HTMLInputElement).value) })}
+                className="accent-indigo-600"
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
               {tx("Speed")} · {rate.toFixed(1)}
-              <input type="range" min={0.5} max={1.5} step={0.1} value={rate} onChange={(e) => setRate(Number(e.target.value))} className="accent-indigo-600" />
+              <input
+                type="range" min={0.5} max={1.5} step={0.1} value={rate}
+                onChange={(e) => setRate(Number(e.target.value))}
+                onPointerUp={(e) => previewVoice({ rate: Number((e.target as HTMLInputElement).value) })}
+                className="accent-indigo-600"
+              />
             </label>
           </div>
           <button
@@ -508,8 +575,12 @@ export function AITutorPage() {
                   <span className="text-sm font-semibold text-rose-600">{tx("Listening…")}</span>
                 ) : sendMsg.isPending ? (
                   <span className="text-sm font-semibold text-indigo-600">{tx("Thinking…")}</span>
+                ) : tts.speaking ? (
+                  <span className="text-sm font-semibold text-indigo-600">{tx("Speaking…")}</span>
+                ) : active && !callOn ? (
+                  <span className="text-sm font-medium text-muted-foreground">{tx("Paused — tap to resume")}</span>
                 ) : active ? (
-                  <span className="text-sm font-medium text-muted-foreground">{tx("Tap the mic and start speaking")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">{tx("Your turn — just speak")}</span>
                 ) : null}
               </div>
 
@@ -534,15 +605,20 @@ export function AITutorPage() {
                     <Square size={18} />
                   </button>
                   <button
-                    onClick={onTalk}
-                    disabled={sendMsg.isPending || !speech.supported}
-                    aria-label={speech.listening ? tx("Stop") : tx("Talk")}
+                    onClick={toggleCall}
+                    disabled={!speech.supported}
+                    aria-label={callOn ? tx("Pause") : tx("Resume")}
                     className={cn(
                       "flex h-20 w-20 items-center justify-center rounded-full text-white shadow-xl transition-transform disabled:opacity-50",
-                      speech.listening ? "animate-pulse bg-rose-600 scale-110" : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105"
+                      !callOn ? "bg-slate-400 hover:bg-slate-500"
+                        : speech.listening ? "animate-pulse bg-rose-600 scale-110"
+                        : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105"
                     )}
                   >
-                    {sendMsg.isPending ? <Loader2 size={30} className="animate-spin" /> : <Mic size={30} />}
+                    {sendMsg.isPending ? <Loader2 size={30} className="animate-spin" />
+                      : tts.speaking ? <Volume2 size={30} />
+                      : !callOn ? <VolumeX size={30} />
+                      : <Mic size={30} />}
                   </button>
                   <button
                     onClick={() => setTextMode((v) => !v)}
