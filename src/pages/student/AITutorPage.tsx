@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Loader2,
   SlidersHorizontal,
+  Mic,
+  Keyboard,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -60,6 +62,94 @@ function useTTS() {
   };
   const stop = () => supported && window.speechSynthesis.cancel();
   return { supported, voices, speak, stop };
+}
+
+/** Rank voices so the default sounds natural, not robotic. Prefers the modern
+ *  "Natural"/"Online" neural voices, then well-known good local voices. */
+function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  if (!voices.length) return undefined;
+  const score = (v: SpeechSynthesisVoice): number => {
+    const n = v.name.toLowerCase();
+    let s = 0;
+    if (/natural|neural|online/.test(n)) s += 100;          // MS/Google neural voices
+    if (/google/.test(n)) s += 40;                           // Google voices are smooth
+    if (/samantha|aria|jenny|ava|emma|libby|sonia/.test(n)) s += 30;
+    if (/female|zira|susan|karen|serena/.test(n)) s += 10;
+    if (v.lang.toLowerCase() === "en-us") s += 8;
+    else if (v.lang.toLowerCase().startsWith("en-gb")) s += 6;
+    if (v.localService) s += 1;
+    return s;
+  };
+  return [...voices].sort((a, b) => score(b) - score(a))[0];
+}
+
+/** Best natural voice matching a requested gender. Voices don't expose gender, so
+ *  we infer it from well-known voice names, then fall back to the overall best. */
+function pickVoiceByGender(voices: SpeechSynthesisVoice[], gender: "female" | "male"): SpeechSynthesisVoice | undefined {
+  if (!voices.length) return undefined;
+  const FEMALE = /female|woman|samantha|aria|jenny|ava|emma|libby|sonia|zira|susan|karen|serena|tessa|fiona|moira|catherine/i;
+  const MALE = /male|man|david|mark|george|daniel|alex|fred|guy|ryan|thomas|oliver|arthur|brian|james/i;
+  const want = gender === "female" ? FEMALE : MALE;
+  const avoid = gender === "female" ? MALE : FEMALE;
+  const score = (v: SpeechSynthesisVoice): number => {
+    const n = v.name.toLowerCase();
+    let s = 0;
+    if (want.test(n)) s += 100;
+    if (avoid.test(n)) s -= 100;
+    if (/natural|neural|online/.test(n)) s += 40;
+    if (/google/.test(n)) s += 20;
+    if (v.lang.toLowerCase() === "en-us") s += 6;
+    return s;
+  };
+  const ranked = [...voices].sort((a, b) => score(b) - score(a));
+  return score(ranked[0]) > 0 ? ranked[0] : pickBestVoice(voices);
+}
+
+// ── Speech recognition (Web Speech API) — voice-first input ──────────────────────
+type SR = { start: () => void; stop: () => void; abort: () => void; lang: string; interimResults: boolean; continuous: boolean; onresult: ((e: unknown) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
+
+function useSpeechRecognition() {
+  const Ctor = typeof window !== "undefined"
+    ? ((window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR }).SpeechRecognition
+      ?? (window as unknown as { webkitSpeechRecognition?: new () => SR }).webkitSpeechRecognition)
+    : undefined;
+  const supported = !!Ctor;
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const recRef = useRef<SR | null>(null);
+  const onFinalRef = useRef<(t: string) => void>(() => {});
+
+  const start = (onFinal: (t: string) => void) => {
+    if (!Ctor || listening) return;
+    onFinalRef.current = onFinal;
+    const rec = new Ctor();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (e: unknown) => {
+      const ev = e as { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> };
+      let finalText = "";
+      let interimText = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        const t = r[0].transcript;
+        if (r.isFinal) finalText += t;
+        else interimText += t;
+      }
+      setInterim(interimText);
+      if (finalText.trim()) {
+        setInterim("");
+        onFinalRef.current(finalText.trim());
+      }
+    };
+    rec.onend = () => { setListening(false); setInterim(""); };
+    rec.onerror = () => { setListening(false); setInterim(""); };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
+  const stop = () => { try { recRef.current?.stop(); } catch { /* noop */ } setListening(false); };
+  return { supported, listening, interim, start, stop };
 }
 
 function fmtClock(sec: number) {
@@ -142,8 +232,10 @@ export function AITutorPage() {
   const [muted, setMuted] = useState(false);
   const [voiceURI, setVoiceURI] = useState<string>("");
   const [pitch, setPitch] = useState(1);
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(0.9); // a touch slower than default — clearer, less robotic
   const [showControls, setShowControls] = useState(false);
+  const [textMode, setTextMode] = useState(false); // fallback to typing
+  const speech = useSpeechRecognition();
   const lastSpokenRef = useRef<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -152,10 +244,10 @@ export function AITutorPage() {
     if (status.data?.activeSession && !session) setSession(status.data.activeSession);
   }, [status.data, session]);
 
-  // Default the voice once voices load.
+  // Default to the most natural-sounding voice once voices load.
   useEffect(() => {
     if (!voiceURI && tts.voices.length) {
-      const preferred = tts.voices.find((v) => /female|Samantha|Google US/i.test(v.name)) ?? tts.voices[0];
+      const preferred = pickBestVoice(tts.voices) ?? tts.voices[0];
       setVoiceURI(preferred.voiceURI);
     }
   }, [tts.voices, voiceURI]);
@@ -202,12 +294,12 @@ export function AITutorPage() {
     start.mutate(topic, { onSuccess: (s) => { setSession(s); lastSpokenRef.current = ""; } });
   };
 
-  const onSend = () => {
-    const text = draft.trim();
+  const sendText = (raw: string) => {
+    const text = raw.trim();
     if (!text || !session || session.status !== "active" || sendMsg.isPending) return;
+    tts.stop();
     // optimistic append of the student's line
     setSession((s) => (s ? { ...s, messages: [...s.messages, { role: "student", text, at: "" }] } : s));
-    setDraft("");
     sendMsg.mutate(
       { sessionId: session.sessionId, text },
       {
@@ -217,9 +309,25 @@ export function AITutorPage() {
     );
   };
 
+  const onSend = () => { sendText(draft); setDraft(""); };
+
+  // Tap-to-talk: start listening; the final transcript is spoken back by the tutor.
+  const onTalk = () => {
+    if (!session || session.status !== "active") return;
+    if (speech.listening) { speech.stop(); return; }
+    tts.stop();
+    speech.start((finalText) => { speech.stop(); sendText(finalText); });
+  };
+
   const onEnd = () => {
     tts.stop();
+    speech.stop();
     if (session) endSession.mutate(session.sessionId, { onSuccess: (s) => setSession(s) });
+  };
+
+  const setGender = (g: "female" | "male") => {
+    const v = pickVoiceByGender(tts.voices, g);
+    if (v) setVoiceURI(v.voiceURI);
   };
 
   if (status.isLoading) {
@@ -240,13 +348,14 @@ export function AITutorPage() {
 
   const active = session?.status === "active";
   const messages = session?.messages ?? [];
+  const lastTutor = [...messages].reverse().find((m) => m.role === "tutor");
   const lowTime = remaining > 0 && remaining <= 30;
 
   return (
     <DashboardLayout>
       <PageHeader
         title="AI Tutor"
-        subtitle="Quick 5-minute AI speaking practice. It talks back — pick a voice and chat."
+        subtitle="Quick 5-minute speaking practice. Tap the mic and talk — the tutor talks back."
         action={
           <button
             onClick={() => setShowControls((v) => !v)}
@@ -260,6 +369,27 @@ export function AITutorPage() {
       {/* Voice controls */}
       {showControls && (
         <Card className="mb-4 p-4">
+          {/* Quick Female / Male switch */}
+          <div className="mb-4">
+            <div className="mb-1.5 text-xs font-semibold text-muted-foreground">{tx("Voice type")}</div>
+            <div className="inline-flex rounded-xl border border-border p-1">
+              {(["female", "male"] as const).map((g) => {
+                const on = voiceURI && tts.voices.find((v) => v.voiceURI === voiceURI)?.voiceURI === pickVoiceByGender(tts.voices, g)?.voiceURI;
+                return (
+                  <button
+                    key={g}
+                    onClick={() => setGender(g)}
+                    className={cn(
+                      "rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors",
+                      on ? "bg-indigo-600 text-white" : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {tx(g === "female" ? "Female" : "Male")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
               {tx("Voice")}
@@ -355,65 +485,122 @@ export function AITutorPage() {
             </Button>
           </div>
         ) : (
-          <>
-            <div ref={scrollRef} className="max-h-[26rem] min-h-[18rem] space-y-3 overflow-y-auto bg-surface-2/40 px-4 py-5">
-              {messages.map((m, i) => (
-                <div key={i} className={cn("flex", m.role === "student" ? "justify-end" : "justify-start")}>
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                      m.role === "student"
-                        ? "rounded-br-md bg-gradient-to-b from-indigo-500 to-indigo-600 text-white"
-                        : "rounded-bl-md border border-border bg-card text-foreground"
-                    )}
-                  >
-                    {m.text}
-                  </div>
+          <div className="bg-surface-2/40">
+            {/* Voice stage — the tutor talks; you tap the mic and speak back. */}
+            <div className="flex flex-col items-center justify-center gap-4 px-6 pt-9 pb-3">
+              <div className="relative flex h-36 w-36 items-center justify-center">
+                {(speech.listening || sendMsg.isPending) && (
+                  <span className={cn(
+                    "absolute inset-0 rounded-full animate-ping",
+                    speech.listening ? "bg-rose-400/30" : "bg-indigo-400/30"
+                  )} />
+                )}
+                <div className={cn(
+                  "flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br shadow-lg transition-transform",
+                  speech.listening ? "from-rose-500 to-pink-600 scale-105" : "from-indigo-500 to-violet-600"
+                )}>
+                  <Bot size={40} className="text-white" />
                 </div>
-              ))}
-              {sendMsg.isPending && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 text-muted-foreground">
-                    <span className="inline-flex gap-1">
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
-                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400" />
-                    </span>
-                  </div>
-                </div>
-              )}
+              </div>
+
+              <div className="min-h-[1.25rem] text-center">
+                {speech.listening ? (
+                  <span className="text-sm font-semibold text-rose-600">{tx("Listening…")}</span>
+                ) : sendMsg.isPending ? (
+                  <span className="text-sm font-semibold text-indigo-600">{tx("Thinking…")}</span>
+                ) : active ? (
+                  <span className="text-sm font-medium text-muted-foreground">{tx("Tap the mic and start speaking")}</span>
+                ) : null}
+              </div>
+
+              <div className="flex min-h-[3rem] max-w-lg items-center text-center">
+                {speech.interim ? (
+                  <p className="text-base font-medium italic text-foreground/70">“{speech.interim}”</p>
+                ) : lastTutor ? (
+                  <p className="text-base leading-relaxed text-foreground">{lastTutor.text}</p>
+                ) : null}
+              </div>
             </div>
 
-            {/* Input / ended footer */}
+            {/* Talk controls */}
             {active ? (
-              <div className="flex items-center gap-2 border-t border-border p-3">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && onSend()}
-                  placeholder={tx("Type your reply…")}
-                  className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-indigo-300"
-                />
-                <Button onClick={onSend} disabled={!draft.trim() || sendMsg.isPending} aria-label={tx("Send")}>
-                  <Send size={16} />
-                </Button>
-                <button
-                  onClick={onEnd}
-                  className="rounded-xl border border-border p-2.5 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                  aria-label={tx("End session")}
-                >
-                  <Square size={16} />
-                </button>
+              <div className="flex flex-col items-center gap-3 px-6 pb-7">
+                <div className="flex items-center gap-5">
+                  <button
+                    onClick={onEnd}
+                    aria-label={tx("End session")}
+                    className="flex h-12 w-12 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Square size={18} />
+                  </button>
+                  <button
+                    onClick={onTalk}
+                    disabled={sendMsg.isPending || !speech.supported}
+                    aria-label={speech.listening ? tx("Stop") : tx("Talk")}
+                    className={cn(
+                      "flex h-20 w-20 items-center justify-center rounded-full text-white shadow-xl transition-transform disabled:opacity-50",
+                      speech.listening ? "animate-pulse bg-rose-600 scale-110" : "bg-indigo-600 hover:bg-indigo-700 hover:scale-105"
+                    )}
+                  >
+                    {sendMsg.isPending ? <Loader2 size={30} className="animate-spin" /> : <Mic size={30} />}
+                  </button>
+                  <button
+                    onClick={() => setTextMode((v) => !v)}
+                    aria-label={tx("Type instead")}
+                    className={cn(
+                      "flex h-12 w-12 items-center justify-center rounded-full border transition-colors",
+                      textMode ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Keyboard size={18} />
+                  </button>
+                </div>
+                {!speech.supported && (
+                  <p className="text-xs text-amber-600">{tx("Voice input isn't supported in this browser — type your reply below.")}</p>
+                )}
+                {(textMode || !speech.supported) && (
+                  <div className="mt-1 flex w-full max-w-md items-center gap-2">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && onSend()}
+                      placeholder={tx("Type your reply…")}
+                      className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-indigo-300"
+                    />
+                    <Button onClick={onSend} disabled={!draft.trim() || sendMsg.isPending} aria-label={tx("Send")}>
+                      <Send size={16} />
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3 border-t border-border p-5 text-center">
                 <p className="text-sm font-medium text-foreground">{tx("Practice finished — great job! 🎉")}</p>
-                <Button onClick={() => { tts.stop(); setSession(null); setDraft(""); }}>
+                <Button onClick={() => { tts.stop(); speech.stop(); setSession(null); setDraft(""); }}>
                   <Play size={16} /> {tx("Start another")}
                 </Button>
               </div>
             )}
-          </>
+
+            {/* Transcript (secondary, collapsible) */}
+            {messages.length > 0 && (
+              <details className="border-t border-border px-4 py-3">
+                <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">{tx("Show transcript")}</summary>
+                <div ref={scrollRef} className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                  {messages.map((m, i) => (
+                    <div key={i} className={cn("flex", m.role === "student" ? "justify-end" : "justify-start")}>
+                      <div className={cn(
+                        "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
+                        m.role === "student" ? "rounded-br-md bg-indigo-600 text-white" : "rounded-bl-md border border-border bg-card text-foreground"
+                      )}>
+                        {m.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
         )}
       </Card>
     </DashboardLayout>

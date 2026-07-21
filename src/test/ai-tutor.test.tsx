@@ -79,8 +79,9 @@ describe("AI Tutor", () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole("button", { name: /Start practice/i })).toBeInTheDocument());
     await userEvent.click(screen.getByRole("button", { name: /Start practice/i }));
-    await waitFor(() => expect(screen.getByText(/Where would you love to go/i)).toBeInTheDocument());
-    // Reply input is available during the live session.
+    // The tutor's line appears in the voice-stage caption (and the transcript).
+    await waitFor(() => expect(screen.getAllByText(/Where would you love to go/i).length).toBeGreaterThan(0));
+    // A typed-reply fallback is available (jsdom has no speech recognition).
     expect(screen.getByPlaceholderText(/Type your reply/i)).toBeInTheDocument();
   });
 });
