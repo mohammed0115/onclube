@@ -51,7 +51,7 @@ export function RegisterPage() {
       {/* Brand panel */}
       <BrandPanel
         badge={<><Mic size={13} /> {tx("Speak more, study less")}</>}
-        title={tx("Join OneClub and start practising with real instructors.")}
+        title={tx("Join OneClup and start practising with real instructors.")}
         perks={PERKS}
         footnote={tx("Create your account to get started.")}
       />

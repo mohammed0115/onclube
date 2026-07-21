@@ -213,7 +213,7 @@ export const handlers = [
 
   http.get(`${B}/placement/interview/`, () =>
     HttpResponse.json({
-      greeting: "Hello. Welcome to your OneClub speaking assessment.",
+      greeting: "Hello. Welcome to your OneClup speaking assessment.",
       instructions: "I will ask you five short questions. Please answer naturally in English. You can listen again or record your answer again before confirming it.",
       encouragement: "Thank you.",
       closing: "You have completed the speaking interview. Your answers have been saved.",

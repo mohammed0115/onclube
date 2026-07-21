@@ -25,7 +25,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--email", default=os.environ.get("ADMIN_EMAIL", "admin@oneclub.local"))
         parser.add_argument("--password", default=os.environ.get("ADMIN_PASSWORD", "Admin@12345"))
-        parser.add_argument("--name", default=os.environ.get("ADMIN_NAME", "OneClub Admin"))
+        parser.add_argument("--name", default=os.environ.get("ADMIN_NAME", "OneClup Admin"))
         parser.add_argument(
             "--reset-password",
             action="store_true",

@@ -18,7 +18,7 @@ SCRIPT_VERSION = "1.0.0"
 LANGUAGE = "en"
 
 # ── fixed dialogue (reviewed, deterministic) ──────────────────────────────────
-_GREETING = "Hello. Welcome to your OneClub speaking assessment."
+_GREETING = "Hello. Welcome to your OneClup speaking assessment."
 _INSTRUCTIONS = (
     "I will ask you five short questions. Please answer naturally in English. "
     "You can listen again or record your answer again before confirming it."

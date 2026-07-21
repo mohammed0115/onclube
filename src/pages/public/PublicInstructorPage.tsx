@@ -45,7 +45,7 @@ export function PublicInstructorPage() {
   const { data: p, isLoading, isError, error, refetch } = usePublicInstructor(slug);
 
   useEffect(() => {
-    if (p) document.title = `${p.fullName}${p.jobTitle ? " · " + p.jobTitle : ""} — OneClub`;
+    if (p) document.title = `${p.fullName}${p.jobTitle ? " · " + p.jobTitle : ""} — OneClup`;
   }, [p]);
 
   return (

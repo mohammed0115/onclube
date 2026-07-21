@@ -94,7 +94,7 @@ function initialsOf(name: string): string {
 }
 
 function activeProfile(role: Role, user: UserProfile | null) {
-  const name = user?.fullName ?? "OneClub";
+  const name = user?.fullName ?? "OneClup";
   const initials = initialsOf(name);
   if (role === "instructor")
     return { name, initials, sub: user?.headline ?? "Instructor", accent: "from-amber-400 to-orange-500" };

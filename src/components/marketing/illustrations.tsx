@@ -1,5 +1,5 @@
 /**
- * OneClub illustration system — hand-built inline SVG.
+ * OneClup illustration system — hand-built inline SVG.
  * Friendly, human, never robotic. Palette: sky blue (primary), periwinkle (AI),
  * warm orange (accent), green (success). No external assets.
  *

@@ -11,7 +11,7 @@ export function Logo({ light = false, to = "/" }: { light?: boolean; to?: string
       <span
         className={cn("font-display text-lg font-bold tracking-tight", light ? "text-white" : "text-foreground")}
       >
-        One<span className="text-primary">Club</span>
+        One<span className="text-primary">Clup</span>
       </span>
     </Link>
   );

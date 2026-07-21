@@ -95,7 +95,7 @@ const RESULTS = [
 
 const FAQ = [
   { q: "Do I talk to a real person or an AI?", a: "Always a real, vetted instructor. AI only prepares your questions beforehand and writes your report afterwards — the conversation is fully human." },
-  { q: "What if my English is very basic?", a: "That's exactly who OneClub is for. The placement test sets your starting level, and instructors adjust to keep every session comfortable." },
+  { q: "What if my English is very basic?", a: "That's exactly who OneClup is for. The placement test sets your starting level, and instructors adjust to keep every session comfortable." },
   { q: "How do I pay?", a: "By local bank transfer. You upload your payment proof and we activate your account once an admin confirms it — no card required." },
   { q: "What happens in a session?", a: "You join a live video call, talk through prepared questions with your instructor, and receive an AI report with scores and next steps afterwards." },
 ];
@@ -158,7 +158,14 @@ export function LandingPage() {
               <span className="text-primary">{tx("Speak naturally.")}</span>
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
-              {tx("OneClub pairs you with friendly instructors for focused conversation sessions. You get the questions ahead of time, and AI gives you a clear report afterward.")}
+              {tx("OneClup pairs you with friendly instructors for focused conversation sessions. You get the questions ahead of time, and AI gives you a clear report afterward.")}
+            </p>
+
+            {/* What the name means — shown in both English and Arabic. */}
+            <p className="mt-4 text-sm font-semibold text-foreground">
+              <span className="text-primary">OneClup</span>
+              <span className="mx-1.5 text-muted-foreground">—</span>
+              <span className="text-muted-foreground">{tx("Online English Club Platform")}</span>
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -286,12 +293,12 @@ export function LandingPage() {
         </section>
       )}
 
-      {/* ── 2. Why OneClub ────────────────────────────────────── */}
+      {/* ── 2. Why OneClup ────────────────────────────────────── */}
       <Section id="why">
         <SectionHeading
-          eyebrow={tx("Why OneClub")}
+          eyebrow={tx("Why OneClup")}
           title={tx("A warmer way to learn to speak")}
-          subtitle={tx("OneClub isn't another course to finish. It's a place to talk — and to feel a little braver every time.")}
+          subtitle={tx("OneClup isn't another course to finish. It's a place to talk — and to feel a little braver every time.")}
         />
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {WHY.map((w) => (
@@ -335,7 +342,7 @@ export function LandingPage() {
               {tx("From nervous to natural")}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              {tx("Confidence isn't a switch — it's a path. Here's how it usually unfolds for OneClub members.")}
+              {tx("Confidence isn't a switch — it's a path. Here's how it usually unfolds for OneClup members.")}
             </p>
             <div className="mt-8 space-y-1">
               {JOURNEY.map((j, i) => (
@@ -651,8 +658,11 @@ export function LandingPage() {
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600">
               <MessagesSquare size={16} className="text-white" />
             </span>
-            One<span className="text-primary">Club</span>
+            One<span className="text-primary">Clup</span>
           </div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            {tx("Online English Club Platform")}
+          </p>
           <p className="max-w-md text-sm text-muted-foreground">
             {tx("Conversation practice with real instructors — practice English, build confidence, speak naturally.")}
           </p>

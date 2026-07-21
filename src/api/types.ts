@@ -77,7 +77,7 @@ export interface SpeakingInterview {
   encouragement: string;
   closing: string;
   steps: InterviewStep[];
-  // Deterministic OneClub script metadata (Sprint 2.0.1A).
+  // Deterministic OneClup script metadata (Sprint 2.0.1A).
   scriptId: string;
   scriptVersion: string;
   language: string;

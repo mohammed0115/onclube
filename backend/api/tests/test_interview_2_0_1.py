@@ -49,7 +49,7 @@ def _answer(client, question, text, source="voice"):
     )
 
 
-FIXED_GREETING = "Hello. Welcome to your OneClub speaking assessment."
+FIXED_GREETING = "Hello. Welcome to your OneClup speaking assessment."
 FIXED_INSTRUCTIONS = (
     "I will ask you five short questions. Please answer naturally in English. "
     "You can listen again or record your answer again before confirming it."

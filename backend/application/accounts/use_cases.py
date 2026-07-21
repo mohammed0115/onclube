@@ -46,7 +46,7 @@ class RequestPasswordResetUseCase:
         if user:
             link = _build_token_link(user, "reset-password")
             send_mail(
-                subject="Reset your OneClub password",
+                subject="Reset your OneClup password",
                 message=f"Use this link to reset your password:\n\n{link}\n\nIf you didn't request this, ignore this email.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
@@ -95,8 +95,8 @@ class InviteUserUseCase:
             StudentProfile.objects.create(user=user)
         link = _build_token_link(user, "set-password")
         send_mail(
-            subject="You're invited to OneClub — set your password",
-            message=f"You've been invited to OneClub as a {role}. Set your password to get started:\n\n{link}",
+            subject="You're invited to OneClup — set your password",
+            message=f"You've been invited to OneClup as a {role}. Set your password to get started:\n\n{link}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,

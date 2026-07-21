@@ -422,7 +422,7 @@ function InterviewMachine({
 function ScriptFooter({ script }: { script: SpeakingInterview }) {
   return (
     <p className="mt-3 text-center text-[10px] text-muted-foreground/70">
-      OneClub interview script {script.scriptId} · v{script.scriptVersion} · {script.language}
+      OneClup interview script {script.scriptId} · v{script.scriptVersion} · {script.language}
     </p>
   );
 }

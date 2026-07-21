@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// OneClub — domain types
+// OneClup — domain types
 //
-// OneClub is a structured English *conversation practice* platform.
+// OneClup is a structured English *conversation practice* platform.
 // Students already know basic English. They register, pick a goal, take an AI
 // placement test, pay by local bank transfer, wait for admin approval, then book
 // live conversation sessions with a human instructor. The instructor owns the

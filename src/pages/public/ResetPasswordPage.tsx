@@ -30,7 +30,7 @@ export function ResetPasswordPage({ mode = "reset" }: { mode?: "reset" | "set" }
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <BrandPanel
-        badge={<><ShieldCheck size={13} /> {isSet ? tx("Welcome to OneClub") : tx("Secure reset")}</>}
+        badge={<><ShieldCheck size={13} /> {isSet ? tx("Welcome to OneClup") : tx("Secure reset")}</>}
         title={isSet ? tx("Set your password to get started.") : tx("Choose a new password.")}
         footnote={isSet ? tx("Your account is one step away.") : tx("Pick something strong and memorable.")}
       />
