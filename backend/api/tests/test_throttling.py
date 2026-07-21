@@ -54,3 +54,18 @@ def test_registration_endpoint_is_throttled():
         body = {"fullName": "A B", "email": "a@b.co", "password": "Sup3rStrongPw!"}
         codes = [c.post("/api/v1/auth/register/", body, format="json").status_code for _ in range(4)]
         assert 429 in codes
+
+
+def test_throttle_fails_open_when_cache_is_unreachable():
+    """If Redis/cache is down, the throttle must allow the request (fail-open) rather
+    than raising and 500-ing the whole API."""
+    from api.throttling import ResilientAnonThrottle
+
+    # A real rate forces the cache path; the cache raises like a dead Redis.
+    with mock.patch.object(ResilientAnonThrottle, "get_rate", return_value="5/min"):
+        t = ResilientAnonThrottle()
+    t.cache = mock.Mock()
+    t.cache.get.side_effect = RuntimeError("redis down")
+    req = mock.Mock()
+    req.META = {"REMOTE_ADDR": "9.9.9.9"}
+    assert t.allow_request(req, mock.Mock()) is True

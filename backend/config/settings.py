@@ -215,10 +215,12 @@ REST_FRAMEWORK = {
     # Abuse protection. Rates are env-overridable; the scoped "auth" rate throttles
     # login/registration/token endpoints hard to blunt credential-stuffing. 429s are
     # mapped to code "throttled" by the exception handler.
+    # Fail-open throttles: if the cache (Redis) is unreachable the request is allowed
+    # instead of 500-ing the whole API. See api/throttling.py.
     "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-        "rest_framework.throttling.ScopedRateThrottle",
+        "api.throttling.ResilientAnonThrottle",
+        "api.throttling.ResilientUserThrottle",
+        "api.throttling.ResilientScopedThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("THROTTLE_ANON", default="120/min"),
