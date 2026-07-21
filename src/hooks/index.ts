@@ -555,6 +555,15 @@ export function useExtendSubscription() {
   });
 }
 
+export function useRefundNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { subscriptionId: string; amount: number; currency: string; reason: string }) =>
+      topicsApi.refundNote(input.subscriptionId, { amount: input.amount, currency: input.currency, reason: input.reason }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.auditLog }); },
+  });
+}
+
 export const useAuditLog = () =>
   useQuery({ queryKey: qk.auditLog, queryFn: topicsApi.auditLog });
 

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
-import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser, useTopUpSubscription, useExtendSubscription } from "@/hooks";
+import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser, useTopUpSubscription, useExtendSubscription, useRefundNote } from "@/hooks";
 import { useI18n } from "@/i18n";
 import type { AdminUser } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -152,6 +152,7 @@ function MemberRow({ u }: { u: AdminUser }) {
   const changeRole = useChangeUserRole();
   const topUp = useTopUpSubscription();
   const extend = useExtendSubscription();
+  const refund = useRefundNote();
   const suspended = u.status === "suspended";
   const isStudent = u.role === "student";
 
@@ -170,6 +171,18 @@ function MemberRow({ u }: { u: AdminUser }) {
     const iso = new Date(`${d}T23:59:00`).toISOString();
     if (isNaN(Date.parse(iso))) return;
     extend.mutate({ subscriptionId: u.subscriptionId, newExpiresAt: iso });
+  };
+  const onRefundNote = () => {
+    if (!u.subscriptionId) return;
+    const a = window.prompt(tx("Refund amount:"), "");
+    if (a === null) return;
+    const amount = Number(a);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const currency = window.prompt(tx("Currency:"), "SDG");
+    if (!currency) return;
+    const reason = window.prompt(tx("Reason for the refund note:"), "");
+    if (!reason) return;
+    refund.mutate({ subscriptionId: u.subscriptionId, amount, currency, reason });
   };
 
   return (
@@ -202,6 +215,13 @@ function MemberRow({ u }: { u: AdminUser }) {
               className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
             >
               {extend.isPending ? "…" : tx("Extend")}
+            </button>
+            <button
+              onClick={onRefundNote}
+              disabled={refund.isPending}
+              className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+            >
+              {refund.isPending ? "…" : tx("Refund note")}
             </button>
           </div>
         )}

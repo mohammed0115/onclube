@@ -152,6 +152,9 @@ export const topicsApi = {
   extendSubscription(subscriptionId: string, newExpiresAt: string, reason?: string): Promise<{ expiresAt: string }> {
     return api.patch(`/admin/subscriptions/${subscriptionId}/extend/`, { newExpiresAt, reason });
   },
+  refundNote(subscriptionId: string, input: { amount: number; currency: string; reason: string }): Promise<{ adminActionId: string }> {
+    return api.post(`/admin/subscriptions/${subscriptionId}/refund-note/`, input);
+  },
   auditLog(): Promise<AuditEntry[]> {
     return api.get<AuditEntry[]>("/admin/audit/");
   },
