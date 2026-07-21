@@ -26,6 +26,11 @@ export function AdminSchedulingRequestsPage() {
     approve.mutate({ studentId }, { onSettled: () => setBusy(null) });
   };
 
+  const onApprovePick = (studentId: string, slotId: string) => {
+    setBusy(slotId);
+    approve.mutate({ studentId, slotIds: [slotId] }, { onSettled: () => setBusy(null) });
+  };
+
   const onReject = (slotId: string) => {
     const note = window.prompt(
       tx("Why is this pick being rejected? (the student sees this message)") || "",
@@ -82,15 +87,25 @@ export function AdminSchedulingRequestsPage() {
                         {tx(WEEKDAYS[p.weekday] ?? "—")} · {p.startTime} · {p.durationMinutes} {tx("min")} · {p.instructorName}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onReject(p.id)}
-                      disabled={busy === p.id}
-                      className="flex-shrink-0 text-red-600 hover:bg-red-50"
-                    >
-                      <X size={15} /> {busy === p.id ? tx("Rejecting…") : tx("Reject")}
-                    </Button>
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      <Button
+                        variant="soft"
+                        size="sm"
+                        onClick={() => onApprovePick(g.studentId, p.id)}
+                        disabled={busy === p.id || busy === g.studentId}
+                      >
+                        <Check size={15} /> {busy === p.id ? tx("Approving…") : tx("Approve")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onReject(p.id)}
+                        disabled={busy === p.id || busy === g.studentId}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        <X size={15} /> {busy === p.id ? tx("Rejecting…") : tx("Reject")}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

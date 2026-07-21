@@ -877,6 +877,7 @@ const PAIRS: [string, string][] = [
   ["Approved", "مقبول"],
   ["Needs changes", "يحتاج تعديلاً"],
   ["Approve all", "الموافقة على الكل"],
+  ["Approve", "موافقة"],
   ["Approving…", "جارٍ الموافقة…"],
   ["Reject", "رفض"],
   ["Rejecting…", "جارٍ الرفض…"],
