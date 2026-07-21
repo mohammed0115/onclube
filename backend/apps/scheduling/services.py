@@ -166,6 +166,42 @@ def rate_booking(student, booking_id, *, stars, comment=""):
     return rating
 
 
+# ── Instructor-authored per-session lesson (revealed to the student ~1h before) ──
+
+LESSON_REVEAL_MINUTES = 60
+
+
+@transaction.atomic
+def set_booking_lesson(booking, *, instructor, title, questions):
+    """The assigned instructor authors this session's lesson: a free-form title +
+    a list of discussion questions. Revealed to the student ~1h before the start."""
+    if booking.instructor_id != instructor.id:
+        raise BusinessRuleError("This session isn't assigned to you.", code="not_your_session")
+    if booking.status != BookingStatus.UPCOMING:
+        raise BusinessRuleError("Only upcoming sessions can be prepared.", code="not_upcoming")
+    clean_qs = [q.strip() for q in (questions or []) if isinstance(q, str) and q.strip()]
+    booking.lesson_title = (title or "").strip()[:160]
+    booking.lesson_questions = clean_qs
+    booking.lesson_prepared_at = timezone.now()
+    if booking.lesson_title:
+        booking.topic_title = booking.lesson_title  # keep the snapshot label useful
+    booking.save(update_fields=[
+        "lesson_title", "lesson_questions", "lesson_prepared_at", "topic_title", "updated_at",
+    ])
+    return booking
+
+
+def lesson_visible_to_student(booking, now=None) -> bool:
+    """A prepared lesson is revealed to the student only within the reveal window
+    (default 1 hour) before the session start."""
+    if not booking.lesson_prepared_at:
+        return False
+    from datetime import timedelta
+
+    now = now or timezone.now()
+    return now >= booking.scheduled_at - timedelta(minutes=LESSON_REVEAL_MINUTES)
+
+
 @transaction.atomic
 def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
     """
@@ -190,7 +226,7 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
             "That time has already passed. Please pick a later slot.", code="slot_unavailable"
         )
 
-    if slot.instructor_id != topic.instructor_id:
+    if topic is not None and slot.instructor_id != topic.instructor_id:
         raise BusinessRuleError(
             "Slot does not belong to the topic's instructor.", code="slot_instructor_mismatch"
         )
@@ -224,9 +260,9 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
     booking = Booking.objects.create(
         student=student,
         topic=topic,
-        topic_title=topic.title,
-        instructor=topic.instructor,
-        instructor_name=topic.instructor.user.full_name,
+        topic_title=(topic.title if topic else ""),
+        instructor=slot.instructor,
+        instructor_name=slot.instructor.user.full_name,
         slot=slot,
         subscription=subscription,
         scheduled_at=slot.start_at,
@@ -251,19 +287,20 @@ def create_booking(student, topic: Topic, slot: AvailabilitySlot) -> Booking:
 
     Session.objects.create(booking=booking, status=SessionStatus.SCHEDULED)
 
+    label = topic.title if topic else "your session"
     Notification.objects.create(
         user=student.user,
         type=NotificationType.BOOKING_CONFIRMED,
-        title="Booking confirmed",
-        body=f"{topic.title} on {slot.start_at:%b %d, %H:%M}.",
+        title="Session scheduled",
+        body=f"{label} on {slot.start_at:%b %d, %H:%M}.",
         data={"booking_id": str(booking.pk)},
     )
     # Notify the instructor of the new booking on their calendar.
     Notification.objects.create(
         user=booking.instructor.user,
         type=NotificationType.NEW_BOOKING,
-        title="New booking",
-        body=f"{student.user.full_name} booked {topic.title} on {slot.start_at:%b %d, %H:%M}.",
+        title="New session assigned",
+        body=f"{student.user.full_name} · {slot.start_at:%b %d, %H:%M}. Prepare the lesson.",
         data={"booking_id": str(booking.pk)},
     )
     return booking
@@ -525,6 +562,42 @@ def match_instructors_for(weekday, start_time):
     return candidates
 
 
+def available_instructors_at(weekday, start_time):
+    """InstructorProfiles whose recurring availability covers weekday+time (an
+    instructor with no windows counts as available all week), who accept students.
+    Ordered by current schedule load (fewest assigned picks first) then name — so
+    'nearest available' distributes new students fairly. Topic-agnostic: in the
+    availability-first flow the instructor authors each lesson, so no published
+    topic is required."""
+    from apps.accounts.models import InstructorProfile
+
+    weekday = int(weekday)
+    ranked = []
+    instructors = (
+        InstructorProfile.objects.select_related("user").prefetch_related("recurring_availability")
+    )
+    for ins in instructors:
+        if not ins.accept_students:
+            continue
+        all_windows = list(ins.recurring_availability.all())
+        windows = [(w.start_time, w.end_time) for w in all_windows if w.weekday == weekday]
+        if all_windows and not time_within_windows(start_time, windows):
+            continue
+        load = StudentScheduleSlot.objects.filter(
+            instructor=ins, active=True, deleted_at__isnull=True
+        ).count()
+        ranked.append((load, ins.user.full_name, ins))
+    ranked.sort(key=lambda t: (t[0], t[1]))
+    return [t[2] for t in ranked]
+
+
+def assign_instructor_for(weekday, start_time):
+    """The single best (nearest) available instructor for a weekday+time, or None
+    when nobody is available then."""
+    candidates = available_instructors_at(weekday, start_time)
+    return candidates[0] if candidates else None
+
+
 def list_student_schedule(student):
     """The student's active recurring picks, ordered weekday→time."""
     return list(
@@ -537,57 +610,38 @@ def list_student_schedule(student):
 
 
 def _validate_pick(student, pick):
-    """Validate one desired pick and resolve its topic/instructor. Returns a dict
-    ready to persist. Raises BusinessRuleError on any invalid pick."""
+    """Validate one desired availability pick (weekday + time only) and auto-assign
+    the nearest available instructor. The student no longer chooses a topic — the
+    instructor authors each lesson. Returns a dict ready to persist."""
     weekday = int(pick["weekday"])
     start_time = pick["start_time"]
     duration = int(pick.get("duration_minutes") or 45)
-    topic_id = pick["topic_id"]
 
     if not (0 <= weekday <= 6):
         raise BusinessRuleError("weekday must be 0..6.", code="invalid_weekday")
     if duration <= 0:
         raise BusinessRuleError("Duration must be positive.", code="invalid_duration")
 
-    topic = (
-        Topic.objects.select_related("instructor")
-        .filter(pk=topic_id, published=True, deleted_at__isnull=True)
-        .first()
-    )
-    if topic is None:
-        raise BusinessRuleError("Topic not found or not published.", code="topic_not_found")
-
-    windows = [
-        (w.start_time, w.end_time)
-        for w in RecurringAvailability.objects.filter(
-            instructor_id=topic.instructor_id, weekday=weekday
-        ).only("start_time", "end_time")
-    ]
-    # An instructor with *no* windows at all is treated as available all week.
-    has_any_window = RecurringAvailability.objects.filter(
-        instructor_id=topic.instructor_id
-    ).exists()
-    if has_any_window and not time_within_windows(start_time, windows):
-        raise BusinessRuleError(
-            "That time is outside the instructor's available hours.",
-            code="outside_availability",
-        )
+    # System assigns the nearest available instructor (may be None if none is free
+    # then — an admin can assign one manually on review).
+    instructor = assign_instructor_for(weekday, start_time)
     return {
         "weekday": weekday,
         "start_time": start_time,
         "duration_minutes": duration,
-        "topic": topic,
-        "instructor": topic.instructor,
+        "topic": None,
+        "instructor": instructor,
     }
 
 
 @transaction.atomic
 def set_student_schedule(student, picks):
-    """Upsert the student's recurring weekly schedule from `picks`. Each pick is a
-    dict {weekday, start_time, topic_id, duration_minutes?}. Picks removed from the
-    desired set are deactivated (their already-generated bookings are preserved).
-    Returns the active pick rows. Does NOT itself generate bookings — the caller
-    runs `generate_bookings_from_schedule` after."""
+    """Upsert the student's recurring weekly *availability* from `picks`. Each pick
+    is a dict {weekday, start_time, duration_minutes?} — no topic. New picks get
+    the nearest available instructor auto-assigned and enter PENDING review. Picks
+    removed from the desired set are deactivated (already-generated bookings are
+    preserved). Does NOT itself generate bookings — the caller runs
+    `generate_bookings_from_schedule` after admin approval."""
     validated = [_validate_pick(student, p) for p in picks]
 
     existing = {
@@ -608,32 +662,15 @@ def set_student_schedule(student, picks):
             cur = StudentScheduleSlot.objects.create(
                 student=student,
                 instructor=v["instructor"],
-                topic=v["topic"],
+                topic=None,
                 weekday=v["weekday"],
                 start_time=v["start_time"],
                 duration_minutes=v["duration_minutes"],
                 active=True,
             )
-        else:
-            fields = []
-            if cur.topic_id != v["topic"].id:
-                cur.topic = v["topic"]
-                fields.append("topic")
-            if cur.instructor_id != v["instructor"].id:
-                cur.instructor = v["instructor"]
-                fields.append("instructor")
-            if cur.duration_minutes != v["duration_minutes"]:
-                cur.duration_minutes = v["duration_minutes"]
-                fields.append("duration_minutes")
-            if fields:
-                # An edited pick must be re-reviewed by an admin before it
-                # generates any (further) bookings.
-                cur.review_status = ScheduleReviewStatus.PENDING
-                cur.reviewed_at = None
-                cur.reviewed_by = None
-                cur.review_note = ""
-                fields += ["review_status", "reviewed_at", "reviewed_by", "review_note", "updated_at"]
-                cur.save(update_fields=fields)
+        # An existing pick at the same weekday+time is unchanged — the student only
+        # edits WHICH times they want; instructor/lesson are managed elsewhere, so
+        # its review status and admin assignment are left intact.
         result.append(cur)
 
     for key, s in existing.items():
@@ -669,6 +706,11 @@ def generate_bookings_from_schedule(student, *, horizon_weeks=SCHEDULE_HORIZON_W
     for pick in picks:
         if out_of_credits:
             break
+        # An approved pick with no instructor yet can't be materialised — it waits
+        # for an admin to assign one.
+        if pick.instructor_id is None:
+            skipped.append({"pick_id": str(pick.id), "start_at": None, "reason": "unassigned"})
+            continue
         dates = upcoming_dates_for_weekday(
             weekday=pick.weekday, reference=ref_date, count=horizon_weeks, include_today=True
         )
@@ -770,31 +812,34 @@ def list_student_schedule_all(student):
 
 
 @transaction.atomic
-def reassign_schedule_slot(slot, *, topic, actor=None):
-    """Admin swaps the topic (and its instructor) on a pending pick before approval.
-    Validates the new topic covers the pick's weekday/time window."""
+def assign_schedule_slot_instructor(slot, *, instructor, actor=None):
+    """Admin assigns (or re-assigns) the instructor on a pending pick before
+    approval. Validates the instructor is actually available at that weekday/time."""
     if slot.review_status == ScheduleReviewStatus.APPROVED:
-        raise BusinessRuleError("Approved picks can't be reassigned; cancel the bookings instead.", code="already_approved")
+        raise BusinessRuleError(
+            "Approved picks can't be reassigned; cancel the bookings instead.",
+            code="already_approved",
+        )
     windows = [
         (w.start_time, w.end_time)
         for w in RecurringAvailability.objects.filter(
-            instructor_id=topic.instructor_id, weekday=slot.weekday
+            instructor_id=instructor.id, weekday=slot.weekday
         ).only("start_time", "end_time")
     ]
-    has_any_window = RecurringAvailability.objects.filter(instructor_id=topic.instructor_id).exists()
+    has_any_window = RecurringAvailability.objects.filter(instructor_id=instructor.id).exists()
     if has_any_window and not time_within_windows(slot.start_time, windows):
-        raise BusinessRuleError("That time is outside the instructor's available hours.", code="outside_availability")
-    slot.topic = topic
-    slot.instructor = topic.instructor
-    slot.review_status = ScheduleReviewStatus.PENDING
-    slot.save(update_fields=["topic", "instructor", "review_status", "updated_at"])
+        raise BusinessRuleError(
+            "That instructor is not available at this time.", code="outside_availability"
+        )
+    slot.instructor = instructor
+    slot.save(update_fields=["instructor", "updated_at"])
     if actor is not None:
         AdminAction.objects.create(
             admin=actor,
             action_type=AdminActionType.SCHEDULE_REASSIGN,
             target_table="student_schedule_slots",
             target_id=slot.id,
-            reason=f"Reassigned to {topic.title} ({topic.instructor.user.full_name}).",
+            reason=f"Assigned to {instructor.user.full_name}.",
         )
     return slot
 
@@ -825,7 +870,7 @@ def approve_student_schedule(student, *, actor, slot_ids=None, now=None):
             action_type=AdminActionType.SCHEDULE_APPROVE,
             target_table="student_schedule_slots",
             target_id=slot.id,
-            reason=f"{slot.topic.title} · weekday {slot.weekday} {slot.start_time:%H:%M}",
+            reason=f"weekday {slot.weekday} {slot.start_time:%H:%M}",
         )
 
     generated = generate_bookings_from_schedule(student, now=now)
@@ -864,7 +909,7 @@ def reject_schedule_slot(slot, *, actor, note=""):
         user=slot.student.user,
         type=NotificationType.SCHEDULE_REJECTED,
         title="A schedule pick needs changes",
-        body=(note or f"Your pick “{slot.topic.title}” wasn't approved. Please choose another time or topic."),
+        body=(note or f"Your {slot.start_time:%H:%M} slot wasn't approved. Please choose another time."),
         data={"slot_id": str(slot.id)},
     )
     return slot

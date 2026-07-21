@@ -208,10 +208,10 @@ def schedule_pick_dto(pick) -> dict:
         "weekday": pick.weekday,
         "startTime": _fmt_time(pick.start_time),
         "durationMinutes": pick.duration_minutes,
-        "topicId": str(pick.topic_id),
-        "topicTitle": pick.topic.title,
-        "instructorId": str(pick.instructor_id),
-        "instructorName": pick.instructor.user.full_name,
+        "topicId": str(pick.topic_id) if pick.topic_id else None,
+        "topicTitle": pick.topic.title if pick.topic_id else None,
+        "instructorId": str(pick.instructor_id) if pick.instructor_id else None,
+        "instructorName": pick.instructor.user.full_name if pick.instructor_id else None,
         "reviewStatus": pick.review_status,
         "reviewNote": pick.review_note or "",
         "reviewedAt": pick.reviewed_at.isoformat() if pick.reviewed_at else None,
@@ -301,6 +301,8 @@ class ListScheduleRequestsUseCase:
         ensure_admin(actor)
         slots = scheduling_services.list_pending_schedule_slots()
         by_student = {}
+        # Cache candidates per (weekday, time) so a busy queue doesn't re-scan.
+        cand_cache = {}
         for s in slots:
             key = str(s.student_id)
             g = by_student.get(key)
@@ -312,7 +314,15 @@ class ListScheduleRequestsUseCase:
                     "picks": [],
                 }
                 by_student[key] = g
-            g["picks"].append(schedule_pick_dto(s))
+            ck = (s.weekday, s.start_time)
+            if ck not in cand_cache:
+                cand_cache[ck] = [
+                    {"id": str(i.id), "name": i.user.full_name}
+                    for i in scheduling_services.available_instructors_at(s.weekday, s.start_time)
+                ]
+            pick = schedule_pick_dto(s)
+            pick["instructorCandidates"] = cand_cache[ck]
+            g["picks"].append(pick)
         return list(by_student.values())
 
 
@@ -348,41 +358,68 @@ class RejectScheduleSlotUseCase:
         return schedule_pick_dto(slot)
 
 
-class ReassignScheduleSlotUseCase:
-    """Admin: change the topic (and its instructor) on a pending pick."""
+class AssignScheduleSlotInstructorUseCase:
+    """Admin: assign (or re-assign) the instructor on a pending pick."""
 
-    def execute(self, *, actor, slot_id, topic_id) -> dict:
-        from apps.scheduling.models import StudentScheduleSlot, Topic
+    def execute(self, *, actor, slot_id, instructor_id) -> dict:
+        from apps.scheduling.models import StudentScheduleSlot
+        from apps.accounts.models import InstructorProfile
 
         ensure_admin(actor)
         slot = StudentScheduleSlot.objects.select_related(
             "student", "topic", "instructor", "instructor__user"
         ).get(pk=slot_id)
-        topic = Topic.objects.select_related("instructor", "instructor__user").get(
-            pk=topic_id, published=True, deleted_at__isnull=True
-        )
-        scheduling_services.reassign_schedule_slot(slot, topic=topic, actor=actor)
+        instructor = InstructorProfile.objects.select_related("user").get(pk=instructor_id)
+        scheduling_services.assign_schedule_slot_instructor(slot, instructor=instructor, actor=actor)
+        slot.refresh_from_db()
         return schedule_pick_dto(slot)
 
 
-class ListAdminTopicsUseCase:
-    """Admin: every published topic with its instructor — the reassign picker."""
+# ── Instructor: per-session lesson authoring ──────────────────────────────────
+
+class ListInstructorUpcomingSessionsUseCase:
+    """The instructor's upcoming sessions with lesson-authoring fields."""
 
     def execute(self, *, actor) -> list:
-        from apps.scheduling.models import Topic
+        from application.permissions import get_instructor_profile
+        from apps.scheduling.models import Booking
+        from apps.common.enums import BookingStatus
 
-        ensure_admin(actor)
-        topics = (
-            Topic.objects.select_related("instructor", "instructor__user")
-            .filter(published=True, deleted_at__isnull=True)
-            .order_by("title")
+        instructor = get_instructor_profile(actor)
+        bookings = (
+            Booking.objects.select_related("student", "student__user")
+            .filter(instructor=instructor, status=BookingStatus.UPCOMING, deleted_at__isnull=True)
+            .order_by("scheduled_at")
         )
         return [
             {
-                "id": str(t.id),
-                "title": t.title,
-                "instructorId": str(t.instructor_id),
-                "instructorName": t.instructor.user.full_name,
+                "bookingId": str(b.id),
+                "studentName": b.student.user.full_name,
+                "scheduledAt": b.scheduled_at.isoformat(),
+                "durationMinutes": b.duration_minutes,
+                "lessonTitle": b.lesson_title or "",
+                "lessonQuestions": b.lesson_questions or [],
+                "lessonPrepared": b.lesson_prepared_at is not None,
             }
-            for t in topics
+            for b in bookings
         ]
+
+
+class PrepareLessonUseCase:
+    """Instructor writes/updates the lesson (title + questions) for one session."""
+
+    def execute(self, *, actor, booking_id, title, questions) -> dict:
+        from application.permissions import get_instructor_profile
+        from apps.scheduling.models import Booking
+
+        instructor = get_instructor_profile(actor)
+        booking = Booking.objects.get(pk=booking_id)
+        scheduling_services.set_booking_lesson(
+            booking, instructor=instructor, title=title, questions=questions
+        )
+        return {
+            "bookingId": str(booking.id),
+            "lessonTitle": booking.lesson_title,
+            "lessonQuestions": booking.lesson_questions,
+            "lessonPrepared": True,
+        }

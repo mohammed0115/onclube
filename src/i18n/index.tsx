@@ -28,6 +28,8 @@ const TRANSLATIONS: Record<string, { en: string; ar: string }> = {
   "nav.bookings": { en: "Bookings", ar: "الحجوزات" },
   "nav.plans": { en: "Plans", ar: "الخطط" },
   "nav.schedule": { en: "My Schedule", ar: "جدولي الأسبوعي" },
+  "nav.myAvailability": { en: "My Availability", ar: "أوقاتي المتاحة" },
+  "nav.lessonPrep": { en: "Lesson prep", ar: "تحضير الدرس" },
   "nav.progress": { en: "My Progress", ar: "تقدّمي" },
   "nav.aitutor": { en: "AI Tutor", ar: "المعلّم الذكي" },
   "nav.publicProfile": { en: "Public Profile", ar: "الملف العام" },

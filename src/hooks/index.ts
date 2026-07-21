@@ -538,15 +538,25 @@ export function useRejectSchedule() {
   });
 }
 
-export const useAdminTopics = () =>
-  useQuery({ queryKey: qk.adminTopics, queryFn: topicsApi.adminTopics });
-
-export function useReassignSchedule() {
+export function useAssignScheduleInstructor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { slotId: string; topicId: string }) =>
-      topicsApi.adminReassignSchedule(input.slotId, input.topicId),
+    mutationFn: (input: { slotId: string; instructorId: string }) =>
+      topicsApi.adminAssignSchedule(input.slotId, input.instructorId),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.adminScheduleRequests }),
+  });
+}
+
+// ── instructor: per-session lesson authoring ────────────────────────────────
+export const useInstructorLessons = () =>
+  useQuery({ queryKey: qk.instructorLessons, queryFn: topicsApi.instructorLessons });
+
+export function usePrepareLesson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { bookingId: string; title: string; questions: string[] }) =>
+      topicsApi.prepareLesson(input.bookingId, input.title, input.questions),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.instructorLessons }),
   });
 }
 

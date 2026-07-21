@@ -72,8 +72,8 @@ export function PaymentUnderReviewPage() {
             </p>
             <div className="mt-8">
               <Button asChild size="lg" className="w-full">
-                <Link to="/student/book">
-                  {tx("Continue to booking")} <ArrowRight size={18} />
+                <Link to="/student/schedule">
+                  {tx("Set your availability")} <ArrowRight size={18} />
                 </Link>
               </Button>
             </div>

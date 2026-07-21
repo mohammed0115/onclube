@@ -165,8 +165,17 @@ class Booking(BaseModel, SoftDeleteModel):
     student = models.ForeignKey(
         "accounts.StudentProfile", on_delete=models.PROTECT, related_name="bookings"
     )
-    topic = models.ForeignKey(Topic, on_delete=models.PROTECT, related_name="bookings")
-    topic_title = models.CharField(max_length=120)  # snapshot
+    # No student-chosen topic in the availability-first flow — the instructor
+    # authors each lesson (title + questions) per session. `topic` stays for the
+    # legacy/one-off path but is optional.
+    topic = models.ForeignKey(
+        Topic, on_delete=models.PROTECT, related_name="bookings", null=True, blank=True
+    )
+    topic_title = models.CharField(max_length=120, blank=True, default="")  # snapshot / lesson title
+    # Instructor-authored lesson, revealed to the student ~1h before the session.
+    lesson_title = models.CharField(max_length=160, blank=True, default="")
+    lesson_questions = models.JSONField(default=list, blank=True)
+    lesson_prepared_at = models.DateTimeField(null=True, blank=True)
     instructor = models.ForeignKey(
         "accounts.InstructorProfile", on_delete=models.PROTECT, related_name="bookings"
     )
@@ -390,13 +399,19 @@ class StudentScheduleSlot(BaseModel, SoftDeleteModel):
         on_delete=models.CASCADE,
         related_name="schedule_slots",
     )
+    # The instructor is assigned by the system (nearest available at this time)
+    # and can be overridden by an admin — so it is null until assigned. The
+    # student no longer chooses a topic; the instructor authors each lesson.
     instructor = models.ForeignKey(
         "accounts.InstructorProfile",
         on_delete=models.PROTECT,
         related_name="student_schedule_slots",
+        null=True,
+        blank=True,
     )
     topic = models.ForeignKey(
-        Topic, on_delete=models.PROTECT, related_name="schedule_slots"
+        Topic, on_delete=models.PROTECT, related_name="schedule_slots",
+        null=True, blank=True,
     )
     weekday = models.PositiveSmallIntegerField()  # 0=Mon … 6=Sun
     start_time = models.TimeField()

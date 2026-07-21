@@ -119,6 +119,8 @@ urlpatterns = [
     path("instructor/topics/<uuid:topic_id>/questions/<uuid:question_id>/approve/", v.InstructorApproveQuestionView.as_view()),
     path("instructor/students/", v.InstructorStudentsView.as_view()),
     path("instructor/students/<uuid:student_id>/", v.InstructorStudentDetailView.as_view()),
+    path("instructor/lessons/", v.InstructorLessonsView.as_view()),
+    path("instructor/bookings/<uuid:booking_id>/lesson/", v.InstructorLessonView.as_view()),
     path("instructor/bookings/", v.InstructorBookingsView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/cancel/", v.InstructorBookingCancelView.as_view()),
     path("instructor/bookings/<uuid:booking_id>/reschedule/", v.InstructorBookingRescheduleView.as_view()),
@@ -158,8 +160,7 @@ urlpatterns = [
     path("admin/schedule-requests/", v.AdminScheduleRequestsView.as_view()),
     path("admin/schedule-requests/approve/", v.AdminScheduleApproveView.as_view()),
     path("admin/schedule-requests/reject/", v.AdminScheduleRejectView.as_view()),
-    path("admin/schedule-requests/reassign/", v.AdminScheduleReassignView.as_view()),
-    path("admin/topics/", v.AdminTopicsListView.as_view()),
+    path("admin/schedule-requests/assign/", v.AdminScheduleAssignView.as_view()),
 
     # ── Sessions ──
     path("sessions/<uuid:session_id>/", v.SessionDetailView.as_view()),

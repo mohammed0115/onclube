@@ -112,11 +112,12 @@ from application.scheduling.use_cases import (
     GenerateScheduleBookingsUseCase,
     JoinGroupSessionUseCase,
     LeaveGroupSessionUseCase,
-    ListAdminTopicsUseCase,
+    AssignScheduleSlotInstructorUseCase,
     ListAvailableSlotsUseCase,
+    ListInstructorUpcomingSessionsUseCase,
     ListScheduleRequestsUseCase,
+    PrepareLessonUseCase,
     RateSessionUseCase,
-    ReassignScheduleSlotUseCase,
     RejectScheduleSlotUseCase,
     RescheduleBookingUseCase,
     SetRecurringAvailabilityUseCase,
@@ -689,7 +690,6 @@ class StudentScheduleView(APIView):
             {
                 "weekday": p["weekday"],
                 "start_time": p["startTime"],
-                "topic_id": p["topicId"],
                 "duration_minutes": p.get("durationMinutes", 45),
             }
             for p in data["picks"]
@@ -1162,22 +1162,35 @@ class AdminScheduleRejectView(AdminAPIView):
         return Response(dto)
 
 
-class AdminScheduleReassignView(AdminAPIView):
-    """Change the topic (and its instructor) on a pending pick before approval."""
+class AdminScheduleAssignView(AdminAPIView):
+    """Assign (or re-assign) the instructor on a pending pick before approval."""
 
     def post(self, request):
-        data = _validated(s.AdminScheduleReassignInputSerializer, request)
-        dto = ReassignScheduleSlotUseCase().execute(
-            actor=request.user, slot_id=data["slotId"], topic_id=data["topicId"]
+        data = _validated(s.AdminScheduleAssignInputSerializer, request)
+        dto = AssignScheduleSlotInstructorUseCase().execute(
+            actor=request.user, slot_id=data["slotId"], instructor_id=data["instructorId"]
         )
         return Response(dto)
 
 
-class AdminTopicsListView(AdminAPIView):
-    """All published topics with their instructor — powers the reassign picker."""
+# ── Instructor: per-session lesson authoring ──────────────────────────────────
+class InstructorLessonsView(APIView):
+    """The instructor's upcoming sessions to prepare a lesson for."""
 
     def get(self, request):
-        return Response(ListAdminTopicsUseCase().execute(actor=request.user))
+        return Response(ListInstructorUpcomingSessionsUseCase().execute(actor=request.user))
+
+
+class InstructorLessonView(APIView):
+    def post(self, request, booking_id):
+        data = _validated(s.PrepareLessonInputSerializer, request)
+        dto = PrepareLessonUseCase().execute(
+            actor=request.user,
+            booking_id=booking_id,
+            title=data.get("title", ""),
+            questions=data.get("questions", []),
+        )
+        return Response(dto)
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────

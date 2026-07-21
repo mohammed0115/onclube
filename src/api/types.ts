@@ -446,18 +446,25 @@ export interface WeeklyCalendar {
 // ── recurring weekly schedule (student-driven) ──────────────────────────────────
 export type ScheduleReviewStatus = "pending" | "approved" | "rejected";
 
+export interface InstructorCandidate {
+  id: string;
+  name: string;
+}
+
 export interface SchedulePick {
   id: string;
   weekday: number; // 0=Mon … 6=Sun
   startTime: string; // "HH:MM"
   durationMinutes: number;
-  topicId: string;
-  topicTitle: string;
-  instructorId: string;
-  instructorName: string;
+  topicId: string | null;
+  topicTitle: string | null;
+  instructorId: string | null;
+  instructorName: string | null;
   reviewStatus: ScheduleReviewStatus;
   reviewNote: string;
   reviewedAt: string | null;
+  // Only present in the admin review listing: instructors free at this time.
+  instructorCandidates?: InstructorCandidate[];
 }
 
 // Admin review queue: pending picks grouped by student.
@@ -471,14 +478,6 @@ export interface ScheduleRequestGroup {
 export interface ScheduleApproveResult {
   approved: number;
   generated: ScheduleGenerationSummary;
-}
-
-// Admin reassign picker: published topics with their instructor.
-export interface AdminTopicOption {
-  id: string;
-  title: string;
-  instructorId: string;
-  instructorName: string;
 }
 
 export interface GeneratedBooking {
@@ -502,6 +501,21 @@ export interface ScheduleUpcomingItem {
   scheduledAt: string;
   durationMinutes: number;
   status: string;
+  lessonReady: boolean;
+  lessonRevealed: boolean;
+  lessonTitle: string;
+  lessonQuestions: string[];
+}
+
+// Instructor-authored per-session lesson (title + questions).
+export interface InstructorLessonSession {
+  bookingId: string;
+  studentName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  lessonTitle: string;
+  lessonQuestions: string[];
+  lessonPrepared: boolean;
 }
 
 export interface StudentSchedule {
@@ -518,7 +532,6 @@ export interface SetScheduleResult {
 export interface SchedulePickInput {
   weekday: number;
   startTime: string; // "HH:MM"
-  topicId: string;
   durationMinutes?: number;
 }
 

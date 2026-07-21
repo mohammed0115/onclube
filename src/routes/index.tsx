@@ -22,13 +22,9 @@ import { PaymentUnderReviewPage } from "@/pages/billing/PaymentUnderReviewPage";
 
 // Student
 import { StudentDashboardPage } from "@/pages/student/StudentDashboardPage";
-import { BookSessionPage } from "@/pages/student/BookSessionPage";
 import { WeeklySchedulePage } from "@/pages/student/WeeklySchedulePage";
 import { ProgressPage } from "@/pages/student/ProgressPage";
 import { AITutorPage } from "@/pages/student/AITutorPage";
-import { BookingCalendarPage } from "@/pages/student/BookingCalendarPage";
-import { BookingSummaryPage } from "@/pages/student/BookingSummaryPage";
-import { BookingSuccessPage } from "@/pages/student/BookingSuccessPage";
 import { QuestionsPreviewPage } from "@/pages/student/QuestionsPreviewPage";
 import { WaitingRoomPage } from "@/pages/student/WaitingRoomPage";
 import { AIReportPage } from "@/pages/student/AIReportPage";
@@ -44,6 +40,7 @@ import { TopicQuestionBuilderPage } from "@/pages/instructor/TopicQuestionBuilde
 import { InstructorProfilePage } from "@/pages/instructor/InstructorProfilePage";
 import { InstructorPublicProfilePage } from "@/pages/instructor/InstructorPublicProfilePage";
 import { InstructorSessionsPage } from "@/pages/instructor/InstructorSessionsPage";
+import { InstructorLessonsPage } from "@/pages/instructor/InstructorLessonsPage";
 import { InstructorStudentsPage } from "@/pages/instructor/InstructorStudentsPage";
 import { InstructorStudentDetailPage } from "@/pages/instructor/InstructorStudentDetailPage";
 
@@ -85,13 +82,9 @@ export function AppRoutes() {
 
       {/* 11–15 Student */}
       <Route path="/student" element={<RequireRole roles={["student"]}><StudentDashboardPage /></RequireRole>} />
-      <Route path="/student/book" element={<RequireRole roles={["student"]}><BookSessionPage /></RequireRole>} />
       <Route path="/student/schedule" element={<RequireRole roles={["student"]}><WeeklySchedulePage /></RequireRole>} />
       <Route path="/student/progress" element={<RequireRole roles={["student"]}><ProgressPage /></RequireRole>} />
       <Route path="/student/ai-tutor" element={<RequireRole roles={["student"]}><AITutorPage /></RequireRole>} />
-      <Route path="/student/book/:topicId" element={<RequireRole roles={["student"]}><BookingCalendarPage /></RequireRole>} />
-      <Route path="/student/book/:topicId/confirm/:slotId" element={<RequireRole roles={["student"]}><BookingSummaryPage /></RequireRole>} />
-      <Route path="/student/book/success/:bookingId" element={<RequireRole roles={["student"]}><BookingSuccessPage /></RequireRole>} />
       <Route path="/student/questions/:id" element={<RequireRole roles={["student"]}><QuestionsPreviewPage /></RequireRole>} />
       {/* Session room is shared by the booked student and the assigned instructor. */}
       <Route path="/student/session/:id" element={<RequireRole roles={["student", "instructor"]}><WaitingRoomPage /></RequireRole>} />
@@ -108,6 +101,7 @@ export function AppRoutes() {
       <Route path="/instructor/profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorProfilePage /></RequireRole>} />
       <Route path="/instructor/public-profile" element={<RequireRole roles={["instructor", "admin"]}><InstructorPublicProfilePage /></RequireRole>} />
       <Route path="/instructor/sessions" element={<RequireRole roles={["instructor", "admin"]}><InstructorSessionsPage /></RequireRole>} />
+      <Route path="/instructor/lessons" element={<RequireRole roles={["instructor", "admin"]}><InstructorLessonsPage /></RequireRole>} />
       <Route path="/instructor/students" element={<RequireRole roles={["instructor", "admin"]}><InstructorStudentsPage /></RequireRole>} />
       <Route path="/instructor/students/:id" element={<RequireRole roles={["instructor", "admin"]}><InstructorStudentDetailPage /></RequireRole>} />
 

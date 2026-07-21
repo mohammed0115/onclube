@@ -8,7 +8,7 @@ import type {
   ScheduleRequestGroup,
   ScheduleApproveResult,
   SchedulePick,
-  AdminTopicOption,
+  InstructorLessonSession,
   BusinessOverview,
   PlatformStatus,
   AvailabilityException,
@@ -181,11 +181,15 @@ export const topicsApi = {
   adminRejectSchedule(slotId: string, note: string): Promise<SchedulePick> {
     return api.post<SchedulePick>("/admin/schedule-requests/reject/", { slotId, note });
   },
-  adminReassignSchedule(slotId: string, topicId: string): Promise<SchedulePick> {
-    return api.post<SchedulePick>("/admin/schedule-requests/reassign/", { slotId, topicId });
+  adminAssignSchedule(slotId: string, instructorId: string): Promise<SchedulePick> {
+    return api.post<SchedulePick>("/admin/schedule-requests/assign/", { slotId, instructorId });
   },
-  adminTopics(): Promise<AdminTopicOption[]> {
-    return api.get<AdminTopicOption[]>("/admin/topics/");
+  // ── Instructor per-session lesson authoring ──
+  instructorLessons(): Promise<InstructorLessonSession[]> {
+    return api.get<InstructorLessonSession[]>("/instructor/lessons/");
+  },
+  prepareLesson(bookingId: string, title: string, questions: string[]): Promise<InstructorLessonSession> {
+    return api.post<InstructorLessonSession>(`/instructor/bookings/${bookingId}/lesson/`, { title, questions });
   },
   adminPlans(): Promise<Plan[]> {
     return api.get<Plan[]>("/admin/plans/");

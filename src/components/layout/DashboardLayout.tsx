@@ -10,6 +10,7 @@ import {
   GraduationCap,
   CalendarClock,
   CalendarCheck,
+  BookOpen,
   PenSquare,
   ShieldCheck,
   User,
@@ -30,7 +31,8 @@ import { useNotifications, useMarkNotificationRead } from "@/hooks";
 
 // Map nav labels → translation keys (English stays the source/default).
 const NAV_KEY: Record<string, string> = {
-  Dashboard: "nav.dashboard", "Book Session": "nav.book", "My Schedule": "nav.schedule", "My Progress": "nav.progress", "AI Tutor": "nav.aitutor", Practice: "nav.practice",
+  Dashboard: "nav.dashboard", "My Availability": "nav.myAvailability", "My Progress": "nav.progress", "AI Tutor": "nav.aitutor", Practice: "nav.practice",
+  "Lesson prep": "nav.lessonPrep",
   Community: "nav.community", "Session Reports": "nav.reports", Settings: "nav.settings",
   Availability: "nav.availability", "My Sessions": "nav.sessions", "My Students": "nav.students",
   "Topics & Questions": "nav.topics", "My Profile": "nav.profile", "Public Profile": "nav.publicProfile", "Payment Approval": "nav.payments",
@@ -53,8 +55,7 @@ interface NavItem {
 const NAV: Record<Role, NavItem[]> = {
   student: [
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/student" },
-    { icon: Calendar, label: "Book Session", short: "Book", to: "/student/book" },
-    { icon: CalendarClock, label: "My Schedule", short: "Schedule", to: "/student/schedule" },
+    { icon: CalendarClock, label: "My Availability", short: "Times", to: "/student/schedule" },
     { icon: TrendingUp, label: "My Progress", short: "Progress", to: "/student/progress" },
     { icon: Bot, label: "AI Tutor", short: "AI", to: "/student/ai-tutor" },
     { icon: GraduationCap, label: "Practice", to: "/student/practice" },
@@ -66,6 +67,7 @@ const NAV: Record<Role, NavItem[]> = {
     { icon: LayoutDashboard, label: "Dashboard", short: "Home", to: "/instructor" },
     { icon: CalendarClock, label: "Availability", short: "Slots", to: "/instructor/availability" },
     { icon: Calendar, label: "My Sessions", short: "Sessions", to: "/instructor/sessions" },
+    { icon: BookOpen, label: "Lesson prep", short: "Lessons", to: "/instructor/lessons" },
     { icon: Users, label: "My Students", short: "Students", to: "/instructor/students" },
     { icon: PenSquare, label: "Topics & Questions", short: "Topics", to: "/instructor/topics" },
     { icon: BadgeCheck, label: "Public Profile", short: "CV", to: "/instructor/public-profile" },

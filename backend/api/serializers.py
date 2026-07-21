@@ -355,9 +355,17 @@ class AdminScheduleRejectInputSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True, default="", max_length=300)
 
 
-class AdminScheduleReassignInputSerializer(serializers.Serializer):
+class AdminScheduleAssignInputSerializer(serializers.Serializer):
     slotId = serializers.UUIDField()
-    topicId = serializers.UUIDField()
+    instructorId = serializers.UUIDField()
+
+
+class PrepareLessonInputSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=160, allow_blank=True, required=False, default="")
+    questions = serializers.ListField(
+        child=serializers.CharField(allow_blank=True, max_length=500),
+        required=False, default=list, max_length=20,
+    )
 
 
 class RescheduleInputSerializer(serializers.Serializer):
@@ -734,9 +742,10 @@ class SetAvailabilityInputSerializer(serializers.Serializer):
 
 # ── recurring weekly schedule (student-driven) ──────────────────────────────────
 class _SchedulePickInputSerializer(serializers.Serializer):
+    # Availability-first: the student picks weekday + time only. No topic — the
+    # system assigns an instructor and the instructor authors the lesson.
     weekday = serializers.IntegerField(min_value=0, max_value=6)
     startTime = serializers.TimeField()
-    topicId = serializers.UUIDField()
     durationMinutes = serializers.IntegerField(min_value=1, required=False, default=45)
 
 

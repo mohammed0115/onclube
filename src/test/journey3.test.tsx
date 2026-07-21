@@ -36,7 +36,7 @@ function renderReview() {
           <Routes>
             <Route path="/billing/under-review" element={<PaymentUnderReviewPage />} />
             <Route path="/billing/pricing" element={<div>PRICING STUB</div>} />
-            <Route path="/student/book" element={<div>BOOK STUB</div>} />
+            <Route path="/student/schedule" element={<div>SCHEDULE STUB</div>} />
           </Routes>
         </AuthProvider>
       </MemoryRouter>
@@ -55,8 +55,8 @@ describe("PaymentUnderReviewPage", () => {
     state.approved = true; // subscription becomes active
     renderReview();
     expect(await screen.findByText(/You’re approved/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("link", { name: /Continue to booking/i }));
-    expect(await screen.findByText("BOOK STUB")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: /Set your availability/i }));
+    expect(await screen.findByText("SCHEDULE STUB")).toBeInTheDocument();
   });
 
   it("shows the rejected state with the review note and a re-submit action", async () => {

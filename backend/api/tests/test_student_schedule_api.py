@@ -1,9 +1,10 @@
 """
-Student-driven recurring weekly schedule — API + generation tests.
+Availability-first weekly scheduling — API + generation tests.
 
-The student builds their OWN weekly timetable (weekday + time + topic); the system
-materialises concrete bookings for the coming weeks from those picks, consuming one
-session credit each and reusing the existing booking pipeline.
+The student picks only the weekday+time they're available (NO topic). The system
+auto-assigns the nearest available instructor; an admin reviews (can reassign the
+instructor) and approves; approval materialises bookings. The instructor then
+authors each lesson (title + questions), revealed to the student ~1h before.
 """
 from datetime import time, timedelta
 
@@ -11,14 +12,13 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.common.enums import BookingStatus, SubscriptionStatus
+from apps.common.enums import BookingStatus
 from apps.common.factories import (
     make_active_subscription,
     make_admin,
     make_instructor,
     make_plan,
     make_student,
-    make_topic,
 )
 from apps.scheduling.models import Booking, RecurringAvailability, StudentScheduleSlot
 
@@ -31,8 +31,33 @@ def client_for(user):
     return c
 
 
+def _tomorrow_weekday(now=None):
+    now = now or timezone.now()
+    return (timezone.localtime(now) + timedelta(days=1)).weekday()
+
+
+def _world(sessions=4, with_window=False):
+    """One instructor (available all week unless with_window), one funded student."""
+    instructor = make_instructor()
+    student = make_student()
+    plan = make_plan(sessions_per_month=sessions)
+    make_active_subscription(student, plan, sessions=sessions)
+    if with_window:
+        RecurringAvailability.objects.create(
+            instructor=instructor, weekday=_tomorrow_weekday(),
+            start_time=time(8, 0), end_time=time(22, 0),
+        )
+    return student, instructor
+
+
+def _put_availability(student, picks):
+    """picks: [{"weekday": int, "startTime": "HH:MM"}] — no topic."""
+    return client_for(student.user).put(
+        "/api/v1/student/schedule/", {"picks": picks}, format="json"
+    )
+
+
 def _approve(student, admin=None, slot_ids=None):
-    """Admin approves the student's pending picks → generates their bookings."""
     admin = admin or make_admin()
     body = {"studentId": str(student.id)}
     if slot_ids is not None:
@@ -42,162 +67,247 @@ def _approve(student, admin=None, slot_ids=None):
     )
 
 
-def _tomorrow_weekday(now=None):
-    now = now or timezone.now()
-    return (timezone.localtime(now) + timedelta(days=1)).weekday()
-
-
-def _world(sessions=4):
-    instructor = make_instructor()
-    student = make_student()
-    plan = make_plan(sessions_per_month=sessions)
-    make_active_subscription(student, plan, sessions=sessions)
-    topic = make_topic(instructor)
-    return student, instructor, topic
-
-
-def _put_schedule(student, picks):
-    return client_for(student.user).put(
-        "/api/v1/student/schedule/", {"picks": picks}, format="json"
-    )
-
-
-# ── review gate + generation ──────────────────────────────────────────────────
-def test_setting_schedule_is_pending_until_admin_approves():
-    student, instructor, topic = _world(sessions=4)
+# ── availability → auto-assign → review → generate ────────────────────────────
+def test_availability_autoassigns_instructor_and_waits_for_review():
+    student, instructor = _world(sessions=4)
     wd = _tomorrow_weekday()
-    resp = _put_schedule(
-        student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}]
-    )
+    resp = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
     assert resp.status_code == 200, resp.data
-    assert len(resp.data["schedule"]) == 1
-    # New pick is PENDING — nothing is booked yet.
-    assert resp.data["schedule"][0]["reviewStatus"] == "pending"
-    assert resp.data["generated"]["created"] == 0
+    pick = resp.data["schedule"][0]
+    assert pick["reviewStatus"] == "pending"
+    assert pick["topicId"] is None                       # no student topic
+    assert pick["instructorId"] == str(instructor.id)    # system auto-assigned
+    assert resp.data["generated"]["created"] == 0        # nothing until approval
     assert resp.data["pendingReview"] == 1
     assert Booking.objects.filter(student=student).count() == 0
 
-    # Admin approves → the 2-week horizon materialises 2 bookings.
     ap = _approve(student)
     assert ap.status_code == 200, ap.data
-    assert ap.data["approved"] == 1
     assert ap.data["generated"]["created"] == 2
-    assert ap.data["generated"]["outOfCredits"] is False
-
     bookings = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING)
     assert bookings.count() == 2
-    assert all(b.schedule_slot_id is not None for b in bookings)
+    assert all(b.topic_id is None and b.instructor_id == instructor.id for b in bookings)
 
-    student.refresh_from_db()
-    assert student.sessions_remaining == 2  # 4 − 2 generated
+
+def test_time_with_no_available_instructor_is_left_unassigned():
+    # Instructor only free 08:00–22:00; a 23:00 pick matches nobody.
+    student, instructor = _world(sessions=4, with_window=True)
+    wd = _tomorrow_weekday()
+    resp = _put_availability(student, [{"weekday": wd, "startTime": "23:00"}])
+    assert resp.status_code == 200, resp.data
+    assert resp.data["schedule"][0]["instructorId"] is None
+    # Approving an unassigned pick generates nothing (waits for admin assignment).
+    ap = _approve(student)
+    assert ap.data["generated"]["created"] == 0
+    assert Booking.objects.filter(student=student).count() == 0
 
 
 def test_generation_stops_when_credits_run_out():
-    student, instructor, topic = _world(sessions=1)
+    student, instructor = _world(sessions=1)
     wd = _tomorrow_weekday()
-    resp = _put_schedule(
-        student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}]
-    )
-    assert resp.status_code == 200
-    assert resp.data["generated"]["created"] == 0  # pending, not yet booked
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
     ap = _approve(student)
-    assert ap.data["generated"]["created"] == 1  # only one credit
+    assert ap.data["generated"]["created"] == 1
     assert ap.data["generated"]["outOfCredits"] is True
     assert Booking.objects.filter(student=student).count() == 1
 
 
 def test_regenerating_is_idempotent_no_double_booking():
-    student, instructor, topic = _world(sessions=4)
+    student, instructor = _world(sessions=4)
     wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    _approve(student)  # 2 bookings created
-    # Second identical save leaves the pick APPROVED and must not double-book.
-    resp = _put_schedule(
-        student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}]
-    )
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    resp = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
     assert resp.status_code == 200
     assert resp.data["schedule"][0]["reviewStatus"] == "approved"
     assert resp.data["generated"]["created"] == 0
     assert Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).count() == 2
 
 
-# ── availability windows ──────────────────────────────────────────────────────
-def test_pick_outside_instructor_window_is_rejected():
-    student, instructor, topic = _world()
-    RecurringAvailability.objects.create(
-        instructor=instructor, weekday=_tomorrow_weekday(),
-        start_time=time(8, 0), end_time=time(10, 0),
-    )
-    resp = _put_schedule(
-        student, [{"weekday": _tomorrow_weekday(), "startTime": "12:00", "topicId": str(topic.id)}]
-    )
-    assert resp.status_code == 422
-    assert resp.data["code"] == "outside_availability"
-    assert StudentScheduleSlot.objects.filter(student=student).count() == 0
-
-
-def test_pick_inside_instructor_window_is_accepted():
-    student, instructor, topic = _world()
-    wd = _tomorrow_weekday()
-    RecurringAvailability.objects.create(
-        instructor=instructor, weekday=wd, start_time=time(8, 0), end_time=time(22, 0),
-    )
-    resp = _put_schedule(
-        student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}]
-    )
-    assert resp.status_code == 200
-    assert len(resp.data["schedule"]) == 1
-
-
-# ── reads ─────────────────────────────────────────────────────────────────────
 def test_get_schedule_returns_picks_and_upcoming():
-    student, instructor, topic = _world(sessions=4)
+    student, instructor = _world(sessions=4)
     wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
     _approve(student)
     resp = client_for(student.user).get("/api/v1/student/schedule/")
     assert resp.status_code == 200
     assert len(resp.data["schedule"]) == 1
-    assert resp.data["schedule"][0]["topicId"] == str(topic.id)
     assert resp.data["schedule"][0]["reviewStatus"] == "approved"
     assert len(resp.data["upcoming"]) == 2
-
-
-def test_windows_endpoint_resolves_instructor_from_topic():
-    student, instructor, topic = _world()
-    wd = _tomorrow_weekday()
-    RecurringAvailability.objects.create(
-        instructor=instructor, weekday=wd, start_time=time(8, 0), end_time=time(22, 0),
-    )
-    resp = client_for(student.user).get(f"/api/v1/student/schedule/windows/?topicId={topic.id}")
-    assert resp.status_code == 200
-    assert resp.data["instructorId"] == str(instructor.id)
-    assert len(resp.data["windows"]) == 1
-    assert resp.data["windows"][0]["startTime"] == "08:00"
+    # Lesson not prepared yet → hidden.
+    assert resp.data["upcoming"][0]["lessonReady"] is False
 
 
 def test_removing_a_pick_deactivates_it_but_keeps_generated_bookings():
-    student, instructor, topic = _world(sessions=6)
+    student, instructor = _world(sessions=6)
     wd1 = _tomorrow_weekday()
     wd2 = (wd1 + 1) % 7
-    _put_schedule(
-        student,
-        [
-            {"weekday": wd1, "startTime": "12:00", "topicId": str(topic.id)},
-            {"weekday": wd2, "startTime": "13:00", "topicId": str(topic.id)},
-        ],
-    )
+    _put_availability(student, [
+        {"weekday": wd1, "startTime": "12:00"},
+        {"weekday": wd2, "startTime": "13:00"},
+    ])
     _approve(student)
     created_first = Booking.objects.filter(student=student).count()
     assert created_first >= 2
-    # Drop the second pick.
-    resp = _put_schedule(
-        student, [{"weekday": wd1, "startTime": "12:00", "topicId": str(topic.id)}]
-    )
+    resp = _put_availability(student, [{"weekday": wd1, "startTime": "12:00"}])
     assert resp.status_code == 200
     assert len(resp.data["schedule"]) == 1
-    # Already-generated bookings from the dropped pick are preserved.
     assert Booking.objects.filter(student=student).count() == created_first
+
+
+def test_topup_regenerates_approved_schedule():
+    from apps.billing.models import Subscription
+    from apps.billing.services import topup_subscription
+
+    student, instructor = _world(sessions=1)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    assert Booking.objects.filter(student=student).count() == 1
+    sub = Subscription.objects.filter(student=student).first()
+    topup_subscription(sub, make_admin(), sessions=3)
+    assert Booking.objects.filter(student=student).count() == 2
+
+
+def test_cancelled_recurring_occurrence_is_not_recreated():
+    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
+    from apps.scheduling.services import cancel_booking
+
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    bookings = list(
+        Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at")
+    )
+    assert len(bookings) == 2
+    cancel_booking(bookings[0])
+    generate_all()
+    assert Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).count() == 1
+
+
+def test_rolling_generation_command_is_idempotent():
+    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
+
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    n = Booking.objects.filter(student=student).count()
+    result = generate_all()
+    assert result["students"] >= 1
+    assert Booking.objects.filter(student=student).count() == n
+
+
+# ── admin review gate ─────────────────────────────────────────────────────────
+def test_admin_lists_pending_with_instructor_candidates():
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    admin = make_admin()
+    resp = client_for(admin).get("/api/v1/admin/schedule-requests/")
+    assert resp.status_code == 200
+    group = resp.data[0]
+    assert group["studentId"] == str(student.id)
+    pick = group["picks"][0]
+    assert pick["reviewStatus"] == "pending"
+    cand_ids = {c["id"] for c in pick["instructorCandidates"]}
+    assert str(instructor.id) in cand_ids
+
+
+def test_admin_assigns_a_different_instructor():
+    student, instructor = _world(sessions=4)
+    other = make_instructor()  # also available all week
+    wd = _tomorrow_weekday()
+    put = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    slot_id = put.data["schedule"][0]["id"]
+    admin = make_admin()
+    resp = client_for(admin).post(
+        "/api/v1/admin/schedule-requests/assign/",
+        {"slotId": slot_id, "instructorId": str(other.id)},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.data
+    assert resp.data["instructorId"] == str(other.id)
+
+
+def test_admin_reject_marks_slot_and_blocks_generation():
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    put = _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    slot_id = put.data["schedule"][0]["id"]
+    admin = make_admin()
+    resp = client_for(admin).post(
+        "/api/v1/admin/schedule-requests/reject/",
+        {"slotId": slot_id, "note": "Please pick an earlier time."},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert resp.data["reviewStatus"] == "rejected"
+    assert Booking.objects.filter(student=student).count() == 0
+
+
+def test_admin_approve_only_specific_slots():
+    student, instructor = _world(sessions=8)
+    wd1 = _tomorrow_weekday()
+    wd2 = (wd1 + 1) % 7
+    put = _put_availability(student, [
+        {"weekday": wd1, "startTime": "12:00"},
+        {"weekday": wd2, "startTime": "13:00"},
+    ])
+    first_slot = put.data["schedule"][0]["id"]
+    ap = _approve(student, slot_ids=[first_slot])
+    assert ap.status_code == 200
+    assert ap.data["approved"] == 1
+    statuses = sorted(s.review_status for s in StudentScheduleSlot.objects.filter(student=student))
+    assert statuses == ["approved", "pending"]
+
+
+# ── instructor lesson authoring + 1h reveal ───────────────────────────────────
+def test_instructor_prepares_lesson_and_student_sees_it_within_an_hour():
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    booking = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at").first()
+
+    # Instructor sees the session in their lessons list, then authors the lesson.
+    ic = client_for(instructor.user)
+    lst = ic.get("/api/v1/instructor/lessons/")
+    assert lst.status_code == 200
+    assert any(x["bookingId"] == str(booking.id) for x in lst.data)
+
+    prep = ic.post(
+        f"/api/v1/instructor/bookings/{booking.id}/lesson/",
+        {"title": "Job interviews", "questions": ["Tell me about yourself", "Your strengths?"]},
+        format="json",
+    )
+    assert prep.status_code == 200, prep.data
+    assert prep.data["lessonPrepared"] is True
+
+    # Student: hidden while the session is >1h away.
+    booking.refresh_from_db()
+    from apps.scheduling.services import lesson_visible_to_student
+    far = booking.scheduled_at - timedelta(hours=2)
+    assert lesson_visible_to_student(booking, now=far) is False
+    near = booking.scheduled_at - timedelta(minutes=30)
+    assert lesson_visible_to_student(booking, now=near) is True
+
+
+def test_instructor_cannot_prepare_others_session():
+    student, instructor = _world(sessions=4)
+    intruder = make_instructor()
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    booking = Booking.objects.filter(student=student).first()
+    resp = client_for(intruder.user).post(
+        f"/api/v1/instructor/bookings/{booking.id}/lesson/",
+        {"title": "x", "questions": []},
+        format="json",
+    )
+    assert resp.status_code == 422
+    assert resp.data["code"] == "not_your_session"
 
 
 # ── instructor recurring availability ─────────────────────────────────────────
@@ -217,135 +327,3 @@ def test_instructor_sets_and_reads_recurring_availability():
     got = c.get("/api/v1/instructor/recurring-availability/")
     assert got.status_code == 200
     assert [w["weekday"] for w in got.data] == [0, 2]
-
-
-# ── admin review gate ─────────────────────────────────────────────────────────
-def test_admin_lists_pending_schedule_requests_grouped_by_student():
-    student, instructor, topic = _world(sessions=4)
-    wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    admin = make_admin()
-    resp = client_for(admin).get("/api/v1/admin/schedule-requests/")
-    assert resp.status_code == 200
-    assert len(resp.data) == 1
-    group = resp.data[0]
-    assert group["studentId"] == str(student.id)
-    assert len(group["picks"]) == 1
-    assert group["picks"][0]["reviewStatus"] == "pending"
-
-
-def test_admin_reject_marks_slot_and_blocks_generation():
-    student, instructor, topic = _world(sessions=4)
-    wd = _tomorrow_weekday()
-    put = _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    slot_id = put.data["schedule"][0]["id"]
-    admin = make_admin()
-    resp = client_for(admin).post(
-        "/api/v1/admin/schedule-requests/reject/",
-        {"slotId": slot_id, "note": "Please pick an earlier time."},
-        format="json",
-    )
-    assert resp.status_code == 200
-    assert resp.data["reviewStatus"] == "rejected"
-    assert resp.data["reviewNote"] == "Please pick an earlier time."
-    # A rejected pick never materialises bookings.
-    slot = StudentScheduleSlot.objects.get(pk=slot_id)
-    assert slot.review_status == "rejected"
-    assert Booking.objects.filter(student=student).count() == 0
-
-
-def test_topup_regenerates_approved_schedule():
-    """Approving with too few credits books what it can; a later top-up
-    auto-materialises the remaining occurrences (no manual re-run)."""
-    from apps.billing.models import Subscription
-    from apps.billing.services import topup_subscription
-
-    student, instructor, topic = _world(sessions=1)  # only one credit
-    wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    _approve(student)  # horizon wants 2 but only 1 credit → 1 booking
-    assert Booking.objects.filter(student=student).count() == 1
-
-    sub = Subscription.objects.filter(student=student).first()
-    topup_subscription(sub, make_admin(), sessions=3)
-    # The second occurrence is now booked automatically by the top-up.
-    assert Booking.objects.filter(student=student).count() == 2
-
-
-def test_cancelled_recurring_occurrence_is_not_recreated():
-    """A student cancelling one recurring occurrence must not see it recreated
-    (and re-charged) by the next rolling generation run."""
-    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
-    from apps.scheduling.services import cancel_booking
-
-    student, instructor, topic = _world(sessions=4)
-    wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    _approve(student)
-    bookings = list(
-        Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("scheduled_at")
-    )
-    assert len(bookings) == 2
-
-    cancel_booking(bookings[0])
-    generate_all()  # rolling run must NOT resurrect the cancelled occurrence
-    assert Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).count() == 1
-
-
-def test_rolling_generation_command_is_idempotent():
-    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
-
-    student, instructor, topic = _world(sessions=4)
-    wd = _tomorrow_weekday()
-    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    _approve(student)
-    n = Booking.objects.filter(student=student).count()
-    result = generate_all()
-    assert result["students"] >= 1
-    assert Booking.objects.filter(student=student).count() == n  # no duplicates
-
-
-def test_admin_reassign_pick_changes_topic_and_instructor():
-    student, instructor, topic = _world(sessions=4)
-    other_ins = make_instructor()
-    other_topic = make_topic(other_ins)
-    wd = _tomorrow_weekday()
-    put = _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
-    slot_id = put.data["schedule"][0]["id"]
-
-    admin = make_admin()
-    # The admin topics picker lists published topics.
-    tl = client_for(admin).get("/api/v1/admin/topics/")
-    assert tl.status_code == 200
-    ids = {t["id"] for t in tl.data}
-    assert {str(topic.id), str(other_topic.id)} <= ids
-
-    resp = client_for(admin).post(
-        "/api/v1/admin/schedule-requests/reassign/",
-        {"slotId": slot_id, "topicId": str(other_topic.id)},
-        format="json",
-    )
-    assert resp.status_code == 200, resp.data
-    assert resp.data["topicId"] == str(other_topic.id)
-    assert resp.data["instructorId"] == str(other_ins.id)
-    assert resp.data["reviewStatus"] == "pending"
-
-
-def test_admin_approve_only_specific_slots():
-    student, instructor, topic = _world(sessions=8)
-    wd1 = _tomorrow_weekday()
-    wd2 = (wd1 + 1) % 7
-    put = _put_schedule(
-        student,
-        [
-            {"weekday": wd1, "startTime": "12:00", "topicId": str(topic.id)},
-            {"weekday": wd2, "startTime": "13:00", "topicId": str(topic.id)},
-        ],
-    )
-    first_slot = put.data["schedule"][0]["id"]
-    ap = _approve(student, slot_ids=[first_slot])
-    assert ap.status_code == 200
-    assert ap.data["approved"] == 1
-    # Only the approved pick generated bookings; the other stays pending.
-    statuses = sorted(s.review_status for s in StudentScheduleSlot.objects.filter(student=student))
-    assert statuses == ["approved", "pending"]

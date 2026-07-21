@@ -173,8 +173,8 @@ export function AIReportPage() {
       {r.bookingId && <RateSessionCard bookingId={r.bookingId} instructorName={r.instructorName} />}
 
       <Button asChild className="mt-6 w-full sm:w-auto">
-        <Link to="/student/book">
-          Book a follow-up session <ArrowRight size={16} />
+        <Link to="/student/schedule">
+          Set your availability <ArrowRight size={16} />
         </Link>
       </Button>
     </DashboardLayout>

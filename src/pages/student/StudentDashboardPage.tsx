@@ -164,7 +164,7 @@ export function StudentDashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button asChild variant="ghost" size="sm">
-                    <Link to={`/student/book`}>{tx("Book again")}</Link>
+                    <Link to={`/student/schedule`}>{tx("Manage availability")}</Link>
                   </Button>
                   <Button asChild size="sm">
                     <Link to={`/student/session/${d.nextSession.id}`}>{tx("Join room")}</Link>
@@ -181,8 +181,8 @@ export function StudentDashboardPage() {
             </p>
             {canBook ? (
               <Button asChild className="w-full">
-                <Link to="/student/book">
-                  {tx("Browse topics")} <ArrowRight size={16} />
+                <Link to="/student/schedule">
+                  {tx("Set your availability")} <ArrowRight size={16} />
                 </Link>
               </Button>
             ) : (

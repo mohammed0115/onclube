@@ -108,17 +108,26 @@ class GetStudentScheduleUseCase:
         upcoming.sort(key=lambda b: b.scheduled_at)
         return {
             "schedule": [schedule_pick_dto(p) for p in picks],
-            "upcoming": [
-                {
-                    "bookingId": str(b.id),
-                    "topicTitle": b.topic_title,
-                    "instructorName": b.instructor_name,
-                    "scheduledAt": b.scheduled_at.isoformat(),
-                    "durationMinutes": b.duration_minutes,
-                    "status": b.status,
-                }
-                for b in upcoming
-            ],
+            "upcoming": [self._upcoming_dto(b, now) for b in upcoming],
+        }
+
+    @staticmethod
+    def _upcoming_dto(b, now):
+        from apps.scheduling import services as scheduling_services
+
+        revealed = scheduling_services.lesson_visible_to_student(b, now)
+        return {
+            "bookingId": str(b.id),
+            # Before the reveal window the student only sees a neutral label.
+            "topicTitle": (b.lesson_title or b.topic_title) if revealed else "",
+            "instructorName": b.instructor_name,
+            "scheduledAt": b.scheduled_at.isoformat(),
+            "durationMinutes": b.duration_minutes,
+            "status": b.status,
+            "lessonReady": bool(b.lesson_prepared_at),
+            "lessonRevealed": revealed,
+            "lessonTitle": (b.lesson_title if revealed else ""),
+            "lessonQuestions": (b.lesson_questions if revealed else []),
         }
 
     def __bookings(self):

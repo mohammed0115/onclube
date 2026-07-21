@@ -36,7 +36,7 @@ export function SessionReportsPage() {
               description="After you complete a live session, your AI session report will appear here."
               action={
                 <Button asChild>
-                  <Link to="/student/book">{tx("Book a session")} <ArrowRight size={16} /></Link>
+                  <Link to="/student/schedule">{tx("Set your availability")} <ArrowRight size={16} /></Link>
                 </Button>
               }
             />

@@ -99,7 +99,7 @@ export function QuestionsPreviewPage() {
       <PageHeader
         title={topic.title}
         subtitle="Review these before your session so you can practise with confidence."
-        back="/student/book"
+        back="/student/schedule"
         action={<Badge tone="indigo">{topic.level}</Badge>}
       />
 
