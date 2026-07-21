@@ -61,9 +61,22 @@ function useTTS() {
     u.pitch = opts.pitch;
     u.rate = opts.rate;
     u.lang = v?.lang ?? "en-US";
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => { setSpeaking(false); onEnd?.(); };
-    u.onerror = () => { setSpeaking(false); onEnd?.(); };
+    // Chrome cuts long utterances after ~15s; a periodic resume() keeps it going.
+    let keepAlive = 0;
+    let ended = false;
+    const finish = () => {
+      if (ended) return;
+      ended = true;
+      if (keepAlive) window.clearInterval(keepAlive);
+      setSpeaking(false);
+      onEnd?.();
+    };
+    u.onstart = () => {
+      setSpeaking(true);
+      keepAlive = window.setInterval(() => { try { window.speechSynthesis.resume(); } catch { /* noop */ } }, 9000);
+    };
+    u.onend = finish;
+    u.onerror = finish;
     window.speechSynthesis.speak(u);
   };
   const stop = () => { if (supported) window.speechSynthesis.cancel(); setSpeaking(false); };
@@ -153,12 +166,38 @@ function useSpeechRecognition() {
     };
     rec.onend = () => { setListening(false); setInterim(""); };
     rec.onerror = () => { setListening(false); setInterim(""); };
+    // Abort any previous instance first — starting a live recognition twice throws.
+    if (recRef.current) { try { recRef.current.abort(); } catch { /* noop */ } }
     recRef.current = rec;
     setListening(true);
-    rec.start();
+    try { rec.start(); } catch { setListening(false); }
   };
-  const stop = () => { try { recRef.current?.stop(); } catch { /* noop */ } setListening(false); };
+  const stop = () => {
+    const r = recRef.current;
+    recRef.current = null;
+    if (r) { try { r.abort(); } catch { /* noop */ } }
+    setListening(false);
+    setInterim("");
+  };
   return { supported, listening, interim, start, stop };
+}
+
+/** Normalise recognised text for echo comparison. */
+function normText(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+}
+
+/** True when the recognised speech is (mostly) the tutor's own voice picked up from
+ *  the speakers — the source of the "responds → cuts → responds" echo loop. */
+function isLikelyEcho(heard: string, tutorLine: string): boolean {
+  const h = normText(heard);
+  const t = normText(tutorLine);
+  if (!h || !t) return false;
+  if (t.includes(h) && h.length >= 4) return true;
+  const hw = h.split(" ");
+  const tset = new Set(t.split(" "));
+  const common = hw.filter((w) => tset.has(w)).length;
+  return hw.length > 0 && common / hw.length >= 0.6;
 }
 
 function fmtClock(sec: number) {
@@ -254,6 +293,7 @@ export function AITutorPage() {
   const callOnRef = useRef(callOn); callOnRef.current = callOn;
   const sessionRef = useRef(session); sessionRef.current = session;
   const maybeListenRef = useRef<() => void>(() => {});
+  const lastTutorTextRef = useRef<string>(""); // for echo detection
 
   // Adopt an in-progress session returned by /status.
   useEffect(() => {
@@ -299,6 +339,7 @@ export function AITutorPage() {
     const key = `${session?.sessionId}:${msgs.length}:${last.text}`;
     if (key === lastSpokenRef.current) return;
     lastSpokenRef.current = key;
+    lastTutorTextRef.current = last.text; // remember it to filter echo from the mic
     if (muted || !tts.supported) {
       maybeListenRef.current();
       return;
@@ -339,14 +380,32 @@ export function AITutorPage() {
 
   const onSend = () => { sendText(draft); setDraft(""); };
 
-  // Resume listening for the next turn if the call is still on and it's the
-  // student's turn (not while the tutor is speaking/thinking). Assigned to a ref so
-  // the TTS-onEnd callback always calls the freshest version.
-  const maybeListen = () => {
-    if (!callOnRef.current) return;
-    if (sessionRef.current?.status !== "active") return;
+  // Open the mic for the student's turn. Drops the tutor's own voice picked up from
+  // the speakers (echo) and too-short noise, re-listening instead of replying to it.
+  const startListening = () => {
     if (!speech.supported || speech.listening) return;
-    speech.start((finalText) => sendText(finalText));
+    speech.start((finalText) => {
+      const t = finalText.trim();
+      if (t.length < 2 || isLikelyEcho(t, lastTutorTextRef.current)) {
+        maybeListenRef.current(); // ignore echo/noise; keep waiting for the student
+        return;
+      }
+      sendText(t);
+    });
+  };
+
+  // Resume listening for the next turn — only when it's genuinely the student's turn
+  // (call on, session active, tutor not still speaking). A short delay lets the
+  // speaker audio settle so the mic doesn't capture the tutor's tail.
+  const maybeListen = () => {
+    if (!callOnRef.current || sessionRef.current?.status !== "active") return;
+    if (!speech.supported) return;
+    // maybeListen only runs after the tutor finished speaking; a short delay lets the
+    // speaker audio settle so the mic doesn't capture the tutor's tail as echo.
+    window.setTimeout(() => {
+      if (!callOnRef.current || sessionRef.current?.status !== "active") return;
+      startListening();
+    }, 500);
   };
   maybeListenRef.current = maybeListen;
 
@@ -359,7 +418,7 @@ export function AITutorPage() {
       tts.stop();
     } else {
       setCallOn(true);
-      if (speech.supported && !speech.listening) speech.start((finalText) => sendText(finalText));
+      startListening();
     }
   };
 
