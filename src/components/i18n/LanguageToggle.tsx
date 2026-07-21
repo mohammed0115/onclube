@@ -21,16 +21,21 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
 
 // Areas that render DashboardLayout (which already has a header toggle).
 const DASHBOARD_PREFIXES = ["/student", "/instructor", "/admin"];
+// Marketing pages that render <MarketingNav /> (which now has its own toggle).
+const MARKETING_PREFIXES = ["/billing/pricing", "/instructors"];
 
 /**
- * Floating toggle for pages WITHOUT the dashboard chrome (landing, auth,
- * onboarding, billing) — so language can be switched before signing in.
- * Hidden on dashboard routes to avoid a duplicate of the header toggle.
+ * Floating toggle for pages WITHOUT their own toggle (auth, onboarding) — so
+ * language can be switched before signing in. Hidden on dashboard routes and on
+ * marketing pages (landing "/", pricing, public instructor) to avoid a
+ * duplicate of the header/nav toggle.
  */
 export function FloatingLanguageToggle() {
   const { pathname } = useLocation();
   const onDashboard = DASHBOARD_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  if (onDashboard) return null;
+  const onMarketing =
+    pathname === "/" || MARKETING_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  if (onDashboard || onMarketing) return null;
   return (
     <div className="fixed bottom-4 end-4 z-50">
       <LanguageToggle className="border border-border bg-card/95 shadow-md backdrop-blur" />

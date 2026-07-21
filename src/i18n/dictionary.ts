@@ -866,6 +866,10 @@ const PAIRS: [string, string][] = [
   ["Notifications", "الإشعارات"],
   ["You're all caught up 🎉", "أنت على اطّلاع بكل شيء 🎉"],
 
+  // ── marketing nav ───────────────────────────────────────────────────────
+  ["Instructors", "المُعلّمون"],
+  ["Get started", "ابدأ الآن"],
+
   // ── landing: live stats band + instructor spotlight ─────────────────────
   ["real instructors", "مُعلّمون حقيقيون"],
   ["Vetted instructors", "مُعلّمون مُدقَّقون"],
