@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Ban, CheckCircle, Loader2 } from "lucide-react";
+import { Users, Ban, CheckCircle, Loader2, UserPlus, X } from "lucide-react";
 import { Link } from "react-router";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
-import { useAdminUsers, useSetUserStatus, useChangeUserRole } from "@/hooks";
+import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser } from "@/hooks";
 import { useI18n } from "@/i18n";
 import type { AdminUser } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ const ROLES = ["", "student", "instructor", "admin"] as const;
 export function AdminMembersPage() {
   const { tx } = useI18n();
   const [role, setRole] = useState("");
+  const [adding, setAdding] = useState(false);
   const { data, isLoading } = useAdminUsers(role || undefined);
   const users = data ?? [];
 
@@ -25,8 +26,17 @@ export function AdminMembersPage() {
       <PageHeader
         title="Members"
         subtitle="Manage students, teachers and admins."
-        action={<Link to="/admin/audit" className="text-sm font-semibold text-indigo-600 hover:underline">{tx("Audit log →")}</Link>}
+        action={
+          <div className="flex items-center gap-3">
+            <Link to="/admin/audit" className="text-sm font-semibold text-indigo-600 hover:underline">{tx("Audit log →")}</Link>
+            <Button size="sm" onClick={() => setAdding((v) => !v)}>
+              <UserPlus size={15} /> {tx("Add member")}
+            </Button>
+          </div>
+        }
       />
+
+      {adding && <InviteForm onClose={() => setAdding(false)} />}
 
       <div className="mb-4 flex gap-2">
         {ROLES.map((r) => (
@@ -53,6 +63,86 @@ export function AdminMembersPage() {
         </Card>
       )}
     </DashboardLayout>
+  );
+}
+
+function InviteForm({ onClose }: { onClose: () => void }) {
+  const { tx } = useI18n();
+  const invite = useInviteUser();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"instructor" | "admin" | "student">("instructor");
+  const [link, setLink] = useState<string | null>(null);
+
+  const canSubmit = fullName.trim().length > 1 && /\S+@\S+\.\S+/.test(email) && !invite.isPending;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    setLink(null);
+    invite.mutate(
+      { fullName: fullName.trim(), email: email.trim(), role },
+      {
+        onSuccess: (res: { inviteLink?: string }) => {
+          setLink(res.inviteLink ?? null);
+          setFullName(""); setEmail("");
+        },
+      },
+    );
+  };
+
+  return (
+    <Card className="mb-4 p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <UserPlus size={16} className="text-indigo-600" /> {tx("Invite a new member")}
+        </div>
+        <button onClick={onClose} className="rounded-lg p-1 text-muted-foreground hover:bg-muted" aria-label={tx("Close")}>
+          <X size={16} />
+        </button>
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        {tx("We create the account and email a link to set a password. The account stays inactive until they set it.")}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder={tx("Full name")}
+          className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+        />
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={tx("Email address")}
+          className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+        />
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as "instructor" | "admin" | "student")}
+          className="rounded-xl border border-border bg-background px-3 py-2 text-sm capitalize text-foreground"
+        >
+          <option value="instructor">{tx("instructor")}</option>
+          <option value="student">{tx("student")}</option>
+          <option value="admin">{tx("admin")}</option>
+        </select>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <Button size="sm" onClick={submit} disabled={!canSubmit}>
+          {invite.isPending ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} {tx("Send invite")}
+        </Button>
+        {invite.isError && <span className="text-xs text-red-600">{tx("Could not invite. The email may already be registered.")}</span>}
+      </div>
+      {link && (
+        <div className="mt-3 rounded-xl bg-emerald-50 p-3">
+          <div className="text-xs font-semibold text-emerald-700">{tx("Invite sent ✓ Share this set-password link if the email doesn't arrive:")}</div>
+          <div className="mt-1 flex items-center gap-2">
+            <input readOnly value={link} className="flex-1 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-xs text-slate-700" onFocus={(e) => e.target.select()} />
+            <Button size="sm" variant="soft" onClick={() => navigator.clipboard?.writeText(link)}>{tx("Copy")}</Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

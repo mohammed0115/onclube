@@ -143,6 +143,9 @@ export const topicsApi = {
   changeUserRole(id: string, role: string): Promise<{ userId: string; role: string }> {
     return api.post(`/admin/users/${id}/role/`, { role });
   },
+  inviteUser(input: { fullName: string; email: string; role: "instructor" | "admin" | "student" }): Promise<{ userId: string; email: string; role: string; inviteLink?: string }> {
+    return api.post("/admin/users/invite/", input);
+  },
   auditLog(): Promise<AuditEntry[]> {
     return api.get<AuditEntry[]>("/admin/audit/");
   },

@@ -518,6 +518,19 @@ export function useChangeUserRole() {
   });
 }
 
+export function useInviteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { fullName: string; email: string; role: "instructor" | "admin" | "student" }) =>
+      topicsApi.inviteUser(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "instructors"] });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
 export const useAuditLog = () =>
   useQuery({ queryKey: qk.auditLog, queryFn: topicsApi.auditLog });
 
