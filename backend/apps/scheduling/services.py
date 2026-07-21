@@ -169,16 +169,37 @@ def rate_booking(student, booking_id, *, stars, comment=""):
 # ── Instructor-authored per-session lesson (revealed to the student ~1h before) ──
 
 LESSON_REVEAL_MINUTES = 60
+# The instructor can only author/edit a session's lesson within this window before
+# it starts — so lessons are prepared close to the session, not far ahead.
+LESSON_PREP_WINDOW_HOURS = 72
+
+
+def lesson_prep_opens_at(booking):
+    """The earliest moment the instructor may author this session's lesson."""
+    from datetime import timedelta
+
+    return booking.scheduled_at - timedelta(hours=LESSON_PREP_WINDOW_HOURS)
+
+
+def lesson_prep_open(booking, now=None) -> bool:
+    now = now or timezone.now()
+    return now >= lesson_prep_opens_at(booking)
 
 
 @transaction.atomic
-def set_booking_lesson(booking, *, instructor, title, questions):
+def set_booking_lesson(booking, *, instructor, title, questions, now=None):
     """The assigned instructor authors this session's lesson: a free-form title +
-    a list of discussion questions. Revealed to the student ~1h before the start."""
+    a list of discussion questions. Revealed to the student ~1h before the start.
+    Only allowed within LESSON_PREP_WINDOW_HOURS before the session."""
     if booking.instructor_id != instructor.id:
         raise BusinessRuleError("This session isn't assigned to you.", code="not_your_session")
     if booking.status != BookingStatus.UPCOMING:
         raise BusinessRuleError("Only upcoming sessions can be prepared.", code="not_upcoming")
+    if not lesson_prep_open(booking, now):
+        raise BusinessRuleError(
+            f"You can prepare this lesson from {lesson_prep_opens_at(booking):%b %d, %H:%M}.",
+            code="prep_not_open",
+        )
     clean_qs = [q.strip() for q in (questions or []) if isinstance(q, str) and q.strip()]
     booking.lesson_title = (title or "").strip()[:160]
     booking.lesson_questions = clean_qs

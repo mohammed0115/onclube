@@ -516,6 +516,9 @@ export interface InstructorLessonSession {
   lessonTitle: string;
   lessonQuestions: string[];
   lessonPrepared: boolean;
+  // Prep is only allowed within a window before the session.
+  prepOpen: boolean;
+  prepOpensAt: string;
 }
 
 export interface StudentSchedule {

@@ -932,6 +932,8 @@ const PAIRS: [string, string][] = [
   ["Tell me about yourself.\nWhat are your strengths?", "حدّثني عن نفسك.\nما نقاط قوّتك؟"],
   ["Suggest with AI", "اقترح بالذكاء الاصطناعي"],
   ["Write a lesson title first", "اكتب عنوان الدرس أولًا"],
+  ["You can prepare this lesson from", "يمكنك تحضير هذا الدرس ابتداءً من"],
+  ["Write the title and questions for each upcoming session. You can prepare a session in the 3 days before it; students see the lesson 1 hour before.", "اكتب عنوان الدرس والأسئلة لكل جلسة قادمة. يمكنك تحضير الجلسة خلال الأيام الثلاثة التي تسبقها؛ ويرى الطلاب الدرس قبل ساعة."],
   ["pending", "معلّق"],
   ["No pending requests", "لا توجد طلبات معلّقة"],
   ["Loading requests…", "جارٍ تحميل الطلبات…"],

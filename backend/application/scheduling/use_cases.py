@@ -383,9 +383,12 @@ class ListInstructorUpcomingSessionsUseCase:
     def execute(self, *, actor) -> list:
         from application.permissions import get_instructor_profile
         from apps.scheduling.models import Booking
+        from apps.scheduling import services as scheduling_services
         from apps.common.enums import BookingStatus
+        from django.utils import timezone
 
         instructor = get_instructor_profile(actor)
+        now = timezone.now()
         bookings = (
             Booking.objects.select_related("student", "student__user")
             .filter(instructor=instructor, status=BookingStatus.UPCOMING, deleted_at__isnull=True)
@@ -400,6 +403,8 @@ class ListInstructorUpcomingSessionsUseCase:
                 "lessonTitle": b.lesson_title or "",
                 "lessonQuestions": b.lesson_questions or [],
                 "lessonPrepared": b.lesson_prepared_at is not None,
+                "prepOpen": scheduling_services.lesson_prep_open(b, now),
+                "prepOpensAt": scheduling_services.lesson_prep_opens_at(b).isoformat(),
             }
             for b in bookings
         ]

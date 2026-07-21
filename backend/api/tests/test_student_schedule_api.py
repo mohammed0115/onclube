@@ -294,6 +294,28 @@ def test_instructor_prepares_lesson_and_student_sees_it_within_an_hour():
     assert lesson_visible_to_student(booking, now=near) is True
 
 
+def test_lesson_prep_is_locked_until_the_window_before_the_session():
+    student, instructor = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_availability(student, [{"weekday": wd, "startTime": "12:00"}])
+    _approve(student)
+    # The farthest occurrence (~1 week out) is outside the 3-day prep window.
+    far = Booking.objects.filter(student=student, status=BookingStatus.UPCOMING).order_by("-scheduled_at").first()
+    resp = client_for(instructor.user).post(
+        f"/api/v1/instructor/bookings/{far.id}/lesson/",
+        {"title": "Money", "questions": []}, format="json",
+    )
+    assert resp.status_code == 422
+    assert resp.data["code"] == "prep_not_open"
+
+    lst = client_for(instructor.user).get("/api/v1/instructor/lessons/")
+    far_item = next(x for x in lst.data if x["bookingId"] == str(far.id))
+    assert far_item["prepOpen"] is False
+    # The nearest occurrence (tomorrow) IS within the window.
+    near_item = min(lst.data, key=lambda x: x["scheduledAt"])
+    assert near_item["prepOpen"] is True
+
+
 def test_instructor_gets_ai_suggested_questions_from_a_title():
     instructor = make_instructor()
     resp = client_for(instructor.user).post(

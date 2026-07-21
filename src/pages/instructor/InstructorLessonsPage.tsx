@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Check, Loader2, Save, Sparkles } from "lucide-react";
+import { BookOpen, Check, Loader2, Save, Sparkles, Lock } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -39,12 +39,14 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
     setQuestions(session.lessonQuestions.join("\n"));
   }, [session.lessonTitle, session.lessonQuestions]);
 
-  const when = (() => {
-    const d = new Date(session.scheduledAt);
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
     return isNaN(d.getTime())
-      ? session.scheduledAt
+      ? iso
       : d.toLocaleString(lang === "ar" ? "ar" : undefined, { weekday: "long", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  })();
+  };
+  const when = fmtDate(session.scheduledAt);
+  const locked = !session.prepOpen;
 
   const onSave = () => {
     setSaved(false);
@@ -68,12 +70,20 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
         )}
       </div>
 
+      {locked && (
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+          <Lock size={14} className="mt-0.5 flex-shrink-0" />
+          <span>{tx("You can prepare this lesson from")} {fmtDate(session.prepOpensAt)}.</span>
+        </div>
+      )}
+
       <label className="mb-1 block text-xs font-semibold text-foreground">{tx("Lesson title")}</label>
       <input
         value={title}
         onChange={(e) => { setTitle(e.target.value); setSaved(false); }}
         placeholder={tx("e.g. Job interviews")}
-        className="mb-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+        disabled={locked}
+        className="mb-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
       />
 
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -82,7 +92,7 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
           variant="soft"
           size="sm"
           onClick={onSuggest}
-          disabled={!title.trim() || suggest.isPending}
+          disabled={locked || !title.trim() || suggest.isPending}
           title={!title.trim() ? tx("Write a lesson title first") : undefined}
         >
           {suggest.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {tx("Suggest with AI")}
@@ -92,12 +102,13 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
         value={questions}
         onChange={(e) => { setQuestions(e.target.value); setSaved(false); }}
         rows={4}
+        disabled={locked}
         placeholder={tx("Tell me about yourself.\nWhat are your strengths?")}
-        className="mb-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
+        className="mb-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
       />
 
       <div className="flex items-center gap-3">
-        <Button size="sm" onClick={onSave} disabled={prepare.isPending}>
+        <Button size="sm" onClick={onSave} disabled={locked || prepare.isPending}>
           {prepare.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {tx("Save lesson")}
         </Button>
         {saved && <span className="text-xs font-medium text-emerald-600">{tx("Saved ✓ — shared with the student 1 hour before")}</span>}
@@ -114,7 +125,7 @@ export function InstructorLessonsPage() {
     <DashboardLayout>
       <PageHeader
         title="Lesson prep"
-        subtitle="Write the title and questions for each upcoming session. Students see them 1 hour before."
+        subtitle="Write the title and questions for each upcoming session. You can prepare a session in the 3 days before it; students see the lesson 1 hour before."
       />
       {isLoading ? (
         <Loading label="Loading sessions…" />
