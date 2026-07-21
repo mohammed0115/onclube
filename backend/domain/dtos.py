@@ -330,6 +330,7 @@ class BookingListItemResult:
     duration_minutes: int
     status: str
     report_id: Optional[str] = None
+    student_name: Optional[str] = None
 
 
 @dataclass(frozen=True)

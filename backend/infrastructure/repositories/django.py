@@ -176,14 +176,14 @@ class DjangoBookingRepository(BookingRepository):
 
     def list_for_student(self, student):
         return list(
-            Booking.objects.select_related(*_BOOKING_LIST_RELATED)
+            Booking.objects.select_related("student__user", *_BOOKING_LIST_RELATED)
             .filter(student=student)
             .order_by("-scheduled_at")
         )
 
     def list_for_instructor(self, instructor):
         return list(
-            Booking.objects.select_related("student", *_BOOKING_LIST_RELATED)
+            Booking.objects.select_related("student__user", *_BOOKING_LIST_RELATED)
             .filter(instructor=instructor)
             .order_by("-scheduled_at")
         )

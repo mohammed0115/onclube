@@ -44,11 +44,11 @@ export function InstructorDashboardPage() {
     <DashboardLayout>
       <PageHeader
         title={`Hello, ${firstName} 👋`}
-        subtitle="Your sessions, topics, and AI-assisted prep."
+        subtitle="Your sessions and AI-assisted lesson prep."
         action={
           <Button asChild size="sm">
-            <Link to="/instructor/topics">
-              {tx("New topic")} <ArrowRight size={15} />
+            <Link to="/instructor/lessons">
+              {tx("Lesson prep")} <ArrowRight size={15} />
             </Link>
           </Button>
         }
@@ -81,8 +81,8 @@ export function InstructorDashboardPage() {
                       <Clock size={18} />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-foreground">{b.topicTitle}</div>
-                      <div className="text-xs text-muted-foreground">{when(b.scheduledAt)} · {b.durationMinutes} min</div>
+                      <div className="text-sm font-semibold text-foreground">{b.topicTitle || tx("Session")}</div>
+                      <div className="text-xs text-muted-foreground">{when(b.scheduledAt)} · {b.durationMinutes} {tx("min")}</div>
                     </div>
                   </div>
                   <Button asChild variant="ghost" size="sm">
@@ -94,26 +94,14 @@ export function InstructorDashboardPage() {
           </Card>
 
           <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">{tx("Your topics")}</h3>
-              <Button asChild variant="link" size="sm">
-                <Link to="/instructor/topics">{tx("Edit topics")}</Link>
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {d.topics.length === 0 && <p className="text-sm text-muted-foreground">{tx("No topics yet — create your first.")}</p>}
-              {d.topics.map((t) => (
-                <div key={t.id} className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground">{t.title}</span>
-                      {t.published ? <Badge tone="emerald">{tx("Published")}</Badge> : <Badge tone="amber">{tx("Draft")}</Badge>}
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{tx("Level")} {t.level}</div>
-                  </div>
-                  <Users size={16} className="flex-shrink-0 text-muted-foreground" />
-                </div>
-              ))}
+            <h3 className="mb-1 font-display font-bold text-foreground">{tx("Get ready for your sessions")}</h3>
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+              {tx("Open your weekly availability so students can be matched to you, then write each session's lesson (title + questions) — students see it 1 hour before.")}
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Button asChild variant="soft" size="sm"><Link to="/instructor/availability">{tx("Availability")}</Link></Button>
+              <Button asChild size="sm"><Link to="/instructor/lessons">{tx("Lesson prep")}</Link></Button>
+              <Button asChild variant="soft" size="sm"><Link to="/instructor/sessions">{tx("My Sessions")}</Link></Button>
             </div>
           </Card>
         </div>
@@ -125,11 +113,11 @@ export function InstructorDashboardPage() {
             </div>
             <h3 className="mb-1 font-display font-bold text-foreground">{tx("Prep faster with AI")}</h3>
             <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-              {tx("When you create a topic, AI suggests subtopics and discussion questions. You stay in control — nothing is added until you accept it.")}
+              {tx("In Lesson prep, write a lesson title and let AI suggest discussion questions. You stay in control — edit or replace anything before you save.")}
             </p>
             <Button asChild className="w-full">
-              <Link to="/instructor/topics">
-                <Sparkles size={15} /> {tx("Build a topic")}
+              <Link to="/instructor/lessons">
+                <Sparkles size={15} /> {tx("Lesson prep")}
               </Link>
             </Button>
           </Card>

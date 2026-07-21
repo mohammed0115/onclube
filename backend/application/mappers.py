@@ -227,6 +227,7 @@ def booking_list_item(b) -> dtos.BookingListItemResult:
         duration_minutes=b.duration_minutes,
         status=b.status,
         report_id=_safe_related_id(b, "report"),
+        student_name=b.student.user.full_name if b.student_id else None,
     )
 
 

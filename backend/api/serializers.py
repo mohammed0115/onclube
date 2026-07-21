@@ -270,6 +270,7 @@ class BookingListItemSerializer(serializers.Serializer):
     durationMinutes = serializers.IntegerField(source="duration_minutes")
     status = serializers.CharField()
     reportId = serializers.CharField(source="report_id", allow_null=True)
+    studentName = serializers.CharField(source="student_name", allow_null=True)
 
 
 class BookingDetailSerializer(serializers.Serializer):

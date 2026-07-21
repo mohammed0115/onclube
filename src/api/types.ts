@@ -307,6 +307,7 @@ export interface BookingListItem {
   durationMinutes: number;
   status: string;
   reportId: string | null;
+  studentName?: string | null;
 }
 
 export interface BookingDetail extends BookingListItem {
