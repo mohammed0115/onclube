@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
-import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser, useTopUpSubscription, useExtendSubscription, useRefundNote } from "@/hooks";
+import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser, useTopUpSubscription, useExtendSubscription, useRefundNote, useResetSpoken } from "@/hooks";
 import { useI18n } from "@/i18n";
 import type { AdminUser } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -153,8 +153,16 @@ function MemberRow({ u }: { u: AdminUser }) {
   const topUp = useTopUpSubscription();
   const extend = useExtendSubscription();
   const refund = useRefundNote();
+  const resetSpoken = useResetSpoken();
   const suspended = u.status === "suspended";
   const isStudent = u.role === "student";
+
+  const onResetSpoken = () => {
+    if (!u.studentId) return;
+    const reason = window.prompt(tx("Reason for resetting the spoken test:"), "");
+    if (!reason) return;
+    resetSpoken.mutate({ studentId: u.studentId, reason });
+  };
 
   const onTopUp = () => {
     if (!u.subscriptionId) return;
@@ -224,6 +232,15 @@ function MemberRow({ u }: { u: AdminUser }) {
               {refund.isPending ? "…" : tx("Refund note")}
             </button>
           </div>
+        )}
+        {isStudent && u.studentId && (
+          <button
+            onClick={onResetSpoken}
+            disabled={resetSpoken.isPending}
+            className="rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+          >
+            {resetSpoken.isPending ? "…" : tx("Reset test")}
+          </button>
         )}
         {suspended && <Badge tone="red">{tx("Suspended")}</Badge>}
         <select

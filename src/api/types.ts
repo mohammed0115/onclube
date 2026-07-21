@@ -740,7 +740,9 @@ export interface AdminUser {
   email: string;
   role: "student" | "instructor" | "admin";
   status: "active" | "suspended";
-  // Present for students with an active subscription (for admin top-up / extend).
+  // Present for students (profile id — for placement reset) and, when funded, the
+  // active subscription (for admin top-up / extend / refund).
+  studentId?: string | null;
   subscriptionId?: string | null;
   sessionsRemaining?: number | null;
   expiresAt?: string | null;

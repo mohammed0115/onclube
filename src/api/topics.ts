@@ -161,14 +161,20 @@ export const topicsApi = {
   adminSessions(): Promise<AdminSession[]> {
     return api.get<AdminSession[]>("/admin/sessions/");
   },
+  adminReportRerun(sessionId: string): Promise<{ reportId: string; status: string }> {
+    return api.post(`/admin/sessions/${sessionId}/report/regenerate/`, {});
+  },
+  adminResetSpoken(studentId: string, reason: string): Promise<{ auditId: string }> {
+    return api.post(`/admin/placement/${studentId}/reset-spoken/`, { reason });
+  },
   adminBusiness(): Promise<BusinessOverview> {
     return api.get<BusinessOverview>("/admin/business/");
   },
   adminPlatform(): Promise<PlatformStatus> {
     return api.get<PlatformStatus>("/admin/platform/");
   },
-  adminPaymentProofs(): Promise<PaymentApprovalItem[]> {
-    return api.get<PaymentApprovalItem[]>("/admin/payment-proofs/");
+  adminPaymentProofs(status?: string): Promise<PaymentApprovalItem[]> {
+    return api.get<PaymentApprovalItem[]>(`/admin/payment-proofs/${status ? `?status=${status}` : ""}`);
   },
   adminPaymentProofDetail(proofId: string): Promise<PaymentProofDetail> {
     return api.get<PaymentProofDetail>(`/admin/payment-proofs/${proofId}/`);

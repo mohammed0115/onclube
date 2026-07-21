@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loading, EmptyState } from "@/components/states";
-import { useAdminSessions } from "@/hooks";
+import { RefreshCw, Loader2 } from "lucide-react";
+import { useAdminSessions, useAdminReportRerun } from "@/hooks";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -50,18 +51,36 @@ export function AdminSessionsPage() {
       ) : (
         <Card className="overflow-hidden p-0">
           <div className="divide-y divide-border">
-            {shown.map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{s.topicTitle}</div>
-                  <div className="text-xs text-muted-foreground">{s.studentName} · {s.instructorName} · {fmt(s.scheduledAt)}</div>
-                </div>
-                <Badge tone={TONE[s.status] ?? "muted"} className="capitalize">{tx(s.status)}</Badge>
-              </div>
-            ))}
+            {shown.map((s) => <SessionRow key={s.id} s={s} tx={tx} />)}
           </div>
         </Card>
       )}
     </DashboardLayout>
+  );
+}
+
+function SessionRow({ s, tx }: { s: { id: string; topicTitle: string; studentName: string; instructorName: string; scheduledAt: string; status: string }; tx: (k: string) => string }) {
+  const regen = useAdminReportRerun();
+  const [done, setDone] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-4 p-4">
+      <div>
+        <div className="text-sm font-semibold text-foreground">{s.topicTitle || tx("Session")}</div>
+        <div className="text-xs text-muted-foreground">{s.studentName} · {s.instructorName} · {fmt(s.scheduledAt)}</div>
+      </div>
+      <div className="flex items-center gap-2">
+        {s.status === "completed" && (
+          <button
+            onClick={() => regen.mutate(s.id, { onSuccess: () => setDone(true) })}
+            disabled={regen.isPending}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+          >
+            {regen.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {done ? tx("Regenerated ✓") : tx("Regenerate report")}
+          </button>
+        )}
+        <Badge tone={TONE[s.status] ?? "muted"} className="capitalize">{tx(s.status)}</Badge>
+      </div>
+    </div>
   );
 }

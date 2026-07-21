@@ -1022,7 +1022,9 @@ class AdminDashboardView(AdminAPIView):
 
 class AdminPaymentProofListView(AdminAPIView):
     def get(self, request):
-        dtos = ListAdminPaymentApprovalsUseCase().execute(actor=request.user)
+        dtos = ListAdminPaymentApprovalsUseCase().execute(
+            actor=request.user, status=request.query_params.get("status")
+        )
         return Response(s.PaymentApprovalItemSerializer(dtos, many=True).data)
 
 

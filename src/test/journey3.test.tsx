@@ -145,7 +145,7 @@ describe("PaymentApprovalPage", () => {
     renderPage(<PaymentApprovalPage />);
     await screen.findByText("TRX-1");
     await userEvent.type(screen.getByLabelText(/Note to the student/i), "Wrong amount.");
-    await userEvent.click(screen.getByRole("button", { name: /^Reject/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Reject$/i }));
     await waitFor(() => expect(body.note).toBe("Wrong amount."));
   });
 });

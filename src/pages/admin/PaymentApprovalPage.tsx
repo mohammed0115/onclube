@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, X, MessageSquare, FileText, ExternalLink } from "lucide-react";
+import { Check, X, MessageSquare, FileText, ExternalLink, RotateCcw } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import {
   useApprovePayment,
   useRejectPayment,
   useRequestPaymentInfo,
+  useReopenPayment,
 } from "@/hooks";
 import { Loading, ErrorState, EmptyState } from "@/components/states";
 import type { PaymentStatus } from "@/types";
@@ -31,12 +32,20 @@ function when(iso: string): string {
     : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+const VIEWS = [
+  { key: "pending", label: "Pending" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+] as const;
+
 export function PaymentApprovalPage() {
   const { tx } = useI18n();
-  const query = useAdminProofs();
+  const [view, setView] = useState<"pending" | "approved" | "rejected">("pending");
+  const query = useAdminProofs(view);
   const approve = useApprovePayment();
   const reject = useRejectPayment();
   const requestInfo = useRequestPaymentInfo();
+  const reopen = useReopenPayment();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -93,13 +102,26 @@ export function PaymentApprovalPage() {
         subtitle="Every transfer is verified manually here — proofs are never auto-approved."
         action={
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-            {proofs.length} {tx("pending")}
+            {proofs.length} {tx(view)}
           </span>
         }
       />
 
+      <div className="mb-4 flex gap-2">
+        {VIEWS.map((vw) => (
+          <button
+            key={vw.key}
+            onClick={() => { setView(vw.key); setSelectedId(null); }}
+            className={cn("rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors",
+              view === vw.key ? "border-primary bg-blue-50 text-blue-700" : "border-border text-muted-foreground hover:bg-muted")}
+          >
+            {tx(vw.label)}
+          </button>
+        ))}
+      </div>
+
       {proofs.length === 0 ? (
-        <EmptyState title="Queue is clear 🎉" description="There are no payment proofs awaiting review." />
+        <EmptyState title="Nothing here" description="No payment proofs in this view." />
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           {/* Queue */}
@@ -201,20 +223,33 @@ export function PaymentApprovalPage() {
               )}
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  disabled={busy || !note.trim()}
-                  onClick={() => run(selected.id, "request_info")}
-                >
-                  <MessageSquare size={16} /> {requestInfo.isPending ? tx("Sending…") : tx("Request info")}
-                </Button>
-                <Button variant="danger" className="flex-1" disabled={busy} onClick={() => run(selected.id, "reject")}>
-                  <X size={16} /> {tx("Reject")}
-                </Button>
-                <Button className="flex-1" disabled={busy} onClick={() => run(selected.id, "approve")}>
-                  <Check size={16} /> {approve.isPending ? tx("Approving…") : tx("Approve & activate")}
-                </Button>
+                {view === "pending" ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="flex-1"
+                      disabled={busy || !note.trim()}
+                      onClick={() => run(selected.id, "request_info")}
+                    >
+                      <MessageSquare size={16} /> {requestInfo.isPending ? tx("Sending…") : tx("Request info")}
+                    </Button>
+                    <Button variant="danger" className="flex-1" disabled={busy} onClick={() => run(selected.id, "reject")}>
+                      <X size={16} /> {tx("Reject")}
+                    </Button>
+                    <Button className="flex-1" disabled={busy} onClick={() => run(selected.id, "approve")}>
+                      <Check size={16} /> {approve.isPending ? tx("Approving…") : tx("Approve & activate")}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="flex-1"
+                    disabled={reopen.isPending}
+                    onClick={() => { setActionError(null); reopen.mutate(selected.id, { onError: () => setActionError(tx("Could not complete that action. Please try again.")) }); }}
+                  >
+                    <RotateCcw size={16} /> {reopen.isPending ? tx("Reopening…") : tx("Reopen for review")}
+                  </Button>
+                )}
               </div>
             </Card>
           )}

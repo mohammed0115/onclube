@@ -155,10 +155,12 @@ class ListUsersUseCase:
             qs = qs.filter(role=role)
         users = list(qs)
 
-        # Attach each student's active subscription (id + credits + expiry) so the
-        # members table can top up / extend it directly. One query, latest-active wins.
+        # Attach each student's profile id + active subscription (id + credits +
+        # expiry) so the members table can top up / extend / reset placement directly.
+        from apps.accounts.models import StudentProfile
+
         student_ids = [u.pk for u in users if u.role == UserRole.STUDENT]
-        subs_by_user = {}
+        subs_by_user, profile_by_user = {}, {}
         if student_ids:
             for sub in (
                 Subscription.objects.filter(
@@ -168,16 +170,20 @@ class ListUsersUseCase:
                 .order_by("-started_at")
             ):
                 subs_by_user.setdefault(sub.student.user_id, sub)
+            for p in StudentProfile.objects.filter(user_id__in=student_ids).only("id", "user_id"):
+                profile_by_user[p.user_id] = p
 
         rows = []
         for u in users:
             sub = subs_by_user.get(u.pk)
+            prof = profile_by_user.get(u.pk)
             rows.append({
                 "id": str(u.pk),
                 "fullName": u.full_name,
                 "email": u.email,
                 "role": u.role,
                 "status": u.status,
+                "studentId": str(prof.id) if prof else None,
                 "subscriptionId": str(sub.id) if sub else None,
                 "sessionsRemaining": sub.sessions_remaining if sub else None,
                 "expiresAt": sub.expires_at.isoformat() if (sub and sub.expires_at) else None,
@@ -206,15 +212,17 @@ class ListAuditLogUseCase:
 
 
 class ListAdminPaymentApprovalsUseCase:
-    """The admin approval queue (pending proofs)."""
+    """The admin approval queue. Defaults to pending; pass status to review decided
+    proofs (e.g. to reopen an approved/rejected one)."""
 
     def __init__(self, *, payments=None):
         self.payments = payments or default_payment_repository()
 
-    def execute(self, *, actor) -> list:
+    def execute(self, *, actor, status=None) -> list:
         ensure_admin(actor)
-        pending = self.payments.list_by_status(PaymentProofStatus.PENDING)
-        return [mappers.payment_approval_item(p) for p in pending]
+        chosen = status or PaymentProofStatus.PENDING
+        proofs = self.payments.list_by_status(chosen)
+        return [mappers.payment_approval_item(p) for p in proofs]
 
 
 class GetAdminDashboardUseCase:

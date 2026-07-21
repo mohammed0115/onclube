@@ -721,8 +721,11 @@ export const useAdminBusiness = () =>
 export const useAdminPlatform = () =>
   useQuery({ queryKey: qk.adminPlatform, queryFn: topicsApi.adminPlatform });
 
-export const useAdminProofs = () =>
-  useQuery({ queryKey: qk.adminProofs, queryFn: topicsApi.adminPaymentProofs });
+export const useAdminProofs = (status?: string) =>
+  useQuery({
+    queryKey: [...qk.adminProofs, status ?? "pending"] as const,
+    queryFn: () => topicsApi.adminPaymentProofs(status),
+  });
 
 export const useAdminProofDetail = (proofId: string | null) =>
   useQuery({
@@ -763,6 +766,34 @@ export function useRequestPaymentInfo() {
       qc.invalidateQueries({ queryKey: qk.adminProofs });
       qc.invalidateQueries({ queryKey: qk.adminDashboard });
     },
+  });
+}
+
+export function useReopenPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (proofId: string) => topicsApi.reopenPayment(proofId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminProofs });
+      qc.invalidateQueries({ queryKey: qk.adminDashboard });
+    },
+  });
+}
+
+export function useAdminReportRerun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => topicsApi.adminReportRerun(sessionId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin", "sessions"] }); },
+  });
+}
+
+export function useResetSpoken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { studentId: string; reason: string }) =>
+      topicsApi.adminResetSpoken(input.studentId, input.reason),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: qk.auditLog }); },
   });
 }
 
