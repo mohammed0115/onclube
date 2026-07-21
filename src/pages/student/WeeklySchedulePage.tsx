@@ -58,7 +58,7 @@ function LockedScreen() {
 }
 
 export function WeeklySchedulePage() {
-  const { tx } = useI18n();
+  const { tx, lang } = useI18n();
   const sub = useSubscription();
   const scheduleQuery = useStudentSchedule();
   const save = useSetStudentSchedule();
@@ -107,7 +107,7 @@ export function WeeklySchedulePage() {
     const d = new Date(iso);
     return isNaN(d.getTime())
       ? iso
-      : d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      : d.toLocaleString(lang === "ar" ? "ar" : undefined, { weekday: "long", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
   const selectedCount = useMemo(() => cells.length, [cells]);

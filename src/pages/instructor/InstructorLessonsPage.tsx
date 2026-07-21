@@ -11,7 +11,7 @@ import type { InstructorLessonSession } from "@/api/types";
 import { useI18n } from "@/i18n";
 
 function LessonCard({ session }: { session: InstructorLessonSession }) {
-  const { tx } = useI18n();
+  const { tx, lang } = useI18n();
   const prepare = usePrepareLesson();
   const suggest = useSuggestLessonQuestions();
   const [title, setTitle] = useState(session.lessonTitle);
@@ -43,7 +43,7 @@ function LessonCard({ session }: { session: InstructorLessonSession }) {
     const d = new Date(session.scheduledAt);
     return isNaN(d.getTime())
       ? session.scheduledAt
-      : d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      : d.toLocaleString(lang === "ar" ? "ar" : undefined, { weekday: "long", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   })();
 
   const onSave = () => {
