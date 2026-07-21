@@ -147,20 +147,42 @@ class ListUsersUseCase:
 
     def execute(self, *, actor, role=None):
         from apps.accounts.models import User
+        from apps.billing.models import Subscription
+        from apps.common.enums import SubscriptionStatus, UserRole
         ensure_admin(actor)
         qs = User.objects.all().order_by("role", "email")
         if role:
             qs = qs.filter(role=role)
-        return [
-            {
+        users = list(qs)
+
+        # Attach each student's active subscription (id + credits + expiry) so the
+        # members table can top up / extend it directly. One query, latest-active wins.
+        student_ids = [u.pk for u in users if u.role == UserRole.STUDENT]
+        subs_by_user = {}
+        if student_ids:
+            for sub in (
+                Subscription.objects.filter(
+                    student__user_id__in=student_ids, status=SubscriptionStatus.ACTIVE
+                )
+                .select_related("student")
+                .order_by("-started_at")
+            ):
+                subs_by_user.setdefault(sub.student.user_id, sub)
+
+        rows = []
+        for u in users:
+            sub = subs_by_user.get(u.pk)
+            rows.append({
                 "id": str(u.pk),
                 "fullName": u.full_name,
                 "email": u.email,
                 "role": u.role,
                 "status": u.status,
-            }
-            for u in qs
-        ]
+                "subscriptionId": str(sub.id) if sub else None,
+                "sessionsRemaining": sub.sessions_remaining if sub else None,
+                "expiresAt": sub.expires_at.isoformat() if (sub and sub.expires_at) else None,
+            })
+        return rows
 
 
 class ListAuditLogUseCase:

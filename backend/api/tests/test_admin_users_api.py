@@ -24,6 +24,29 @@ def test_admin_lists_users():
     assert {"id", "fullName", "email", "role", "status"} <= set(resp.data[0].keys())
 
 
+def test_members_list_exposes_student_subscription_for_topup():
+    """The members table carries each funded student's subscription id + credits so
+    the admin can top up / extend directly from the list."""
+    from apps.common.factories import make_active_subscription, make_plan
+
+    admin = make_admin()
+    student = make_student()
+    make_active_subscription(student, make_plan(sessions_per_month=4), sessions=4)
+    resp = client_for(admin).get("/api/v1/admin/users/?role=student")
+    assert resp.status_code == 200
+    row = next(r for r in resp.data if r["id"] == str(student.user.id))
+    assert row["subscriptionId"] is not None
+    assert row["sessionsRemaining"] == 4
+    # And the top-up endpoint actually adds credits.
+    top = client_for(admin).patch(
+        f"/api/v1/admin/subscriptions/{row['subscriptionId']}/topup/",
+        {"sessions": 3}, format="json",
+    )
+    assert top.status_code == 200
+    student.refresh_from_db()
+    assert student.sessions_remaining == 7
+
+
 def test_admin_suspends_and_reactivates_user_with_audit():
     admin = make_admin()
     student = make_student()

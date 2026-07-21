@@ -146,6 +146,12 @@ export const topicsApi = {
   inviteUser(input: { fullName: string; email: string; role: "instructor" | "admin" | "student" }): Promise<{ userId: string; email: string; role: string; inviteLink?: string }> {
     return api.post("/admin/users/invite/", input);
   },
+  topUpSubscription(subscriptionId: string, sessions: number, reason?: string): Promise<{ sessionsRemaining: number }> {
+    return api.patch(`/admin/subscriptions/${subscriptionId}/topup/`, { sessions, reason });
+  },
+  extendSubscription(subscriptionId: string, newExpiresAt: string, reason?: string): Promise<{ expiresAt: string }> {
+    return api.patch(`/admin/subscriptions/${subscriptionId}/extend/`, { newExpiresAt, reason });
+  },
   auditLog(): Promise<AuditEntry[]> {
     return api.get<AuditEntry[]>("/admin/audit/");
   },

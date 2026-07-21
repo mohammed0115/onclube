@@ -531,6 +531,30 @@ export function useInviteUser() {
   });
 }
 
+export function useTopUpSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { subscriptionId: string; sessions: number; reason?: string }) =>
+      topicsApi.topUpSubscription(input.subscriptionId, input.sessions, input.reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
+export function useExtendSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { subscriptionId: string; newExpiresAt: string; reason?: string }) =>
+      topicsApi.extendSubscription(input.subscriptionId, input.newExpiresAt, input.reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: qk.auditLog });
+    },
+  });
+}
+
 export const useAuditLog = () =>
   useQuery({ queryKey: qk.auditLog, queryFn: topicsApi.auditLog });
 

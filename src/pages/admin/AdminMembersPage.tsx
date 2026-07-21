@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/states";
-import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser } from "@/hooks";
+import { useAdminUsers, useSetUserStatus, useChangeUserRole, useInviteUser, useTopUpSubscription, useExtendSubscription } from "@/hooks";
 import { useI18n } from "@/i18n";
 import type { AdminUser } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -150,10 +150,30 @@ function MemberRow({ u }: { u: AdminUser }) {
   const { tx } = useI18n();
   const setStatus = useSetUserStatus();
   const changeRole = useChangeUserRole();
+  const topUp = useTopUpSubscription();
+  const extend = useExtendSubscription();
   const suspended = u.status === "suspended";
+  const isStudent = u.role === "student";
+
+  const onTopUp = () => {
+    if (!u.subscriptionId) return;
+    const n = window.prompt(tx("How many sessions to add?"), "4");
+    if (n === null) return;
+    const sessions = Math.floor(Number(n));
+    if (!Number.isFinite(sessions) || sessions < 1) return;
+    topUp.mutate({ subscriptionId: u.subscriptionId, sessions });
+  };
+  const onExtend = () => {
+    if (!u.subscriptionId) return;
+    const d = window.prompt(tx("New expiry date (YYYY-MM-DD):"), "");
+    if (!d) return;
+    const iso = new Date(`${d}T23:59:00`).toISOString();
+    if (isNaN(Date.parse(iso))) return;
+    extend.mutate({ subscriptionId: u.subscriptionId, newExpiresAt: iso });
+  };
 
   return (
-    <div className="flex items-center justify-between gap-4 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-4 p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
           {u.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
@@ -163,7 +183,28 @@ function MemberRow({ u }: { u: AdminUser }) {
           <div className="text-xs text-muted-foreground">{u.email}</div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {isStudent && u.subscriptionId && (
+          <div className="flex items-center gap-2 rounded-lg border border-border px-2 py-1">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {u.sessionsRemaining ?? 0} {tx("sessions")}
+            </span>
+            <button
+              onClick={onTopUp}
+              disabled={topUp.isPending}
+              className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+            >
+              {topUp.isPending ? "…" : tx("Top up")}
+            </button>
+            <button
+              onClick={onExtend}
+              disabled={extend.isPending}
+              className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+            >
+              {extend.isPending ? "…" : tx("Extend")}
+            </button>
+          </div>
+        )}
         {suspended && <Badge tone="red">{tx("Suspended")}</Badge>}
         <select
           value={u.role}

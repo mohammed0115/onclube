@@ -740,6 +740,10 @@ export interface AdminUser {
   email: string;
   role: "student" | "instructor" | "admin";
   status: "active" | "suspended";
+  // Present for students with an active subscription (for admin top-up / extend).
+  subscriptionId?: string | null;
+  sessionsRemaining?: number | null;
+  expiresAt?: string | null;
 }
 
 export interface BusinessOverview {
