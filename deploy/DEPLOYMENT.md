@@ -49,6 +49,31 @@ python3 -c "import secrets; print(secrets.token_urlsafe(64))"   # SECRET_KEY
 > drives both build args and the container runtime. (Alternatively:
 > `ln -s .env.production .env`.)
 
+### Optional integrations (fall back to safe stubs when unset)
+
+The app runs without these, but the corresponding real feature stays in
+"stub" mode until configured:
+
+| Feature | What stays stubbed without it | Env to set |
+|---|---|---|
+| Live video (Agora) | Join returns a stub token — no real call | `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, and build arg `VITE_AGORA_APP_ID` |
+| AI reports / AI tutor (OpenAI) | Deterministic heuristic instead of real AI | `OPENAI_API_KEY` (and `OPENAI_MODEL` if overriding) |
+| Notification & auth emails | Emails print to the container log only | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, and `NOTIFICATION_EMAILS_ENABLED=true` |
+
+### Background scheduler (required for reminders + rolling bookings)
+
+A dedicated `scheduler` service runs the time-based jobs (session reminders
+every 5 min; rolling booking generation from approved schedules hourly). It has
+no profile, so a plain `up -d` starts it. **Include it in every deploy:**
+
+```bash
+docker compose --env-file .env.production --profile db --profile cache up -d --build
+# (brings up oneclup + scheduler + db + cache)
+```
+
+If you deploy a single service, add it explicitly:
+`... up -d --build oneclup scheduler`.
+
 ## 2. Build & start
 
 Self-hosted DB + cache (recommended default):

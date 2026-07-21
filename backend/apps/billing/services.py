@@ -115,6 +115,16 @@ def approve_payment_proof(proof: PaymentProof, admin) -> Subscription:
         body=f"Your {plan.name} plan is now active.",
         data={"subscription_id": str(subscription.pk)},
     )
+
+    # Freshly added credits should immediately materialise any APPROVED recurring
+    # schedule the student already has (idempotent). Generation must never block
+    # payment approval, so failures here are swallowed.
+    try:
+        from apps.scheduling.services import generate_bookings_from_schedule
+
+        generate_bookings_from_schedule(student, now=now)
+    except Exception:  # pragma: no cover - defensive
+        pass
     return subscription
 
 
@@ -282,6 +292,15 @@ def topup_subscription(subscription: Subscription, admin, *, sessions,
         admin, AdminActionType.SUBSCRIPTION_TOPUP, subscription,
         amount=sessions, reason=reason,
     )
+
+    # Newly topped-up credits materialise the student's approved recurring
+    # schedule right away (idempotent; never blocks the top-up).
+    try:
+        from apps.scheduling.services import generate_bookings_from_schedule
+
+        generate_bookings_from_schedule(student)
+    except Exception:  # pragma: no cover - defensive
+        pass
     return subscription
 
 

@@ -254,6 +254,37 @@ def test_admin_reject_marks_slot_and_blocks_generation():
     assert Booking.objects.filter(student=student).count() == 0
 
 
+def test_topup_regenerates_approved_schedule():
+    """Approving with too few credits books what it can; a later top-up
+    auto-materialises the remaining occurrences (no manual re-run)."""
+    from apps.billing.models import Subscription
+    from apps.billing.services import topup_subscription
+
+    student, instructor, topic = _world(sessions=1)  # only one credit
+    wd = _tomorrow_weekday()
+    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
+    _approve(student)  # horizon wants 2 but only 1 credit → 1 booking
+    assert Booking.objects.filter(student=student).count() == 1
+
+    sub = Subscription.objects.filter(student=student).first()
+    topup_subscription(sub, make_admin(), sessions=3)
+    # The second occurrence is now booked automatically by the top-up.
+    assert Booking.objects.filter(student=student).count() == 2
+
+
+def test_rolling_generation_command_is_idempotent():
+    from apps.scheduling.management.commands.generate_recurring_bookings import generate_all
+
+    student, instructor, topic = _world(sessions=4)
+    wd = _tomorrow_weekday()
+    _put_schedule(student, [{"weekday": wd, "startTime": "12:00", "topicId": str(topic.id)}])
+    _approve(student)
+    n = Booking.objects.filter(student=student).count()
+    result = generate_all()
+    assert result["students"] >= 1
+    assert Booking.objects.filter(student=student).count() == n  # no duplicates
+
+
 def test_admin_approve_only_specific_slots():
     student, instructor, topic = _world(sessions=8)
     wd1 = _tomorrow_weekday()

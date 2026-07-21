@@ -47,6 +47,34 @@ services:
       - oneclup
       - edge          # shared with Onlenco's Caddy → it proxies oneclup.com here
 
+  # Background scheduler: runs the time-based jobs the app needs but that no
+  # HTTP request triggers — session reminders (every 5 min) and rolling booking
+  # generation from approved schedules (hourly). Reuses the web image; overrides
+  # the entrypoint so it does NOT re-run migrations/collectstatic.
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oneclup-web:latest
+    container_name: oneclup_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "[scheduler] starting"; i=0;
+        while true; do
+          python manage.py send_session_reminders || true;
+          if [ $$((i % 12)) -eq 0 ]; then python manage.py generate_recurring_bookings || true; fi;
+          i=$$((i + 1));
+          sleep 300;
+        done
+    depends_on:
+      - oneclup
+    networks:
+      - oneclup
+
   postgres:
     image: postgres:16-alpine
     container_name: oneclup_postgres
