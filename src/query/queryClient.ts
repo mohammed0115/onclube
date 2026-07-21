@@ -65,6 +65,7 @@ export const qk = {
   instructorProfile: ["instructor", "profile"] as const,
   instructorTopics: ["instructor", "topics"] as const,
   instructorAvailability: ["instructor", "availability"] as const,
+  recurringAvailability: ["instructor", "recurring-availability"] as const,
   instructorBookings: ["instructor", "bookings"] as const,
   instructorStudents: ["instructor", "students"] as const,
   instructorStudent: (id: string) => ["instructor", "student", id] as const,

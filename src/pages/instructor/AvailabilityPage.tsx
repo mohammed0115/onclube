@@ -1,19 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Loader2, Lock, Plane, Plus, Trash2, Ban, CalendarOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Loader2, Info, Plane, Plus, Trash2, Ban, CalendarOff } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Loading } from "@/components/states";
 import {
-  useInstructorAvailability,
-  useSetAvailability,
+  useRecurringAvailability,
+  useSetRecurringAvailability,
   useAvailabilityExceptions,
   useAddAvailabilityException,
   useRemoveAvailabilityException,
 } from "@/hooks";
-import type { AvailabilityException, AvailabilityExceptionKind } from "@/api/types";
+import type { AvailabilityException, AvailabilityExceptionKind, AvailabilityWindow } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
@@ -23,199 +22,136 @@ const KIND_META: Record<AvailabilityExceptionKind, { label: string; icon: typeof
   block: { label: "Block time", icon: Ban, tone: "bg-rose-100 text-rose-700" },
 };
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const HOURS = Array.from({ length: 24 }, (_, i) => i); // 00:00 – 23:00 (full day)
-
+// Backend weekday: 0 = Monday … 6 = Sunday (matches the student availability grid).
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 – 22:00
 const p = (n: number) => String(n).padStart(2, "0");
-const slotKey = (y: number, mo1: number, d: number, h: number) => `${y}-${p(mo1)}-${p(d)}T${p(h)}`;
-const dayKey = (y: number, mo1: number, d: number) => `${y}-${p(mo1)}-${p(d)}`;
-/** Local wall-clock key ("YYYY-MM-DDTHH") for an ISO instant, so existing and new
- * slots compare in the instructor's own timezone. */
-const keyFromIso = (iso: string) => {
-  const dt = new Date(iso);
-  return slotKey(dt.getFullYear(), dt.getMonth() + 1, dt.getDate(), dt.getHours());
-};
-/** Back to a UTC ISO string the API stores. */
-const isoFromKey = (k: string) => {
-  const [date, hh] = k.split("T");
-  const [y, mo, d] = date.split("-").map(Number);
-  return new Date(y, mo - 1, d, Number(hh), 0, 0).toISOString();
-};
+const cellKey = (wd: number, h: number) => `${wd}-${h}`;
+
+/** Expand server windows (weekday + start/end) into per-hour grid cells. */
+function windowsToCells(windows: AvailabilityWindow[]): Set<string> {
+  const s = new Set<string>();
+  windows.forEach((w) => {
+    const sh = Number(w.startTime.slice(0, 2));
+    const eh = Number(w.endTime.slice(0, 2));
+    for (let h = sh; h < eh; h++) if (HOURS.includes(h)) s.add(cellKey(w.weekday, h));
+  });
+  return s;
+}
+
+/** Merge selected hour cells back into contiguous weekly windows. */
+function cellsToWindows(cells: Set<string>): AvailabilityWindow[] {
+  const byDay: Record<number, number[]> = {};
+  cells.forEach((k) => {
+    const [wd, h] = k.split("-").map(Number);
+    (byDay[wd] ??= []).push(h);
+  });
+  const out: AvailabilityWindow[] = [];
+  Object.keys(byDay).map(Number).forEach((wd) => {
+    const hrs = byDay[wd].sort((a, b) => a - b);
+    let start = hrs[0];
+    let prev = hrs[0];
+    for (let i = 1; i < hrs.length; i++) {
+      if (hrs[i] === prev + 1) { prev = hrs[i]; }
+      else { out.push({ weekday: wd, startTime: `${p(start)}:00`, endTime: `${p(prev + 1)}:00` }); start = hrs[i]; prev = hrs[i]; }
+    }
+    out.push({ weekday: wd, startTime: `${p(start)}:00`, endTime: `${p(prev + 1)}:00` });
+  });
+  return out;
+}
 
 export function AvailabilityPage() {
-  const { data: slots, isLoading } = useInstructorAvailability();
-  const save = useSetAvailability();
   const { tx } = useI18n();
+  const q = useRecurringAvailability();
+  const save = useSetRecurringAvailability();
+  const [cells, setCells] = useState<Set<string> | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  const today = new Date();
-  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
-  const [selected, setSelected] = useState(() => dayKey(today.getFullYear(), today.getMonth() + 1, today.getDate()));
-  const [open, setOpen] = useState<Set<string> | null>(null);
-  const [savedAt, setSavedAt] = useState(false);
-
-  // Booked slots are locked (the instructor can't free a booked time here).
-  const booked = useMemo(() => {
-    const s = new Set<string>();
-    (slots ?? []).forEach((sl) => sl.status !== "open" && s.add(keyFromIso(sl.startAt)));
-    return s;
-  }, [slots]);
-
-  // Seed the editable open-set once, from the server's open slots.
+  // Seed the editable grid once from the server's windows.
   useEffect(() => {
-    if (slots && open === null) {
-      setOpen(new Set(slots.filter((sl) => sl.status === "open").map((sl) => keyFromIso(sl.startAt))));
-    }
-  }, [slots, open]);
+    if (q.data && cells === null) setCells(windowsToCells(q.data));
+  }, [q.data, cells]);
 
-  const openSet = open ?? new Set<string>();
-  const daysWithOpen = useMemo(() => {
-    const s = new Set<string>();
-    openSet.forEach((k) => s.add(k.slice(0, 10)));
-    return s;
-  }, [openSet]);
-
-  const year = cursor.getFullYear();
-  const month0 = cursor.getMonth(); // 0-based
-  const daysInMonth = new Date(year, month0 + 1, 0).getDate();
-  const firstWeekday = new Date(year, month0, 1).getDay();
-  const monthLabel = cursor.toLocaleString(undefined, { month: "long", year: "numeric" });
-  const nowMs = today.getTime();
-
-  const toggle = (k: string) => {
-    setSavedAt(false);
-    setOpen((prev) => {
-      const next = new Set(prev ?? []);
-      next.has(k) ? next.delete(k) : next.add(k);
-      return next;
+  const set = cells ?? new Set<string>();
+  const toggle = (wd: number, h: number) => {
+    setSaved(false);
+    setCells((prev) => {
+      const n = new Set(prev ?? []);
+      const k = cellKey(wd, h);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
     });
   };
-
-  const changeMonth = (delta: number) => {
-    const c = new Date(year, month0 + delta, 1);
-    setCursor(c);
-    setSelected(dayKey(c.getFullYear(), c.getMonth() + 1, 1));
-  };
-
   const onSave = () => {
-    setSavedAt(false);
-    save.mutate(
-      [...openSet].map((k) => ({ startAt: isoFromKey(k), durationMinutes: 45 })),
-      { onSuccess: () => setSavedAt(true) }
-    );
+    setSaved(false);
+    save.mutate(cellsToWindows(set), { onSuccess: () => setSaved(true) });
   };
-
-  const [sy, sm, sd] = selected.split("-").map(Number);
-  const selectedLabel = new Date(sy, sm - 1, sd).toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" });
-  const openCountForDay = HOURS.filter((h) => openSet.has(slotKey(sy, sm, sd, h))).length;
 
   return (
     <DashboardLayout>
       <PageHeader
         title="Availability"
-        subtitle="Open the times when students can book live sessions with you."
+        subtitle="Set the weekly times you can teach. Students who choose these times are matched to you."
         action={
-          <Button size="sm" onClick={onSave} disabled={save.isPending || open === null}>
+          <Button size="sm" onClick={onSave} disabled={save.isPending || cells === null}>
             {save.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} {tx("Save changes")}
           </Button>
         }
       />
 
-      {savedAt && !save.isPending && (
+      {saved && !save.isPending && (
         <p className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">{tx("Availability published ✓")}</p>
       )}
       {save.isError && (
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600">{tx("Could not save. Please try again.")}</p>
       )}
 
-      {isLoading || open === null ? (
-        <Loading label="Loading your calendar…" />
+      {q.isLoading || cells === null ? (
+        <Loading label="Loading your availability…" />
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Month calendar */}
-          <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <button onClick={() => changeMonth(-1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label={tx("Previous month")}>
-                  <ChevronLeft size={16} />
-                </button>
-                <h3 className="min-w-[9rem] text-center font-display font-bold text-foreground">{monthLabel}</h3>
-                <button onClick={() => changeMonth(1)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted" aria-label={tx("Next month")}>
-                  <ChevronRight size={16} />
-                </button>
+        <Card className="p-5">
+          <div className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Info size={13} /> {tx("Tap the weekly times you can teach")}
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[36rem]">
+              <div className="grid grid-cols-[3rem_repeat(7,1fr)] gap-1 pb-1">
+                <div />
+                {WEEKDAYS.map((d) => (
+                  <div key={d} className="text-center text-[11px] font-semibold uppercase text-muted-foreground">{tx(d)}</div>
+                ))}
               </div>
-              <span className="text-xs text-muted-foreground">{tx("Green = open slots")}</span>
-            </div>
-            <div className="mb-2 grid grid-cols-7 gap-1.5 text-center text-[11px] font-semibold uppercase text-muted-foreground">
-              {WEEKDAYS.map((d) => <div key={d}>{d}</div>)}
-            </div>
-            <div className="grid grid-cols-7 gap-1.5">
-              {Array.from({ length: firstWeekday }).map((_, i) => <div key={`pad-${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const dk = dayKey(year, month0 + 1, day);
-                const isSelected = dk === selected;
-                const hasOpen = daysWithOpen.has(dk);
-                const isPast = new Date(year, month0, day + 1).getTime() < nowMs; // whole day passed
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelected(dk)}
-                    disabled={isPast}
-                    className={cn(
-                      "flex aspect-square items-center justify-center rounded-xl text-sm font-medium transition-all",
-                      isPast && "cursor-not-allowed text-muted-foreground/40",
-                      isSelected
-                        ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-md"
-                        : hasOpen
-                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                          : !isPast && "text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Time slots for the selected day */}
-          <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display font-bold text-foreground">{selectedLabel}</h3>
-              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{openCountForDay} {tx("open")}</span>
-            </div>
-            <div className="max-h-[28rem] space-y-1.5 overflow-y-auto">
-              {HOURS.map((h) => {
-                const k = slotKey(sy, sm, sd, h);
-                const on = openSet.has(k);
-                const isBooked = booked.has(k);
-                const isPast = new Date(sy, sm - 1, sd, h).getTime() < nowMs;
-                const time = `${p(h)}:00`;
-                return (
-                  <div
-                    key={h}
-                    className={cn(
-                      "flex items-center justify-between rounded-xl border px-4 py-2.5 transition-colors",
-                      isBooked ? "border-amber-200 bg-amber-50/50" : on ? "border-indigo-100 bg-indigo-50/50" : "border-border",
-                      isPast && !isBooked && "opacity-50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                      {isBooked ? <Lock size={13} className="text-amber-600" /> : on && <Check size={14} className="text-indigo-600" />}
-                      {time}
-                      {isBooked && <span className="ml-1 text-xs font-semibold text-amber-700">{tx("Booked")}</span>}
-                    </div>
-                    {isBooked ? (
-                      <span className="text-xs text-muted-foreground">{tx("locked")}</span>
-                    ) : (
-                      <Switch checked={on} disabled={isPast} onCheckedChange={() => toggle(k)} />
-                    )}
+              <div className="max-h-[30rem] space-y-1 overflow-y-auto pr-1">
+                {HOURS.map((h) => (
+                  <div key={h} className="grid grid-cols-[3rem_repeat(7,1fr)] gap-1">
+                    <div className="flex items-center justify-end pr-1 text-[11px] font-medium text-muted-foreground">{p(h)}:00</div>
+                    {WEEKDAYS.map((_, wd) => {
+                      const on = set.has(cellKey(wd, h));
+                      return (
+                        <button
+                          key={wd}
+                          onClick={() => toggle(wd, h)}
+                          title={on ? tx("Tap to remove") : tx("Tap to add")}
+                          className={cn(
+                            "flex h-9 items-center justify-center rounded-lg border text-[10px] font-semibold transition-all",
+                            on
+                              ? "border-indigo-300 bg-indigo-500 text-white"
+                              : "border-border bg-card text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50"
+                          )}
+                        >
+                          {on ? <Check size={13} /> : "+"}
+                        </button>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </Card>
-        </div>
+          </div>
+          {set.size > 0 && (
+            <p className="mt-4 text-xs text-muted-foreground">{set.size} {tx("weekly hour(s) available")}</p>
+          )}
+        </Card>
       )}
 
       <div className="mt-6">

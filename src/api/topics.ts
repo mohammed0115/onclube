@@ -13,6 +13,7 @@ import type {
   PlatformStatus,
   AvailabilityException,
   AvailabilitySlot,
+  AvailabilityWindow,
   BookingListItem,
   Cancellation,
   GoalOption,
@@ -96,6 +97,13 @@ export const topicsApi = {
   },
   setAvailability(slots: { startAt: string; durationMinutes?: number }[]): Promise<AvailabilitySlot[]> {
     return api.put<AvailabilitySlot[]>("/instructor/availability/set/", { slots });
+  },
+  // ── Recurring weekly availability (the windows the matching engine reads) ──
+  recurringAvailability(): Promise<AvailabilityWindow[]> {
+    return api.get<AvailabilityWindow[]>("/instructor/recurring-availability/");
+  },
+  setRecurringAvailability(windows: AvailabilityWindow[]): Promise<AvailabilityWindow[]> {
+    return api.put<AvailabilityWindow[]>("/instructor/recurring-availability/", { windows });
   },
   instructorBookings(): Promise<BookingListItem[]> {
     return api.get<BookingListItem[]>("/instructor/bookings/");

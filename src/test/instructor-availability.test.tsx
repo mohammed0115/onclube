@@ -33,28 +33,29 @@ function renderPage() {
 describe("Instructor availability (real API)", () => {
   beforeEach(() => tokenStore.set({ access: "a", refresh: "r" }));
 
-  it("loads the calendar and saves toggled slots to the API", async () => {
-    let sent: { slots: { startAt: string }[] } = { slots: [] };
+  it("loads the weekly grid and saves recurring windows to the API", async () => {
+    let sent: { windows: { weekday: number; startTime: string; endTime: string }[] } = { windows: [] };
     server.use(
-      http.put(`${B}/instructor/availability/set/`, async ({ request }) => {
+      http.get(`${B}/instructor/recurring-availability/`, () => HttpResponse.json([])),
+      http.put(`${B}/instructor/recurring-availability/`, async ({ request }) => {
         sent = (await request.json()) as typeof sent;
-        return HttpResponse.json([]);
+        return HttpResponse.json(sent.windows);
       })
     );
-    renderPage();
-    // The time column renders hourly slots once loaded.
-    expect(await screen.findByText("09:00")).toBeInTheDocument();
+    const { container } = renderPage();
 
-    // Jump to next month so every hour is in the future (past slots are disabled
-    // by design — clicking one would be a no-op, which is time-of-day dependent).
-    await userEvent.click(screen.getByRole("button", { name: /Next month/i }));
-
-    // Toggle the first (now enabled) switch on, then Save.
-    const switches = screen.getAllByRole("switch");
-    await userEvent.click(switches[0]);
+    // The weekly grid renders addable cells once loaded.
+    await waitFor(
+      () => expect(container.querySelectorAll('button[title="Tap to add"]').length).toBeGreaterThan(0),
+      { timeout: 4000 }
+    );
+    const addable = container.querySelectorAll<HTMLButtonElement>('button[title="Tap to add"]');
+    await userEvent.click(addable[0]);
     await userEvent.click(screen.getByRole("button", { name: /Save changes/i }));
 
-    await waitFor(() => expect(sent.slots.length).toBeGreaterThan(0));
+    await waitFor(() => expect(sent.windows.length).toBeGreaterThan(0));
+    expect(sent.windows[0]).toHaveProperty("weekday");
+    expect(sent.windows[0]).toHaveProperty("startTime");
     expect(await screen.findByText(/Availability published/i)).toBeInTheDocument();
   });
 

@@ -422,6 +422,18 @@ export function useSetAvailability() {
   });
 }
 
+export const useRecurringAvailability = () =>
+  useQuery({ queryKey: qk.recurringAvailability, queryFn: topicsApi.recurringAvailability });
+
+export function useSetRecurringAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (windows: import("@/api/types").AvailabilityWindow[]) =>
+      topicsApi.setRecurringAvailability(windows),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.recurringAvailability }),
+  });
+}
+
 export const useInstructorBookings = () =>
   useQuery({ queryKey: qk.instructorBookings, queryFn: topicsApi.instructorBookings });
 
