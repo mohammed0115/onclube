@@ -120,6 +120,7 @@ def payment_proof_detail(p, *, receipt_url=None, include_student=False) -> dtos.
     return dtos.PaymentProofDetailResult(
         id=str(p.id),
         plan_name=p.plan_name,
+        plan_kind=(p.plan.kind if p.plan_id else "sessions"),
         amount=p.amount,
         currency=p.currency,
         transaction_number=p.transaction_number,

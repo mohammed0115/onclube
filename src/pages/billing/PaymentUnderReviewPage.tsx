@@ -30,11 +30,18 @@ export function PaymentUnderReviewPage() {
   const active = subQuery.data?.status === "active";
   const proof = proofQuery.data;
   const proofStatus = proof?.status;
+  // AI-tutor payments activate a SEPARATE AI subscription (not session credits), so
+  // the approved/pending copy and the onward link must adapt to the plan kind.
+  const isAI = proof?.planKind === "ai_tutor";
+  // Approval is the LATEST proof being approved. The generic (sessions) subscription
+  // only counts for a sessions payment — otherwise a student who already has an active
+  // sessions plan would see a still-pending AI payment as "approved".
+  const approved = proofStatus === "approved" || (!isAI && active);
 
   let view: View;
   if (proofQuery.isLoading && subQuery.isLoading) view = "loading";
   else if (proofQuery.isError) view = "error";
-  else if (active || proofStatus === "approved") view = "approved";
+  else if (approved) view = "approved";
   else if (proofStatus === "rejected") view = "rejected";
   else if (proofStatus === "needs_info") view = "needs_info";
   else view = "pending";
@@ -66,17 +73,34 @@ export function PaymentUnderReviewPage() {
           <>
             <Hero tone="emerald" icon={<CheckCircle2 size={34} className="text-emerald-600" />} />
             <h1 className="font-display text-3xl font-extrabold text-foreground">{tx("You’re approved!")}</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              {tx("Your")} <span className="font-semibold text-foreground">{subQuery.data?.planName}</span> {tx("plan is active")}
-              {subQuery.data ? ` with ${subQuery.data.sessionsRemaining} sessions ready` : ""}. {tx("You can start booking now.")}
-            </p>
-            <div className="mt-8">
-              <Button asChild size="lg" className="w-full">
-                <Link to="/student/schedule">
-                  {tx("Set your availability")} <ArrowRight size={18} />
-                </Link>
-              </Button>
-            </div>
+            {isAI ? (
+              <>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  {tx("Your")} <span className="font-semibold text-foreground">{proof?.planName}</span> {tx("plan is active")}. {tx("Start a 5-minute AI speaking practice any time.")}
+                </p>
+                <div className="mt-8">
+                  <Button asChild size="lg" className="w-full">
+                    <Link to="/student/ai-tutor">
+                      {tx("Start practising")} <ArrowRight size={18} />
+                    </Link>
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  {tx("Your")} <span className="font-semibold text-foreground">{subQuery.data?.planName ?? proof?.planName}</span> {tx("plan is active")}
+                  {subQuery.data ? ` with ${subQuery.data.sessionsRemaining} sessions ready` : ""}. {tx("You can start booking now.")}
+                </p>
+                <div className="mt-8">
+                  <Button asChild size="lg" className="w-full">
+                    <Link to="/student/schedule">
+                      {tx("Set your availability")} <ArrowRight size={18} />
+                    </Link>
+                  </Button>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -87,7 +111,7 @@ export function PaymentUnderReviewPage() {
             title="Payment not approved"
             note={proof?.reviewNote}
             fallback="Your payment proof was rejected. Please review and submit a new transfer proof."
-            onResubmit={() => navigate("/billing/pricing")}
+            onResubmit={() => navigate(isAI ? "/student/ai-tutor" : "/billing/pricing")}
           />
         )}
 
@@ -98,7 +122,7 @@ export function PaymentUnderReviewPage() {
             title="More information needed"
             note={proof?.reviewNote}
             fallback="We need a bit more information to verify your payment. Please review and re-submit."
-            onResubmit={() => navigate("/billing/pricing")}
+            onResubmit={() => navigate(isAI ? "/student/ai-tutor" : "/billing/pricing")}
           />
         )}
 
@@ -107,7 +131,9 @@ export function PaymentUnderReviewPage() {
             <Hero tone="amber" icon={<Clock size={34} className="text-amber-600" />} />
             <h1 className="font-display text-3xl font-extrabold text-foreground">{tx("Payment under review")}</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              {tx("Thanks! We received your transfer proof. An admin will verify it and activate your account. You can't book sessions until it's approved.")}
+              {isAI
+                ? tx("Thanks! We received your transfer proof. An admin will verify it and activate your AI Tutor. This page checks automatically.")
+                : tx("Thanks! We received your transfer proof. An admin will verify it and activate your account. You can't book sessions until it's approved.")}
             </p>
 
             <Card className="mt-8 p-6 text-left">

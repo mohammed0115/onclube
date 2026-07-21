@@ -215,12 +215,23 @@ class ListAdminPaymentApprovalsUseCase:
     """The admin approval queue. Defaults to pending; pass status to review decided
     proofs (e.g. to reopen an approved/rejected one)."""
 
+    # Map the UI's friendly status keys to the real enum values. PENDING's DB value
+    # is "pending_review", so a raw "pending" from the client must be translated —
+    # otherwise the queue silently returns nothing.
+    _STATUS_MAP = {
+        "pending": PaymentProofStatus.PENDING,
+        "pending_review": PaymentProofStatus.PENDING,
+        "approved": PaymentProofStatus.APPROVED,
+        "rejected": PaymentProofStatus.REJECTED,
+        "needs_info": PaymentProofStatus.NEEDS_INFO,
+    }
+
     def __init__(self, *, payments=None):
         self.payments = payments or default_payment_repository()
 
     def execute(self, *, actor, status=None) -> list:
         ensure_admin(actor)
-        chosen = status or PaymentProofStatus.PENDING
+        chosen = self._STATUS_MAP.get(status, PaymentProofStatus.PENDING)
         proofs = self.payments.list_by_status(chosen)
         return [mappers.payment_approval_item(p) for p in proofs]
 

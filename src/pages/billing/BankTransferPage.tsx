@@ -81,7 +81,11 @@ export function BankTransferPage() {
                     </div>
                     <div>
                       <div className="font-bold text-foreground">{plan.name} {tx("plan")}</div>
-                      <div className="text-sm text-muted-foreground">{plan.sessionsPerMonth} {tx("live sessions / month")}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {plan.kind === "ai_tutor"
+                          ? tx("AI speaking practice")
+                          : `${plan.sessionsPerMonth} ${tx("live sessions / month")}`}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-5">

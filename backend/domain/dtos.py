@@ -275,6 +275,7 @@ class SubscriptionDetailResult:
 class PaymentProofDetailResult:
     id: str
     plan_name: str
+    plan_kind: str
     amount: Any
     currency: str
     transaction_number: str

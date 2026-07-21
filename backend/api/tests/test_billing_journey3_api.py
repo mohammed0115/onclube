@@ -33,6 +33,23 @@ def client_for(user):
     return c
 
 
+# ── admin queue visibility (regression: pending == "pending_review") ───────────
+def test_admin_queue_shows_pending_proofs_for_both_default_and_pending_filter():
+    """A submitted proof (status 'pending_review') must appear in the admin queue —
+    both with no filter and with the UI's friendly ?status=pending key."""
+    student, plan = make_student(), make_plan()
+    proof = make_pending_payment_proof(student, plan)
+    admin = client_for(make_admin())
+
+    default = admin.get("/api/v1/admin/payment-proofs/")
+    assert default.status_code == 200
+    assert any(p["id"] == str(proof.id) for p in default.data)
+
+    pending = admin.get("/api/v1/admin/payment-proofs/?status=pending")
+    assert pending.status_code == 200
+    assert any(p["id"] == str(proof.id) for p in pending.data)
+
+
 # ── request more information ──────────────────────────────────────────────────
 def test_request_info_moves_proof_to_needs_info_without_activating():
     student, plan = make_student(), make_plan()

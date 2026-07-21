@@ -281,6 +281,7 @@ export interface BillingHistoryItem {
 export interface PaymentProofDetail {
   id: string;
   planName: string;
+  planKind?: "sessions" | "ai_tutor";
   amount: number;
   currency: string;
   transactionNumber: string;

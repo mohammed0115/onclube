@@ -696,6 +696,7 @@ class SubmitPaymentProofInputSerializer(serializers.Serializer):
 class PaymentProofDetailSerializer(serializers.Serializer):
     id = serializers.CharField()
     planName = serializers.CharField(source="plan_name")
+    planKind = serializers.CharField(source="plan_kind")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
     currency = serializers.CharField()
     transactionNumber = serializers.CharField(source="transaction_number")
