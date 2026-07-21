@@ -781,15 +781,27 @@ class AITutorRealtimeSessionView(APIView):
 
     def post(self, request):
         from application.ai_tutor.use_cases import StartRealtimeCallUseCase
+        from apps.common.exceptions import BusinessRuleError
+        from apps.ai_tutor.realtime import RealtimeNotConfigured, RealtimeUpstreamError
 
         voice = (request.data or {}).get("voice") or "alloy"
         try:
             result = StartRealtimeCallUseCase().execute(actor=request.user, voice=voice)
-        except Exception as exc:  # noqa: BLE001
-            from apps.common.exceptions import BusinessRuleError
-
-            if isinstance(exc, BusinessRuleError):
-                raise
+        except BusinessRuleError:
+            raise  # subscription gate → 422 with its code
+        except RealtimeNotConfigured:
+            return Response(
+                {"code": "ai_not_configured",
+                 "detail": "The voice tutor isn't configured on the server yet (missing OPENAI_API_KEY)."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except RealtimeUpstreamError as exc:
+            return Response(
+                {"code": "ai_upstream_error",
+                 "detail": f"OpenAI rejected the voice session ({exc.status_code}). {exc.body[:200]}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception:  # noqa: BLE001
             import logging
 
             logging.getLogger("ai_tutor.realtime").exception("realtime session mint failed")

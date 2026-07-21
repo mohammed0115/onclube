@@ -143,12 +143,20 @@ export function AITutorPage() {
         });
       }, 1000);
     } catch (e) {
-      const err = e as { name?: string };
-      setErrorMsg(
-        err?.name === "NotAllowedError"
-          ? tx("Microphone access was blocked. Allow the mic and try again.")
-          : tx("Couldn't start the call. Check your connection and try again."),
-      );
+      const err = e as { name?: string; code?: string; detail?: unknown; message?: string };
+      let msg: string;
+      if (err?.name === "NotAllowedError") {
+        msg = tx("Microphone access was blocked. Allow the mic and try again.");
+      } else if (err?.code === "ai_not_configured") {
+        msg = tx("The voice tutor isn't set up on the server yet. Please try again later.");
+      } else if (typeof err?.detail === "string" && err.detail) {
+        msg = err.detail; // surface the real backend/OpenAI reason
+      } else if (err?.message?.startsWith("sdp_relay_")) {
+        msg = tx("The voice connection was refused. Please try again.") + ` (${err.message})`;
+      } else {
+        msg = tx("Couldn't start the call. Check your connection and try again.");
+      }
+      setErrorMsg(msg);
       teardown();
       setPhase("error");
     }

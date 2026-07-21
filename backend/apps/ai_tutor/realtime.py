@@ -22,6 +22,19 @@ from django.conf import settings
 
 logger = logging.getLogger("ai_tutor.realtime")
 
+
+class RealtimeNotConfigured(RuntimeError):
+    """OPENAI_API_KEY is missing on the server."""
+
+
+class RealtimeUpstreamError(RuntimeError):
+    """OpenAI rejected the ephemeral-session request; carries the real message."""
+
+    def __init__(self, status_code: int, body: str):
+        self.status_code = status_code
+        self.body = body
+        super().__init__(f"openai_{status_code}: {body[:300]}")
+
 # Voices the GA Realtime API accepts. Retired Beta voices map to a GA equivalent.
 REALTIME_VOICES = {"alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar"}
 _FEMALE_DEFAULT = "shimmer"
@@ -84,7 +97,7 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
     misconfiguration / upstream error (the caller maps it to a 503)."""
     api_key = getattr(settings, "OPENAI_API_KEY", "") or ""
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
+        raise RealtimeNotConfigured("OPENAI_API_KEY is not configured")
 
     base = getattr(settings, "OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
     payload = {
@@ -92,6 +105,7 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
             "type": "realtime",
             "model": getattr(settings, "AI_REALTIME_MODEL", "gpt-realtime"),
             "instructions": system_prompt,
+            "max_output_tokens": 200,
             "audio": {
                 "output": {"voice": coerce_voice(voice)},
                 "input": {
@@ -116,7 +130,7 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
     )
     if not resp.ok:
         logger.error("realtime client_secrets %s — %s", resp.status_code, resp.text[:600])
-        resp.raise_for_status()
+        raise RealtimeUpstreamError(resp.status_code, resp.text)
     body = resp.json()
     session = body.get("session") or {}
     return {

@@ -1017,6 +1017,8 @@ const PAIRS: [string, string][] = [
   ["The call dropped. Please try again.", "انقطعت المكالمة. حاول مرة أخرى."],
   ["Microphone access was blocked. Allow the mic and try again.", "تم حظر الوصول للميكروفون. اسمح به وحاول مرة أخرى."],
   ["Couldn't start the call. Check your connection and try again.", "تعذّر بدء المكالمة. تحقّق من اتصالك وحاول مرة أخرى."],
+  ["The voice tutor isn't set up on the server yet. Please try again later.", "المعلّم الصوتي غير مُهيّأ على الخادم بعد. يرجى المحاولة لاحقاً."],
+  ["The voice connection was refused. Please try again.", "رُفض الاتصال الصوتي. حاول مرة أخرى."],
   ["Paused — tap to resume", "متوقّف — اضغط للاستئناف"],
   ["Your turn — just speak", "دورك — تحدّث الآن"],
   ["Pause", "إيقاف مؤقّت"],
