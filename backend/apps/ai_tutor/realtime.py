@@ -16,7 +16,6 @@ Public:
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote
 
 import httpx
 from django.conf import settings
@@ -101,10 +100,11 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
         raise RealtimeNotConfigured("OPENAI_API_KEY is not configured")
 
     base = getattr(settings, "OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+    requested_model = getattr(settings, "AI_REALTIME_MODEL", "gpt-realtime")
     payload = {
         "session": {
             "type": "realtime",
-            "model": getattr(settings, "AI_REALTIME_MODEL", "gpt-realtime"),
+            "model": requested_model,
             "instructions": system_prompt,
             "max_output_tokens": 200,
             "audio": {
@@ -138,11 +138,19 @@ def request_ephemeral_session(*, system_prompt: str, voice: str = "alloy") -> di
         raise RealtimeUpstreamError(resp.status_code, resp.text)
     body = resp.json()
     session = body.get("session") or {}
+    returned_model = session.get("model") or body.get("model") or ""
+    # Decisive diagnostic: the model we ASKED for vs. the one OpenAI actually bound
+    # to the ephemeral token. If these differ, the /realtime/calls step will fail
+    # with model_not_found for the bound model.
+    logger.info(
+        "realtime client_secrets OK — requested_model=%s returned_model=%s",
+        requested_model, returned_model,
+    )
     return {
         "client_secret": body.get("value") or "",
         "session_id": session.get("id") or body.get("id") or "",
         "expires_at": body.get("expires_at") or session.get("expires_at"),
-        "model": session.get("model") or getattr(settings, "AI_REALTIME_MODEL", ""),
+        "model": returned_model or requested_model,
     }
 
 
@@ -151,15 +159,11 @@ def relay_sdp(*, client_secret: str, sdp: str):
     Keeping this server-side avoids CORS/CSP issues and surfaces upstream errors.
     Returns (status_code, content_bytes, content_type)."""
     base = getattr(settings, "OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
-    # Pin the model on the calls URL. Without ``?model=`` the endpoint falls back
-    # to OpenAI's LEGACY default (``gpt-4o-realtime-preview``); accounts that only
-    # have ``gpt-realtime`` then get a 404 ``model_not_found``. Passing the same
-    # model the ephemeral session was minted with keeps the two in lockstep.
-    model = getattr(settings, "AI_REALTIME_MODEL", "gpt-realtime")
-    url = f"{base}/realtime/calls?model={quote(model)}"
+    # The model is bound to the ephemeral token at mint time, so /realtime/calls
+    # takes NO ?model= query param (passing one can 400). See request_ephemeral_session.
     try:
         upstream = httpx.post(
-            url,
+            f"{base}/realtime/calls",
             content=sdp,  # raw SDP body (httpx uses ``content=`` for a non-form body)
             headers={"Authorization": f"Bearer {client_secret}", "Content-Type": "application/sdp"},
             timeout=15,
