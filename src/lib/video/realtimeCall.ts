@@ -72,6 +72,12 @@ export async function startRealtimeCall(
   dc.onmessage = (e) => {
     try { handlers.onEvent?.(JSON.parse(e.data) as RealtimeEvent); } catch { /* ignore non-JSON */ }
   };
+  // Make the tutor greet FIRST instead of waiting for the student. Once the data
+  // channel is open we ask the model to produce its opening response right away
+  // (server VAD otherwise stays silent until the student speaks).
+  dc.onopen = () => {
+    try { dc.send(JSON.stringify({ type: "response.create" })); } catch { /* noop */ }
+  };
 
   mic.getTracks().forEach((track) => pc.addTrack(track, mic));
 
