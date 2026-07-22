@@ -44,8 +44,8 @@ _GENDER_ALIASES = {"female": _FEMALE_DEFAULT, "male": _MALE_DEFAULT, "woman": _F
 # Female- vs male-sounding GA voices, so the tutor's NAME matches the chosen voice.
 _FEMALE_VOICES = {"shimmer", "coral", "sage", "marin", "ballad"}
 _MALE_VOICES = {"ash", "echo", "verse", "cedar", "alloy"}
-_FEMALE_NAME = "Emma"
-_MALE_NAME = "Alex"
+_FEMALE_NAME = "Azza"
+_MALE_NAME = "Ahmed"
 
 
 def coerce_voice(voice: str) -> str:

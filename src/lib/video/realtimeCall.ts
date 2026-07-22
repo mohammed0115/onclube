@@ -110,8 +110,15 @@ export async function startRealtimeCall(
     const t = ev?.type || "";
     // Session is configured → safe to request the opening greeting.
     if (t === "session.created" || t === "session.updated") maybeSendOpening();
-    // Any sign the tutor is actually producing audio cancels the watchdog.
-    if (t === "output_audio_buffer.started" || t.endsWith("audio.delta") || t.endsWith("audio_transcript.delta")) {
+    // As soon as the model ACCEPTS our opening (response.created) or starts audio,
+    // stop the watchdog for good — otherwise a late first frame makes it fire a
+    // second response.create and the tutor "answers itself" on a loop.
+    if (
+      t === "response.created" ||
+      t === "output_audio_buffer.started" ||
+      t.endsWith("audio.delta") ||
+      t.endsWith("audio_transcript.delta")
+    ) {
       tutorHasSpoken = true;
       clearOpeningWatchdog();
     }
