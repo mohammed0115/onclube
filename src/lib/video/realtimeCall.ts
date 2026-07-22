@@ -69,15 +69,56 @@ export async function startRealtimeCall(
   };
 
   const dc = pc.createDataChannel("oai-events");
+
+  // ── Make the tutor greet FIRST instead of waiting for the student ──────────────
+  // Server VAD stays silent until the student speaks, so we explicitly ask the model
+  // for its opening response. Two robustness details learned the hard way:
+  //   1. Fire on `session.created`/`session.updated` (session is configured
+  //      server-side) — sending on `dc.onopen` alone is often too early and the
+  //      opening is dropped, leaving the student staring at a silent screen.
+  //   2. A watchdog re-sends the opening a few times if no tutor audio arrives.
+  const OPENING_WATCHDOG_MS = 2500;
+  const OPENING_MAX_RETRIES = 4;
+  let openingSent = false;
+  let tutorHasSpoken = false;
+  let openingWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  const clearOpeningWatchdog = () => {
+    if (openingWatchdog) { clearTimeout(openingWatchdog); openingWatchdog = null; }
+  };
+  const sendOpening = (retries: number) => {
+    if (dc.readyState !== "open") return;
+    // GA Realtime rejects `response.modalities`; the session is already audio-configured,
+    // and the opening line lives in the system prompt, so an empty response is enough.
+    try { dc.send(JSON.stringify({ type: "response.create", response: {} })); } catch { return; }
+    clearOpeningWatchdog();
+    openingWatchdog = setTimeout(() => {
+      openingWatchdog = null;
+      if (tutorHasSpoken || dc.readyState !== "open" || retries >= OPENING_MAX_RETRIES) return;
+      sendOpening(retries + 1);
+    }, OPENING_WATCHDOG_MS);
+  };
+  const maybeSendOpening = () => {
+    if (openingSent || dc.readyState !== "open") return;
+    openingSent = true;
+    sendOpening(0);
+  };
+
   dc.onmessage = (e) => {
-    try { handlers.onEvent?.(JSON.parse(e.data) as RealtimeEvent); } catch { /* ignore non-JSON */ }
+    let ev: RealtimeEvent | null = null;
+    try { ev = JSON.parse(e.data) as RealtimeEvent; } catch { return; /* ignore non-JSON */ }
+    const t = ev?.type || "";
+    // Session is configured → safe to request the opening greeting.
+    if (t === "session.created" || t === "session.updated") maybeSendOpening();
+    // Any sign the tutor is actually producing audio cancels the watchdog.
+    if (t === "output_audio_buffer.started" || t.endsWith("audio.delta") || t.endsWith("audio_transcript.delta")) {
+      tutorHasSpoken = true;
+      clearOpeningWatchdog();
+    }
+    handlers.onEvent?.(ev);
   };
-  // Make the tutor greet FIRST instead of waiting for the student. Once the data
-  // channel is open we ask the model to produce its opening response right away
-  // (server VAD otherwise stays silent until the student speaks).
-  dc.onopen = () => {
-    try { dc.send(JSON.stringify({ type: "response.create" })); } catch { /* noop */ }
-  };
+  // Fallback: if we somehow miss session.created, still kick off once the channel opens.
+  dc.onopen = () => { maybeSendOpening(); };
 
   mic.getTracks().forEach((track) => pc.addTrack(track, mic));
 
@@ -93,6 +134,7 @@ export async function startRealtimeCall(
       mic.getAudioTracks().forEach((t) => { t.enabled = !muted; });
     },
     end() {
+      clearOpeningWatchdog();
       try { dc.close(); } catch { /* noop */ }
       try { pc.close(); } catch { /* noop */ }
       mic.getTracks().forEach((t) => t.stop());
