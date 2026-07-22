@@ -41,6 +41,12 @@ _FEMALE_DEFAULT = "shimmer"
 _MALE_DEFAULT = "ash"
 _GENDER_ALIASES = {"female": _FEMALE_DEFAULT, "male": _MALE_DEFAULT, "woman": _FEMALE_DEFAULT, "man": _MALE_DEFAULT}
 
+# Female- vs male-sounding GA voices, so the tutor's NAME matches the chosen voice.
+_FEMALE_VOICES = {"shimmer", "coral", "sage", "marin", "ballad"}
+_MALE_VOICES = {"ash", "echo", "verse", "cedar", "alloy"}
+_FEMALE_NAME = "Emma"
+_MALE_NAME = "Alex"
+
 
 def coerce_voice(voice: str) -> str:
     """Normalise a requested voice (id or 'female'/'male') to a supported one."""
@@ -52,11 +58,22 @@ def coerce_voice(voice: str) -> str:
     return getattr(settings, "AI_REALTIME_VOICE", "alloy")
 
 
-def build_voice_system_prompt(student) -> str:
+def persona_name_for_voice(voice: str) -> str:
+    """Pick a gender-appropriate tutor name for the chosen voice (or 'female'/'male')."""
+    v = (voice or "").strip().lower()
+    if v in ("female", "woman") or coerce_voice(v) in _FEMALE_VOICES:
+        return _FEMALE_NAME
+    if v in ("male", "man") or coerce_voice(v) in _MALE_VOICES:
+        return _MALE_NAME
+    return _MALE_NAME
+
+
+def build_voice_system_prompt(student, voice: str = "female") -> str:
     """A spoken-English tutor prompt. Output becomes audio, so: short replies, no
-    markdown, contractions, natural fillers, and the student should talk more."""
+    markdown, contractions, natural fillers, and the student should talk more.
+    The tutor's name matches the selected voice's gender."""
     level = (getattr(student, "level", "") or "B1")[:2].upper()
-    name = "Alex"
+    name = persona_name_for_voice(voice)
     if level in ("A0", "A1"):
         level_rule = "The student is a beginner. Use very simple words and short sentences; if they get stuck, give the first words to start."
     elif level == "A2":

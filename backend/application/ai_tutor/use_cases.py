@@ -36,7 +36,7 @@ class StartRealtimeCallUseCase:
             raise BusinessRuleError(
                 "An active AI-tutor subscription is required.", code="no_ai_tutor_subscription"
             )
-        prompt = realtime.build_voice_system_prompt(student)
+        prompt = realtime.build_voice_system_prompt(student, voice=voice)
         session = realtime.request_ephemeral_session(system_prompt=prompt, voice=voice)
         from django.conf import settings
 
