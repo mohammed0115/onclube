@@ -16,6 +16,7 @@ Public:
 from __future__ import annotations
 
 import logging
+from urllib.parse import quote
 
 import httpx
 from django.conf import settings
@@ -150,9 +151,15 @@ def relay_sdp(*, client_secret: str, sdp: str):
     Keeping this server-side avoids CORS/CSP issues and surfaces upstream errors.
     Returns (status_code, content_bytes, content_type)."""
     base = getattr(settings, "OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+    # Pin the model on the calls URL. Without ``?model=`` the endpoint falls back
+    # to OpenAI's LEGACY default (``gpt-4o-realtime-preview``); accounts that only
+    # have ``gpt-realtime`` then get a 404 ``model_not_found``. Passing the same
+    # model the ephemeral session was minted with keeps the two in lockstep.
+    model = getattr(settings, "AI_REALTIME_MODEL", "gpt-realtime")
+    url = f"{base}/realtime/calls?model={quote(model)}"
     try:
         upstream = httpx.post(
-            f"{base}/realtime/calls",
+            url,
             content=sdp,  # raw SDP body (httpx uses ``content=`` for a non-form body)
             headers={"Authorization": f"Bearer {client_secret}", "Content-Type": "application/sdp"},
             timeout=15,
